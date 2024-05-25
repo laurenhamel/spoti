@@ -1,4 +1,34 @@
 {
   "name": "spoti",
-  "packageManager": "yarn@4.2.2"
+  "version": "0.1.0",
+  "description": "Yet another Spotify music downloader",
+  "type": "module",
+  "main": "./bin/cli.js",
+  "bin": "./bin/cli.js",
+  "files": [
+    "src",
+    "bin"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "spotify",
+    "spotify-downloader",
+    "youtube-music",
+    "youtube-downloader"
+  ],
+  "author": "Lauren Hamel",
+  "license": "ISC",
+  "packageManager": "yarn@4.2.2",
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@commander-js/extra-typings": "^12.1.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "glob": "^10.4.1",
+    "tsx": "^4.11.0"
+  }
 }
