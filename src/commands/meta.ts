@@ -1,4 +1,4 @@
-import { Command } from "@commander-js/extra-typings";
+import { Command } from "commander";
 
 export default new Command()
   .name("meta")

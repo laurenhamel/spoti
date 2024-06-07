@@ -8,11 +8,23 @@ const __dirname = dirname(__filename);
 
 const argv = process.argv.slice(2);
 
+const CWD = resolve(__dirname, "../");
+const PWD = process.env.PWD;
+
 spawnSync(
   "yarn",
-  ["node", "--loader", "tsx", resolve(__dirname, "../src/index.ts"), ...argv],
+  [
+    "--cwd",
+    CWD,
+    "node",
+    "--loader",
+    "tsx",
+    resolve(__dirname, "../src/index.ts"),
+    ...argv,
+    "--pwd",
+    PWD,
+  ],
   {
-    cwd: process.cwd(),
     shell: true,
     stdio: "inherit",
   }
