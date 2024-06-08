@@ -8,7 +8,7 @@ import {
 import { YoutubeApi } from "../services";
 import { map } from "lodash-es";
 import {
-  library,
+  Library,
   pool,
   Progress,
   sanitizeFileName,
@@ -43,8 +43,6 @@ export async function downloadSpotifyTracks<TOptions extends SpotiOptions>(
   passed: SpotifyDownloadResult[];
   failed: { error: Error; item: SpotifyDownloadResult }[];
 }> {
-  await library.dir(options?.pwd ?? process.env.PWD ?? "");
-
   const prepared = map<SpotifySearchResult, SpotifyDownloadResult>(
     items,
     (item) => {
@@ -52,7 +50,7 @@ export async function downloadSpotifyTracks<TOptions extends SpotiOptions>(
       const { artists, name: song } = track;
       const artist = map(artists, "name").join(", ");
       const title = sanitizeFileName(`${artist} - ${song}`);
-      const path = library.file(title, Youtube.AudioFormat.MP3);
+      const path = Library.file(title, Youtube.AudioFormat.MP3);
       const download = { artist, song, title, path };
       return { ...item, download };
     }
@@ -67,7 +65,11 @@ export async function downloadSpotifyTracks<TOptions extends SpotiOptions>(
       const { id } = item.track;
       const { path } = item.download;
 
-      if (library.exists(path) || library.find(id)) {
+      const isValid = (file: string) =>
+        Library.exists(file) && Library.size(file) > 0;
+      const isFound = (id: string) => !!Library.find(id);
+
+      if (isValid(path) || isFound(id)) {
         item.download.result = {
           title: item.download.title,
           format: Youtube.AudioFormat.MP3,
@@ -133,8 +135,12 @@ export async function downloadSpotifyTracks<TOptions extends SpotiOptions>(
           const { result } = search;
           const { id } = track;
 
+          const isValid = (file: string) =>
+            Library.exists(file) && Library.size(file) > 0;
+          const isFound = (id: string) => !!Library.find(id);
+
           // We can skip downloading if the MP3 files already exists!
-          if (library.legit(path) || library.find(id)) {
+          if (isValid(path) || isFound(id)) {
             download$.report();
             passed.push(item);
             return resolve();

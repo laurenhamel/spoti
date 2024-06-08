@@ -1,7 +1,7 @@
 import { Innertube, ClientType, Utils, UniversalCache } from "youtubei.js";
 import { Youtube } from "../../models";
 import { SpotiOptions } from "../../types";
-import { getYoutubeDownloadData, library } from "../../utils";
+import { getYoutubeDownloadData, Library } from "../../utils";
 import { existsSync, mkdirSync } from "node:fs";
 import { Progress, retry } from "../../utils";
 import chalk from "chalk";
@@ -143,8 +143,11 @@ class YoutubeApi {
     );
 
     const download = async (id: string): Promise<TResponse> => {
+      const isValid = (file: string) =>
+        Library.exists(file) && Library.size(file) > 0;
+
       // Exit early if the downloaded file already exists!
-      if (library.legit(m4a.path)) {
+      if (isValid(m4a.path)) {
         return mp3 as unknown as TResponse;
       }
 
@@ -165,7 +168,7 @@ class YoutubeApi {
 
       if (!existsSync(dir)) mkdirSync(dir);
 
-      const file = library.new(m4a.path);
+      const file = Library.new(m4a.path);
 
       for await (const chunk of Utils.streamToIterable(stream)) {
         file.write(chunk);

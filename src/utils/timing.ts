@@ -59,3 +59,22 @@ export async function throttle(wait: number, message?: string): Promise<void> {
     interval: 1000, // 1s
   });
 }
+
+export function toDuration(time?: number): string {
+  if (time) {
+    const ms = Math.floor((time % 1000) / 100);
+
+    let s = Math.floor((time / 1000) % 60);
+    let m = Math.floor((time / (1000 * 60)) % 60);
+    let h = Math.floor((time / (1000 * 60 * 60)) % 24);
+
+    const millisecond = ms.toFixed(2);
+    const hour = h < 10 ? "0" + h : h;
+    const minute = m < 10 ? "0" + m : m;
+    const second = s < 10 ? "0" + s : s;
+
+    return `${hour}:${minute}:${second}.${millisecond}`;
+  }
+
+  return "0:0:0.00";
+}

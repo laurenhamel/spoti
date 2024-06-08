@@ -1,7 +1,7 @@
 import { map } from "lodash-es";
 import { sleep } from "./timing";
 
-class Deferred<TResponse = void> {
+export class Deferred<TResponse = void> {
   promise: Promise<TResponse>;
 
   result: TResponse | undefined;

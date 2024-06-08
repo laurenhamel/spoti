@@ -2,7 +2,7 @@ import { Spotify } from "../models";
 import chalk from "chalk";
 import { SpotifyApi } from "../services";
 import { type SpotiOptions, type SpotifySearchResult } from "../types";
-import { Progress, throttle } from "../utils";
+import { Progress } from "../utils";
 import { hydrateSpotifyFeatures } from "./features";
 import { hydrateYoutubeSearch } from "./search";
 

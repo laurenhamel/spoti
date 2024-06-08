@@ -26,7 +26,7 @@ import {
     .name(pkg.name)
     .description(pkg.description)
     .version(pkg.version)
-    .option("--verbose", "Output more information data", false)
+    .option("--verbose", "Output more information", false)
     .allowUnknownOption(true);
 
   for (const file of commands) {
@@ -34,6 +34,7 @@ import {
     program.addCommand(command);
   }
 
+  // @FIXME This isn't actually cleaning up download remnants
   registerProcessExitHandlers(
     gracefullyStopProcess(),
     Progress.gracefullyStopProgress(),

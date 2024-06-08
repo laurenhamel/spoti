@@ -4,13 +4,13 @@ import {
   getSpotifyType,
   getSpotifyPlaylist,
   downloadSpotifyTracks,
-  cleanDownloadRemnants,
 } from "../core";
 import { type SpotiCliOptions } from "../types";
 import {
   parseSpotifyURL,
   validateSpotifyURL,
   createActionHandler,
+  Library,
 } from "../utils";
 import chalk from "chalk";
 import { map } from "lodash-es";
@@ -27,6 +27,8 @@ export default new Command()
   .action(
     createActionHandler<DownloadCliArgs, DownloadCliOptions>(
       async (url, options) => {
+        await Library.ready();
+
         validateSpotifyURL(url);
 
         const { type, id } = parseSpotifyURL(url);

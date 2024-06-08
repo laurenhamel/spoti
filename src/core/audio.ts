@@ -1,5 +1,5 @@
 import { type SpotiOptions, type SpotifyDownloadResult } from "../types";
-import { convertToMp3, pool, retry, library } from "../utils";
+import { convertToMp3, pool, retry, Library } from "../utils";
 import { basename } from "node:path";
 import chalk from "chalk";
 
@@ -11,17 +11,21 @@ export async function convertAudioFile<TOptions extends SpotiOptions>(
   return new Promise(async (resolve, reject) => {
     const id = item.track.id;
     const dest = item.download.path;
-    const src = library.source(dest);
+    const src = Library.source(dest);
+
+    const isValid = (file: string) =>
+      Library.exists(file) && Library.size(file) > 0;
+    const isFound = (id: string) => !!Library.find(id);
 
     // Skip if the MP3 already exists!
-    if (library.legit(dest) || library.find(id)) {
+    if (isValid(dest) || isFound(id)) {
       progress?.();
-      src && library.exists(src) && library.remove(src);
+      src && Library.exists(src) && Library.remove(src);
       return resolve();
-    } else if (library.legit(src)) {
+    } else if (isValid(src)) {
       try {
         await retry(
-          () => convertToMp3(library.path(src), library.path(dest)),
+          () => convertToMp3(Library.path(src), Library.path(dest)),
           3,
           1000 // 1s
         );

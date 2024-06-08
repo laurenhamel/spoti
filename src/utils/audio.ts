@@ -2,7 +2,7 @@ import { Youtube } from "../models";
 import { extname } from "path";
 import { rmSync } from "node:fs";
 import { spawnSync } from "child_process";
-import { library } from "./library";
+import { Library } from "./library";
 import { trimStart } from "lodash-es";
 
 export function detectAudioFormat(file: string): Youtube.AudioFormat {
@@ -24,14 +24,14 @@ export async function convertToMp3(
     );
 
     if (status === 0) {
-      library.exists(src) && rmSync(src);
+      Library.exists(src) && rmSync(src);
     }
 
     return status === -1
       ? reject(stderr)
       : resolve({
-          title: library.title(dest),
-          path: library.file(dest),
+          title: Library.title(dest),
+          path: Library.file(dest),
           format: Youtube.AudioFormat.MP3,
         });
   });

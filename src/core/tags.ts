@@ -5,7 +5,7 @@ import {
 } from "../types";
 import id3, { type Tags, TagConstants } from "node-id3";
 import fetch from "node-fetch";
-import { detectAudioFormat, pool, library } from "../utils";
+import { detectAudioFormat, pool, Library } from "../utils";
 import { map } from "lodash-es";
 import { Youtube } from "../models";
 
@@ -62,7 +62,7 @@ export async function addTrackTag<TOptions extends SpotiOptions>(
         image,
       };
 
-      await library.saveTags(path, track.id, tags);
+      await Library.tag(path, tags, track.id);
       resolve();
     } else {
       progress?.();
