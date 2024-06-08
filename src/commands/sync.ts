@@ -3,10 +3,13 @@ import { type SpotiCliOptions } from "../types";
 import { getSpotifyType } from "../core";
 import {
   parseSpotifyURL,
-  validateSpotifyURL,
+  isSpotifyURL,
   createActionHandler,
+  Library,
 } from "../utils";
 import chalk from "chalk";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, extname, join } from "node:path";
 
 export type SyncCliArgs = [string, string?];
 
@@ -23,28 +26,45 @@ export default new Command()
     "[file]",
     "A metadata filename to output to when the <query> is a Spotify URL"
   )
+  .allowUnknownOption(true)
   .action(
     createActionHandler<SyncCliArgs, SyncCliOptions>(
       async (query, file, options) => {
-        validateSpotifyURL(query);
+        if (isSpotifyURL(query)) {
+          const { type, id } = parseSpotifyURL(query);
+          const base = file ? basename(file, extname(query)) : id;
+          const source = base + ".spoti";
+          const path = join(Library.dir, source);
 
-        const { type, id } = parseSpotifyURL(query);
-
-        console.log(`Downloading ${chalk.magenta(type)} (${chalk.blue(id)})…`);
-
-        if (options.verbose) {
-          console.log();
-          console.log(chalk.bold.dim("Data"));
-          console.log({ type, id });
-          console.log();
-        }
-
-        const meta = await getSpotifyType(id, type, options);
-
-        switch (type) {
-          default: {
-            throw new Error(`Sorry, downloading ${type}s not yet supported.`);
+          if (existsSync(path)) {
+            throw new Error(
+              `A metadata file with name '${source}' already exists. Use 'spoti sync ${source}' instead.`
+            );
           }
+
+          // @TODO Trigger a download
+
+          const data = { type, id, url: query };
+          const json = JSON.stringify(data, null, 2);
+          writeFileSync(path, json);
+        } else {
+          // @TODO Find metadata file
+          const source = basename(query, extname(query)) + ".spoti";
+          const path = join(Library.dir, source);
+
+          if (!existsSync(path)) {
+            throw new Error(
+              `A metadata file with name '${source}' does not exist.`
+            );
+          }
+
+          const data = JSON.parse(readFileSync(path, { encoding: "utf-8" }));
+          const { type, id } = data as ReturnType<typeof parseSpotifyURL>;
+
+          // @TODO Trigger a download
+
+          const json = JSON.stringify(data, null, 2);
+          writeFileSync(path, json);
         }
       }
     )

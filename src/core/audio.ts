@@ -9,20 +9,21 @@ export async function convertAudioFile<TOptions extends SpotiOptions>(
   progress?: () => void
 ): Promise<void> {
   return new Promise(async (resolve, reject) => {
-    const id = item.track.id;
+    const { id, duration_ms: duration } = item.track;
     const dest = item.download.path;
     const src = Library.source(dest);
 
-    const isValid = (file: string) =>
-      Library.exists(file) && Library.size(file) > 0;
-    const isFound = (id: string) => !!Library.find(id);
+    let ready = await Library.ready(dest, id, { duration });
 
-    // Skip if the MP3 already exists!
-    if (isValid(dest) || isFound(id)) {
+    if (ready) {
       progress?.();
       src && Library.exists(src) && Library.remove(src);
       return resolve();
-    } else if (isValid(src)) {
+    }
+
+    ready = await Library.ready(src, id, { duration });
+
+    if (ready) {
       try {
         await retry(
           () => convertToMp3(Library.path(src), Library.path(dest)),

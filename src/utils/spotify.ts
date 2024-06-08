@@ -1,10 +1,17 @@
 import { trimStart } from "lodash-es";
 import { Spotify } from "../models";
 
-export function validateSpotifyURL(url: string): void {
-  const { hostname } = new URL(url);
+export function isSpotifyURL(url: string): boolean {
+  try {
+    const { hostname } = new URL(url);
+    return hostname.endsWith("spotify.com");
+  } catch (_) {
+    return false;
+  }
+}
 
-  if (!hostname.endsWith("spotify.com")) {
+export function validateSpotifyURL(url: string): void {
+  if (!isSpotifyURL(url)) {
     throw new Error("The provided URL is not a Spotify link.");
   }
 }

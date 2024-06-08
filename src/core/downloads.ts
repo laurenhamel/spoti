@@ -133,14 +133,12 @@ export async function downloadSpotifyTracks<TOptions extends SpotiOptions>(
           const { download, search, track } = item;
           const { title, path } = download;
           const { result } = search;
-          const { id } = track;
+          const { id, duration_ms: duration } = track;
 
-          const isValid = (file: string) =>
-            Library.exists(file) && Library.size(file) > 0;
-          const isFound = (id: string) => !!Library.find(id);
+          const ready = await Library.ready(path, id, { duration });
 
           // We can skip downloading if the MP3 files already exists!
-          if (isValid(path) || isFound(id)) {
+          if (ready) {
             download$.report();
             passed.push(item);
             return resolve();

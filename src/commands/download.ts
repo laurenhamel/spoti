@@ -27,16 +27,14 @@ export default new Command()
   .action(
     createActionHandler<DownloadCliArgs, DownloadCliOptions>(
       async (url, options) => {
-        await Library.ready();
-
         validateSpotifyURL(url);
 
         const { type, id } = parseSpotifyURL(url);
 
         console.log(`Downloading ${chalk.magenta(type)} (${chalk.blue(id)})…`);
+        console.log();
 
         if (options.verbose) {
-          console.log();
           console.log(chalk.bold.dim("Data"));
           console.log({ type, id });
           console.log();
@@ -52,7 +50,7 @@ export default new Command()
               tracks,
               options
             );
-            console.log();
+
             console.log(`Results:`);
             console.log(
               chalk.green("✓") + ` ${passed} track(s) downloaded successfully.`

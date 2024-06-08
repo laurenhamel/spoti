@@ -12,7 +12,7 @@ import { sync as glob } from "glob";
 import { detectAudioFormat } from "./audio";
 import { cleanFileName, getFilePath, sanitizeFileName } from "./file";
 import id3, { type Tags } from "node-id3";
-import { find, get, zipObject } from "lodash-es";
+import { find, get, isNil, zipObject } from "lodash-es";
 import { spawnSync } from "node:child_process";
 
 const { Promise: ID3 } = id3;
@@ -299,5 +299,50 @@ export class Library {
   ): LibraryItem | undefined {
     const criteria = format ? { format, id } : { id };
     return find(this.library, criteria);
+  }
+
+  /**
+   * Determine if a file with the given filename or ID is already ready for use, meaning
+   * the file exists and, optionally, the file size and/or duration is close to the given length
+   * @param file - The file name to search for
+   * @param id - The Spotify ID to search for
+   * @param criteria - The conditions to meet
+   */
+  static async ready(
+    file: string,
+    id: string,
+    criteria?: { size?: number; duration?: number }
+  ): Promise<boolean> {
+    const format = detectAudioFormat(file);
+    const item = this.library[file] ?? this.find(id, format);
+
+    if (item) {
+      const size = await this.assertSize(item, criteria?.size);
+      const duration = await this.assertDuration(item, criteria?.duration);
+      return item && size && duration;
+    }
+
+    return false;
+  }
+
+  private static async assertSize(
+    item: LibraryItem,
+    expected?: number
+  ): Promise<boolean> {
+    return !isNil(expected) ? item.size >= expected : true;
+  }
+
+  private static async assertDuration(
+    item: LibraryItem,
+    expected?: number,
+    buffer = 2000
+  ): Promise<boolean> {
+    if (!isNil(expected)) {
+      const { duration } = await item.metadata();
+      const [min, max] = [expected - buffer, expected + buffer];
+      return duration >= min && duration <= max;
+    }
+
+    return true;
   }
 }
