@@ -69,7 +69,9 @@ export function sortDownloadResults<TData = any>(
   };
 }
 
-export async function downloadSpotifyTracks<TOptions extends SpotiOptions>(
+export async function downloadSpotifyTracks<
+  TOptions extends SpotiOptions & { force?: boolean }
+>(
   items: SpotifySearchResult[],
   options?: TOptions
 ): Promise<{
@@ -82,7 +84,7 @@ export async function downloadSpotifyTracks<TOptions extends SpotiOptions>(
 
   for (const item of prepared) {
     const { file, path, format } = item.download;
-    const exists = Library.exists(file);
+    const exists = options?.force ? false : Library.exists(file);
     item.download.result = exists ? { file, path, format } : undefined;
     const stack = exists ? existing : missing;
     stack.push(item);
