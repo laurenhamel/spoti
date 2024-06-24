@@ -208,7 +208,7 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
     data: TData = {} as TData
   ): string | undefined {
     return this.parameterized.includes(method)
-      ? `?${qs.stringify(data)}`
+      ? `?${qs.stringify(data, { arrayFormat: "comma" })}`
       : undefined;
   }
 

@@ -4,5 +4,6 @@ export * from "./features";
 export * from "./metadata";
 export * from "./playlists";
 export * from "./search";
+export * from "./spoti";
 export * from "./spotify";
 export * from "./tags";

@@ -1,70 +1,72 @@
 import { Command } from "commander";
-import { type SpotiCliOptions } from "../types";
-import { getSpotifyType } from "../core";
+import { AudioFormat, type SpotiCliOptions } from "../types";
+import { Metadata, Spoti } from "../core";
 import {
+  Audio,
   parseSpotifyURL,
   isSpotifyURL,
   createActionHandler,
-  Library,
 } from "../utils";
-import chalk from "chalk";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, extname, join } from "node:path";
 
 export type SyncCliArgs = [string, string?];
 
-export interface SyncCliOptions extends SpotiCliOptions {}
+export interface SyncCliOptions extends SpotiCliOptions {
+  cache: boolean;
+  format: AudioFormat;
+  init: boolean;
+}
 
 export default new Command()
   .name("sync")
   .description("Sync tracks from a Spotify URL to your local directory")
-  .argument(
-    "<query>",
-    "Either an existing metadata file created from a previous sync or the initial Spotify URL to start syncing"
-  )
-  .argument(
-    "[file]",
-    "A metadata filename to output to when the <query> is a Spotify URL"
-  )
+  .argument("<query>", "A metadata filename or a Spotify URL to start syncing")
+  .argument("[file]", "The metadata filename to output")
+  .option("-f, --format", "The output audio file format", Audio.DEFAULT_FORMAT)
+  .option("-i, --init", "Initialize metadata file only", false)
+  .option("--no-cache", "Disables using cached search results")
   .allowUnknownOption(true)
   .action(
     createActionHandler<SyncCliArgs, SyncCliOptions>(
       async (query, file, options) => {
         if (isSpotifyURL(query)) {
           const { type, id } = parseSpotifyURL(query);
-          const base = file ? basename(file, extname(query)) : id;
-          const source = base + ".spoti";
-          const path = join(Library.dir, source);
+          const name = file ?? id;
 
-          if (existsSync(path)) {
+          if (Metadata.has(name)) {
+            const metadata = Metadata.file(name);
+
             throw new Error(
-              `A metadata file with name '${source}' already exists. Use 'spoti sync ${source}' instead.`
+              [
+                `A metadata file named '${metadata}' already exists.`,
+                `Use 'spoti sync ${name}' instead.`,
+              ].join("\n")
             );
           }
-
-          // @TODO Trigger a download
 
           const data = { type, id, url: query };
-          const json = JSON.stringify(data, null, 2);
-          writeFileSync(path, json);
-        } else {
-          // @TODO Find metadata file
-          const source = basename(query, extname(query)) + ".spoti";
-          const path = join(Library.dir, source);
 
-          if (!existsSync(path)) {
+          Metadata.save(name, data);
+
+          !options.init && (await Spoti.download(id, type, options));
+        } else {
+          if (!Metadata.has(query)) {
+            const metadata = Metadata.file(query);
+
             throw new Error(
-              `A metadata file with name '${source}' does not exist.`
+              [
+                `A metadata file named '${metadata}' does not exist.`,
+                `Try 'spoti sync <url> ${query}' instead.`,
+              ].join("\n")
             );
           }
 
-          const data = JSON.parse(readFileSync(path, { encoding: "utf-8" }));
+          const data = Metadata.read(query);
+
           const { type, id } = data as ReturnType<typeof parseSpotifyURL>;
 
-          // @TODO Trigger a download
+          await Spoti.download(id, type, options);
 
-          const json = JSON.stringify(data, null, 2);
-          writeFileSync(path, json);
+          Metadata.save(query, data);
         }
       }
     )

@@ -11,6 +11,8 @@ const argv = process.argv.slice(2);
 const CWD = resolve(__dirname, "../");
 const PWD = process.env.PWD;
 
+const pwd = '"' + PWD.replace(/"/g, '\\"') + '"';
+
 spawnSync(
   "yarn",
   [
@@ -22,10 +24,14 @@ spawnSync(
     resolve(__dirname, "../src/index.ts"),
     ...argv,
     "--pwd",
-    PWD,
+    pwd,
   ],
   {
     shell: true,
     stdio: "inherit",
+    env: {
+      ...process.env,
+      NODE_NO_WARNINGS: 1,
+    },
   }
 );

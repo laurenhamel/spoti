@@ -43,8 +43,9 @@ import {
 
   try {
     await program.parseAsync(process.argv);
-    console.log();
+    console.log("");
     console.log("Done!", "Thanks for using Spoti!");
+    console.log("");
     process.exit(0);
   } catch (e) {
     const error = e as Error;

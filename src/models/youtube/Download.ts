@@ -1,7 +1,8 @@
-import { type AudioFormat } from "./shared";
+import { type AudioFormat, type VideoFormat } from "../../types";
 
 export type Download = {
-  title: string;
+  file: string;
   path: string;
-  format: AudioFormat;
+  format: AudioFormat | VideoFormat;
+  bitrate?: number;
 };

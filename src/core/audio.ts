@@ -1,49 +1,72 @@
-import { type SpotiOptions, type SpotifyDownloadResult } from "../types";
-import { convertToMp3, pool, retry, Library } from "../utils";
-import { basename } from "node:path";
+import {
+  AudioFormat,
+  type SpotiOptions,
+  type SpotifyDownloadResult,
+} from "../types";
+import { Audio, pool, retry, Format, Library } from "../utils";
 import chalk from "chalk";
 
-export async function convertAudioFile<TOptions extends SpotiOptions>(
+export async function convertAudioFile<
+  TOptions extends SpotiOptions & { format?: AudioFormat }
+>(
   item: SpotifyDownloadResult,
   options?: TOptions,
   progress?: () => void
 ): Promise<void> {
-  return new Promise(async (resolve, reject) => {
-    const { id, duration_ms: duration } = item.track;
-    const dest = item.download.path;
+  return new Promise(async (resolve) => {
+    const dest = item.download.file;
     const src = Library.source(dest);
+    const bitrate = item.download.result?.bitrate;
 
-    let ready = await Library.ready(dest, id, { duration });
+    const padding = 75;
 
-    if (ready) {
-      progress?.();
+    const passed = (previous: string, next: string) => {
+      console.log(
+        chalk.green("✓"),
+        chalk.dim(Format.truncate(previous, padding)),
+        chalk.cyan("→"),
+        chalk.green(Format.truncate(next, padding))
+      );
+    };
+
+    const failed = (previous: string, next: string) => {
+      console.log(
+        chalk.red("𐄂"),
+        chalk.dim(Format.truncate(previous, padding)),
+        chalk.cyan("→"),
+        chalk.red(Format.truncate(next, padding))
+      );
+    };
+
+    const error = (previous: string, next: string) => {
+      console.log(
+        chalk.yellow("?"),
+        chalk.dim(Format.truncate(previous, padding)),
+        chalk.cyan("→"),
+        chalk.yellow(Format.truncate(next, padding))
+      );
+    };
+
+    if (Library.exists(dest)) {
       src && Library.exists(src) && Library.remove(src);
-      return resolve();
-    }
-
-    ready = await Library.ready(src, id, { duration });
-
-    if (ready) {
+      passed(src, dest);
+    } else if (Library.exists(src)) {
       try {
         await retry(
-          () => convertToMp3(Library.path(src), Library.path(dest)),
+          () => Audio.convert(Library.path(src), Library.path(dest), bitrate),
           3,
           1000 // 1s
         );
-        resolve();
+        passed(src, dest);
       } catch (e) {
-        reject(e);
-      } finally {
-        progress?.();
+        failed(src, dest);
       }
     } else {
-      progress?.();
-      reject(
-        new Error(
-          `Missing M4A/MP4 source file for '${item.download.title}' to convert to MP3.`
-        )
-      );
+      error(src, dest);
     }
+
+    progress?.();
+    resolve();
   });
 }
 
@@ -55,8 +78,10 @@ export async function transformAudioFiles<TOptions extends SpotiOptions>(
   const dispatch = pool(25);
 
   const tasks: (() => Promise<void>)[] = items.map(
-    (item) => () => convertAudioFile(item, options, progress)
+    (item) => async () => convertAudioFile(item, options, progress)
   );
+
+  console.log("");
 
   return dispatch(tasks);
 }

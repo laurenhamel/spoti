@@ -7,13 +7,17 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, extname, join, parse } from "node:path";
+import { basename, extname, join } from "node:path";
 import { sync as glob } from "glob";
-import { detectAudioFormat } from "./audio";
-import { cleanFileName, getFilePath, sanitizeFileName } from "./file";
+import { Audio } from "./audio";
 import id3, { type Tags } from "node-id3";
-import { find, get, isNil, zipObject } from "lodash-es";
+import { find, findIndex, get, isNil } from "lodash-es";
 import { spawnSync } from "node:child_process";
+import { pool, Deferred } from "./promise";
+import { Progress } from "./progress";
+import chalk from "chalk";
+import { Format } from "./format";
+import { AudioFormat, SpotiOptions, VideoFormat } from "../types";
 
 const { Promise: ID3 } = id3;
 
@@ -24,57 +28,77 @@ export interface LibraryMetadata {
 }
 
 export interface LibraryItem {
+  title: string;
+  file: string;
   path: string;
-  format: Youtube.AudioFormat;
+  format: AudioFormat | VideoFormat;
   size: number;
   metadata: () => Promise<LibraryMetadata>;
 }
 
 export class Library {
   static dir: string = process.env.PWD ?? "";
-  static library: Record<string, LibraryItem> = {};
+  static library: LibraryItem[] = [];
   static files: string[] = [];
-  static mounted: boolean = false;
+
+  private static mounted$ = new Deferred<boolean>();
+
+  static mounted: Promise<boolean> = this.mounted$.promise;
 
   /**
    * Mount the library to the given directory
    * @param dir - The root directory of the library
    */
-  static async mount(dir: string): Promise<void> {
+  static async mount<TOptions extends SpotiOptions>(
+    dir: string,
+    options?: TOptions
+  ): Promise<boolean> {
     this.dir = dir;
     this.files = this.scan(this.dir);
-    this.library = this.hydrate(this.files);
-    this.mounted = true;
+    options?.verbose && this.files.forEach((file) => console.log(file));
+    this.library = await this.hydrate(this.files);
+    this.mounted$.resolve(true);
+    return this.mounted;
   }
 
   /**
    * Scan the given directory for its list of files
    * @param dir - The directory to scan
-   * @param format - Filter by audio file format
+   * @param format - Filter by audio or video file format
    * @returns
    */
-  static scan(dir: string, format?: Youtube.AudioFormat): string[] {
+  static scan(dir: string, format?: AudioFormat | VideoFormat): string[] {
     const patterns: string[] = [];
 
-    if (!format || format === Youtube.AudioFormat.MP3) {
-      patterns.push(getFilePath("*", Youtube.AudioFormat.MP3));
+    if (!format || format === AudioFormat.MP3) {
+      patterns.push(basename(this.path("*", AudioFormat.MP3)));
     }
 
-    if (!format || format === Youtube.AudioFormat.MP4) {
-      patterns.push(getFilePath("*", Youtube.AudioFormat.MP4));
+    if (!format || format === VideoFormat.MP4) {
+      patterns.push(basename(this.path("*", VideoFormat.MP4)));
     }
 
-    if (!format || format === Youtube.AudioFormat.M4A) {
-      patterns.push(getFilePath("*", Youtube.AudioFormat.M4A));
+    if (!format || format === AudioFormat.M4A) {
+      patterns.push(basename(this.path("*", AudioFormat.M4A)));
     }
 
-    return patterns.flatMap((pattern) =>
+    if (!format || format === AudioFormat.WAV) {
+      patterns.push(basename(this.path("*", AudioFormat.WAV)));
+    }
+
+    if (!format || format === AudioFormat.AAC) {
+      patterns.push(basename(this.path("*", AudioFormat.AAC)));
+    }
+
+    const files = patterns.flatMap((pattern) =>
       glob(pattern, {
         nodir: true,
         dot: true,
         cwd: dir,
       })
     );
+
+    return files.map((file) => file.normalize());
   }
 
   /**
@@ -83,30 +107,83 @@ export class Library {
    * @param increment - A progress increment function
    * @returns
    */
-  static hydrate(files: string[]): Record<string, LibraryItem> {
-    const metadata = files.map((file) => this.metadata(file));
-    return zipObject(files, metadata);
+  static async hydrate(files: string[]): Promise<LibraryItem[]> {
+    const progress$ = new Progress(
+      "Mounting…",
+      {
+        type: "percentage",
+        percentage: 0,
+        message: `0 / ${files.length}`,
+        nameTransformFn: chalk.blue,
+      },
+      (() => {
+        let reports = 0;
+        return () => {
+          reports++;
+          const percentage = reports / files.length;
+          const message = `${reports} / ${files.length}`;
+          progress$.update(percentage, message);
+        };
+      })()
+    );
+
+    const dispatch = pool(25);
+
+    const tasks = files.map((file) => async () => {
+      const result = this.parse(file);
+      progress$.report();
+      return result;
+    });
+
+    const metadata = await dispatch(tasks);
+
+    progress$.done();
+    progress$.remove();
+
+    return metadata;
   }
 
   /**
-   * Collect ID3 metadata from the given file
-   * @param file - The file to collect metadata from
+   * Parse information about the given file
+   * @param file - The file to collect metadata for
    * @returns
    */
-  static metadata(file: string): LibraryItem {
-    const format = detectAudioFormat(file);
+  static parse(file: string): LibraryItem {
+    const format = Audio.format(file);
+    const title = this.title(file);
     const path = this.path(file, format);
     const size = this.size(file);
+    const metadata = this.metadata(file);
+    return { title, file, format, path, size, metadata };
+  }
 
-    const metadata = async () => {
-      const tags = await ID3.read(path);
-      const duration = this.duration(file);
-      const data = get(tags, "userDefinedText", []);
-      const id = find(data, { description: this.ID })?.value;
-      return { tags, duration, id };
+  /**
+   * Create an async metadata callback for the given file
+   * @param file - The file to create the metadata for
+   * @returns
+   */
+  static metadata(file: string): () => Promise<LibraryMetadata> {
+    let cached: LibraryMetadata | undefined;
+
+    return async () => {
+      if (!cached) {
+        const tags = await this.meta(file);
+        const duration = this.duration(file, tags);
+        const id = this.id(tags);
+        cached = { tags, duration, id };
+      }
+
+      return cached;
     };
+  }
 
-    return { format, path, size, metadata };
+  /**
+   * Read ID3 tags of the given file
+   * @param file - The file to read tags of
+   * @returns
+   */
+  static async meta(file: string): Promise<Tags> {
+    return this.exists(file) ? ID3.read(this.path(file)) : {};
   }
 
   /**
@@ -114,46 +191,109 @@ export class Library {
    * @param file - The file to tag
    * @param tags - The tags to save
    * @param id - The Spotify ID if available
+   * @param duration - The duration if available
    * @returns
    */
-  static async tag(file: string, tags: Tags, id?: string): Promise<void> {
-    id && this.assignId(tags, id);
+  static async tag(
+    file: string,
+    tags: Tags,
+    id?: string,
+    duration?: number
+  ): Promise<void> {
+    if (this.exists(file)) {
+      const path = this.path(file);
 
-    await ID3.write(tags, this.path(file));
+      this.assignId(tags, id);
+      this.assignDuration(tags, duration);
 
-    this.library[file] = await this.metadata(file);
-  }
+      await ID3.write(tags, path);
 
-  static readonly ID = "spoti.id";
-
-  /**
-   * Add in Spotify ID metadata to the ID3 tags
-   * @param tags - The tags to assign to
-   * @param id - The Spotify ID to assign
-   */
-  private static assignId(tags: Tags, id: string): void {
-    if (tags.userDefinedText) {
-      const meta = find(tags.userDefinedText, { description: this.ID });
-
-      if (meta) {
-        meta.value = id;
-      } else {
-        tags.userDefinedText.push({ description: this.ID, value: id });
-      }
-    } else {
-      tags.userDefinedText = [{ description: this.ID, value: id }];
+      this.set(file, this.parse(file));
     }
   }
 
   /**
-   * Get the filename (i.e., basename and extension) of the given file
-   * @param file - The file to extract the basename from
-   * @param format - The expected format of the file
+   * Get metadata from the library
+   * @param file - The file to get metadata for
    * @returns
    */
-  static file(file: string, format = detectAudioFormat(file)): string {
-    const base = basename(file, extname(file));
-    return getFilePath(base, format);
+  static get(file: string): LibraryItem | undefined {
+    const path = this.path(file);
+    return find(this.library, { file }) ?? find(this.library, { path });
+  }
+
+  /**
+   * Set metadata in the library
+   * @param file - The file to set metdata for
+   * @param value - The metadata to set
+   */
+  static set(file: string, metadata: LibraryItem): void {
+    const path = this.path(file);
+    const index =
+      findIndex(this.library, { file }) ?? findIndex(this.library, { path });
+
+    if (index > -1) {
+      this.library[index] = metadata;
+    } else {
+      this.library.push(metadata);
+    }
+  }
+
+  /**
+   * Determine if metadata exist in the library
+   * @param file - The file to search for
+   * @returns
+   */
+  static has(file: string): boolean {
+    return !!this.get(file);
+  }
+
+  static readonly ID = "spoti.id" as const;
+
+  /**
+   * Add Spotify ID metadata as an ID3 tag
+   * @param tags - The tags to assign to
+   * @param id - The Spotify ID to assign
+   */
+  private static assignId(tags: Tags, id?: string): void {
+    if (id) {
+      if (tags.userDefinedText) {
+        const meta = find(tags.userDefinedText, { description: this.ID });
+
+        if (meta) {
+          meta.value = id;
+        } else {
+          tags.userDefinedText.push({ description: this.ID, value: id });
+        }
+      } else {
+        tags.userDefinedText = [{ description: this.ID, value: id }];
+      }
+    }
+  }
+
+  static readonly DURATION = "spoti.duration" as const;
+
+  /**
+   * Add duration metadata as an ID3 tag
+   * @param tags - The tags to assign to
+   * @param duration - The duration to assign
+   */
+  private static assignDuration(tags: Tags, duration?: number): void {
+    if (duration) {
+      const value = duration.toString();
+
+      if (tags.userDefinedText) {
+        const meta = find(tags.userDefinedText, { description: this.DURATION });
+
+        if (meta) {
+          meta.value = value;
+        } else {
+          tags.userDefinedText.push({ description: this.DURATION, value });
+        }
+      } else {
+        tags.userDefinedText = [{ description: this.DURATION, value }];
+      }
+    }
   }
 
   /**
@@ -162,31 +302,94 @@ export class Library {
    * @param format - The expected format of the file
    * @returns
    */
-  static path(file: string, format?: Youtube.AudioFormat): string {
-    return join(this.dir, this.file(file, format));
+  static path(file: string, format?: AudioFormat | VideoFormat): string {
+    const ext = extname(file);
+    const base = basename(file, ext);
+    const extension = format ? `.${format}` : ext;
+    const filename = base + extension;
+    return join(this.dir, filename);
   }
 
   /**
-   * Build a title from the given filename
-   * @param file - The file to build a title from
+   * Get the file name from the given file path
+   * @param path - The path to get the file name from
+   * @param format - The expected format of the file
+   * @returns
+   */
+  static file(path: string, format?: AudioFormat | VideoFormat): string {
+    return basename(this.path(path, format));
+  }
+
+  /**
+   * Extract the title from the given file
+   * @param file - The file to extract the title from
    * @returns
    */
   static title(file: string): string {
-    const base = basename(file, extname(file));
-    return sanitizeFileName(cleanFileName(base));
+    return basename(file, extname(file));
   }
 
   /**
-   * Create a new writable file stream using the given filename
+   * Create a new writable file audio stream using the given filename
    * @param file - The filename to use for the write stream
-   * @param format - The expected format of the fiell
+   * @param format - The expected format of the file
    * @returns
    */
   static new(
-    file: string,
-    format = detectAudioFormat(file)
-  ): ReturnType<typeof createWriteStream> {
-    return createWriteStream(this.path(file, format));
+    dest: string,
+    format = Audio.format(dest)
+  ): {
+    path: string;
+    file: string;
+    title: string;
+    format: AudioFormat | VideoFormat;
+    write: (chunk: unknown) => void;
+    save: () => Promise<void>;
+  } {
+    const file = this.file(dest, format);
+    const path = this.path(dest, format);
+    const chunks: unknown[] = [];
+    const stream = createWriteStream(path);
+    const deferred = new Deferred();
+
+    const write = (chunk: unknown): void => {
+      chunks.push(chunk);
+    };
+
+    const clean = (): void => {
+      if (Library.exists(file) && Library.size(file) === 0) {
+        Library.remove(file);
+      }
+    };
+
+    const save = async (): Promise<void> => {
+      await deferred.promise;
+
+      for (const chunk of chunks) {
+        const done = new Deferred();
+        stream.write(chunk, () => done.resolve());
+        await done.promise;
+      }
+
+      stream.end();
+    };
+
+    stream.on("open", deferred.resolve);
+    stream.on("error", clean);
+
+    // @FIXME Why does this not work?
+    process.on("SIGINT", clean);
+    process.on("SIGQUIT", clean);
+    process.on("SIGTERM", clean);
+
+    return {
+      file,
+      path,
+      title: this.title(file),
+      format,
+      write,
+      save,
+    };
   }
 
   /**
@@ -226,23 +429,33 @@ export class Library {
 
   /**
    * Get the size of a file in bytes
-   * @param file - The file to query
+   * @param file - The file to retreive the size of
    * @returns
    */
   static size(file: string): number {
-    return statSync(this.path(file)).size;
+    return this.exists(file) ? statSync(this.path(file)).size : 0;
   }
 
   /**
    * Get the duration of a file in milliseconds (ms)
-   * @param file - The file to query
+   * @param file - The file to retrieve the duration for
+   * @param tags - The ID3 tags of the file if available
    * @param duration - The precomputed duration if available
    * @returns
    */
-  static duration(file: string, value?: number): number {
+  static duration(file: string, tags?: Tags, value = 0): number {
+    // prettier-ignore
+    const name = '"' + this.file(file).replace(/"/g, '\\"') + '"';
+
     let duration = value;
 
-    if (!duration) {
+    if (!duration && tags) {
+      const data = get(tags, "userDefinedText", []);
+      const value = find(data, { description: this.DURATION })?.value;
+      duration = value ? parseFloat(value) : duration;
+    }
+
+    if (!duration && this.exists(file)) {
       const { stdout } = spawnSync(
         "ffprobe",
         [
@@ -252,7 +465,7 @@ export class Library {
           "format=duration",
           "-of",
           "default=noprint_wrappers=1:nokey=1",
-          `"${this.file(file)}"`,
+          `${name}`,
         ],
         {
           cwd: this.dir,
@@ -268,14 +481,24 @@ export class Library {
   }
 
   /**
-   * Find the M4A/MP4 source file for an MP3 track
+   * Extract a Spotify ID from ID3 tags if available
+   * @param tags - The ID3 tags of the file
+   * @returns
+   */
+  static id(tags: Tags): string | undefined {
+    const data = get(tags, "userDefinedText", []);
+    return find(data, { description: this.ID })?.value;
+  }
+
+  /**
+   * Find the M4A/MP4 source file for an MP3 file
    * @param file - The file to use to look for a source file
    * @returns
    */
   static source(file: string): string {
     const files = [
-      this.file(file, Youtube.AudioFormat.M4A),
-      this.file(file, Youtube.AudioFormat.MP4),
+      Format.hide(this.file(file, AudioFormat.M4A)),
+      Format.hide(this.file(file, VideoFormat.MP4)),
     ];
 
     for (const file of files) {
@@ -288,38 +511,21 @@ export class Library {
   }
 
   /**
-   * Find a track with the given Spotify ID in the library
-   * @param id - The Spotify ID to look for
-   * @param format - The format to search for
-   * @returns
-   */
-  static find(
-    id: string,
-    format?: Youtube.AudioFormat
-  ): LibraryItem | undefined {
-    const criteria = format ? { format, id } : { id };
-    return find(this.library, criteria);
-  }
-
-  /**
-   * Determine if a file with the given filename or ID is already ready for use, meaning
-   * the file exists and, optionally, the file size and/or duration is close to the given length
-   * @param file - The file name to search for
-   * @param id - The Spotify ID to search for
+   * Determine if a file with the given filename is already ready to use, meaning
+   * the file exists and, optionally, the file size and/or duration reflects the given value.
+   * @param file - The file to search for
    * @param criteria - The conditions to meet
    */
   static async ready(
     file: string,
-    id: string,
     criteria?: { size?: number; duration?: number }
   ): Promise<boolean> {
-    const format = detectAudioFormat(file);
-    const item = this.library[file] ?? this.find(id, format);
+    const item = this.get(file);
 
     if (item) {
       const size = await this.assertSize(item, criteria?.size);
       const duration = await this.assertDuration(item, criteria?.duration);
-      return item && size && duration;
+      return size && duration;
     }
 
     return false;

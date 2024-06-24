@@ -4,6 +4,8 @@ import { sleep } from "./timing";
 export class Deferred<TResponse = void> {
   promise: Promise<TResponse>;
 
+  state: "pending" | "resolved" | "rejected" = "pending";
+
   result: TResponse | undefined;
 
   // @ts-ignore Capturing callback of promise
@@ -14,8 +16,15 @@ export class Deferred<TResponse = void> {
 
   constructor() {
     this.promise = new Promise<TResponse>((resolve, reject) => {
-      this.resolve = resolve;
-      this.reject = reject;
+      this.resolve = (value) => {
+        this.state = "resolved";
+        resolve(value);
+      };
+
+      this.reject = (value) => {
+        this.state = "rejected";
+        reject(value);
+      };
     }).then((result) => {
       this.result = result as TResponse;
     }) as Promise<TResponse>;

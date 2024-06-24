@@ -1,7 +1,7 @@
 import { MultiProgressBars, type AddOptions } from "multi-progress-bars";
 import { padEnd } from "lodash-es";
 import { type ProcessExitRegister } from "../types";
-import { sanitizeFileName } from "./file";
+import { Format } from "./format";
 
 export class Progress {
   static progress: MultiProgressBars;
@@ -57,7 +57,7 @@ export class Progress {
 
   static label(title: string, length = this.FIXED_LABEL_LENGTH): string {
     return padEnd(
-      sanitizeFileName(
+      Format.sanitize(
         title.length > length ? title.substring(0, length - 1) + "…" : title
       ),
       length,

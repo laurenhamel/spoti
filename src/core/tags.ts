@@ -1,13 +1,14 @@
 import {
+  AudioFormat,
+  SpotifyTagResult,
   type SpotiOptions,
   type SpotifyDownloadResult,
   type YoutubeDownloadResult,
 } from "../types";
-import id3, { type Tags, TagConstants } from "node-id3";
+import { type Tags, TagConstants } from "node-id3";
 import fetch from "node-fetch";
-import { detectAudioFormat, pool, Library } from "../utils";
-import { map } from "lodash-es";
-import { Youtube } from "../models";
+import { pool, Library } from "../utils";
+import { includes, map } from "lodash-es";
 
 async function generateImageTag(
   url: string,
@@ -28,28 +29,22 @@ async function generateImageTag(
   }
 }
 
-export async function addTrackTag<TOptions extends SpotiOptions>(
-  item: SpotifyDownloadResult,
-  options?: TOptions,
-  progress?: () => void
-): Promise<void> {
-  return new Promise(async (resolve) => {
-    if (item.download.result) {
-      const { track, download, features } = item;
-      const { path } = download.result as YoutubeDownloadResult;
-      const format = detectAudioFormat(path);
+export async function generateTrackTag(
+  item: SpotifyDownloadResult
+): Promise<Tags> {
+  const result = item as SpotifyTagResult;
 
-      if (format !== Youtube.AudioFormat.MP3) {
-        progress?.();
-        return resolve();
-      }
+  if (result.download.result) {
+    const { track, download, features } = item;
+    const { format } = download.result as YoutubeDownloadResult;
 
+    if (includes(Object.values(AudioFormat), format)) {
       const image = await generateImageTag(
         track.album.images[0].url,
         track.album.name
       );
 
-      const tags: Tags = {
+      result.tags = {
         title: track.name,
         artist: map(track.artists, "name").join(", "),
         album: track.album.name,
@@ -57,17 +52,34 @@ export async function addTrackTag<TOptions extends SpotiOptions>(
         year: track.album.release_date.split("-")[0],
         fileUrl: track.href,
         trackNumber: track.track_number.toString(),
-        bpm: features?.tempo.toString(),
-        initialKey: features?.key.toString(),
+        bpm: features?.tempo?.toString(),
+        initialKey: features?.key?.toString(),
         image,
       };
-
-      await Library.tag(path, tags, track.id);
-      resolve();
-    } else {
-      progress?.();
-      resolve();
     }
+  }
+
+  result.tags = result.tags ?? ({} as Tags);
+
+  return result.tags;
+}
+
+export async function addTrackTag<TOptions extends SpotiOptions>(
+  item: SpotifyDownloadResult,
+  options?: TOptions,
+  progress?: () => void
+): Promise<void> {
+  return new Promise(async (resolve) => {
+    const id = item.track.id;
+    const path = item.download.result?.path;
+
+    if (path) {
+      const tags = await generateTrackTag(item);
+      await Library.tag(path, tags, id);
+    }
+
+    progress?.();
+    resolve();
   });
 }
 

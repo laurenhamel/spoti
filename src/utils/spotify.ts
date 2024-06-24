@@ -1,5 +1,6 @@
 import { trimStart } from "lodash-es";
 import { Spotify } from "../models";
+import { type SpotifyMetadataResult } from "../types";
 
 export function isSpotifyURL(url: string): boolean {
   try {
@@ -20,10 +21,7 @@ export function validateSpotifyURL(url: string): void {
  * Parse Spotify URLs to extract relevant data
  * @example https://open.spotify.com/playlist/5g0EvNDibjJFgJeG7dAGeZ
  */
-export function parseSpotifyURL(url: string): {
-  type: Spotify.Type;
-  id: string;
-} {
+export function parseSpotifyURL(url: string): SpotifyMetadataResult {
   const { pathname } = new URL(url);
   const [type, id] = trimStart(pathname, "/").split("/");
   return { type: type as Spotify.Type, id };

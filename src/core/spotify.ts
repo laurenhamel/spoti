@@ -15,7 +15,7 @@ export async function getSpotifyType<
     [Spotify.Type.ARTIST]: () => Promise.resolve({} as any),
     [Spotify.Type.FEATURES]: () => Promise.resolve({} as any),
     [Spotify.Type.PLAYLIST]: SpotifyApi.getPlaylist,
-    [Spotify.Type.TRACK]: () => Promise.resolve({} as any),
+    [Spotify.Type.TRACK]: SpotifyApi.getTrack,
     [Spotify.Type.USER]: () => Promise.resolve({} as any),
   };
 

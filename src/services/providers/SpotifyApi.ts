@@ -24,6 +24,10 @@ const SpotifyApi = new RestApi({
       path: "/playlists/<%= id %>/tracks",
       data: { limit: 50 },
     },
+    getTrack: {
+      method: RestApiMethod.GET,
+      path: "/tracks/<%= id %>",
+    },
     getTrackAudioFeatures: {
       method: RestApiMethod.GET,
       path: "/audio-features/<%= id %>",

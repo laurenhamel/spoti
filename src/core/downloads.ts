@@ -8,32 +8,65 @@ import {
 import { YoutubeApi } from "../services";
 import { map } from "lodash-es";
 import {
+  Audio,
+  Format,
   Library,
   pool,
   Progress,
-  sanitizeFileName,
   silenceWarnings,
 } from "../utils";
 import chalk from "chalk";
 import { transformAudioFiles } from "./audio";
 import { hydrateTrackTags } from "./tags";
-import { type ProcessExitRegister } from "../types";
+import { AudioFormat, type ProcessExitRegister } from "../types";
 
 export async function downloadYoutubeSong<TOptions extends SpotiOptions>(
   title: string,
   song: Youtube.Song,
   options?: TOptions
 ): Promise<YoutubeDownloadResult> {
-  const dir = options?.pwd ?? (process.env.PWD as string);
-
   return YoutubeApi.downloadSong(
     {
-      dir,
       title,
       song,
     },
     options
   );
+}
+
+export function createDownloadResult<
+  TOptions extends SpotiOptions & { format?: AudioFormat }
+>(options?: TOptions): (item: SpotifySearchResult) => SpotifyDownloadResult {
+  return (item) => {
+    const format = options?.format ?? Audio.DEFAULT_FORMAT;
+    const file = Format.file(item.track, format);
+    const path = Library.path(file);
+    const title = Library.title(file);
+    const download = { file, path, format, title };
+    return { ...item, download };
+  };
+}
+
+export function prepareDownloadResults<TOptions extends SpotiOptions>(
+  options?: TOptions
+): (items: SpotifySearchResult[]) => SpotifyDownloadResult[] {
+  return (items) =>
+    map(items, createDownloadResult(options)).sort(
+      sortDownloadResults((item) => item.download.file)
+    );
+}
+
+export function sortDownloadResults<TData = any>(
+  callback: (data: TData) => string = (data) => (data as any).toString(),
+  order: "ASC" | "DESC" = "ASC"
+): (a: TData, b: TData) => number {
+  const factor = order === "ASC" ? 1 : -1;
+
+  return (a, b) => {
+    const A = callback(a);
+    const B = callback(b);
+    return A.localeCompare(B) * factor;
+  };
 }
 
 export async function downloadSpotifyTracks<TOptions extends SpotiOptions>(
@@ -43,55 +76,24 @@ export async function downloadSpotifyTracks<TOptions extends SpotiOptions>(
   passed: SpotifyDownloadResult[];
   failed: { error: Error; item: SpotifyDownloadResult }[];
 }> {
-  const prepared = map<SpotifySearchResult, SpotifyDownloadResult>(
-    items,
-    (item) => {
-      const { track } = item;
-      const { artists, name: song } = track;
-      const artist = map(artists, "name").join(", ");
-      const title = sanitizeFileName(`${artist} - ${song}`);
-      const path = Library.file(title, Youtube.AudioFormat.MP3);
-      const download = { artist, song, title, path };
-      return { ...item, download };
-    }
-  ).sort((a, b) => {
-    const A = map(a.track.artists, "name").join(", ");
-    const B = map(b.track.artists, "name").join(", ");
-    return A.localeCompare(B);
-  });
+  const prepared = prepareDownloadResults(options)(items);
+  const existing: SpotifyDownloadResult[] = [];
+  const missing: SpotifyDownloadResult[] = [];
 
-  const [exists, missing] = prepared.reduce(
-    ([exists, missing], item) => {
-      const { id } = item.track;
-      const { path } = item.download;
-
-      const isValid = (file: string) =>
-        Library.exists(file) && Library.size(file) > 0;
-      const isFound = (id: string) => !!Library.find(id);
-
-      if (isValid(path) || isFound(id)) {
-        item.download.result = {
-          title: item.download.title,
-          format: Youtube.AudioFormat.MP3,
-          path: item.download.path,
-        };
-
-        exists.push(item);
-      } else {
-        missing.push(item);
-      }
-
-      return [exists, missing];
-    },
-    [[] as SpotifyDownloadResult[], [] as SpotifyDownloadResult[]]
-  );
+  for (const item of prepared) {
+    const { file, path, format } = item.download;
+    const exists = Library.exists(file);
+    item.download.result = exists ? { file, path, format } : undefined;
+    const stack = exists ? existing : missing;
+    stack.push(item);
+  }
 
   const restoreWarnings = silenceWarnings();
 
   /* #region Download */
   const download = pool(25);
   const downloads: (() => Promise<void>)[] = [];
-  const passed: SpotifyDownloadResult[] = [...exists];
+  const passed: SpotifyDownloadResult[] = [...existing];
   const failed: { error: Error; item: SpotifyDownloadResult }[] = [];
 
   const download$ = new Progress(
@@ -115,65 +117,52 @@ export async function downloadSpotifyTracks<TOptions extends SpotiOptions>(
   );
 
   downloads.push(
-    ...exists.map(
+    ...existing.map(
       (item) => () =>
         new Promise<void>((resolve) => {
-          const { title } = item.download;
-          console.log(chalk.green("✓"), title);
+          console.log(chalk.green("✓"), item.download.title);
           download$.report();
           resolve();
         })
     )
   );
 
-  for (const item of missing) {
-    downloads.push(
-      () =>
-        new Promise<void>(async (resolve) => {
-          const { download, search, track } = item;
-          const { title, path } = download;
-          const { result } = search;
-          const { id, duration_ms: duration } = track;
+  downloads.push(
+    ...missing.map((item) => async () => {
+      const { download, search } = item;
+      const { title, file } = download;
+      const { result } = search;
+      const source = Library.source(file);
 
-          const ready = await Library.ready(path, id, { duration });
-
-          // We can skip downloading if the MP3 files already exists!
-          if (ready) {
-            download$.report();
-            passed.push(item);
-            return resolve();
-          }
-
-          if (result) {
-            try {
-              download.result = await downloadYoutubeSong(
-                title,
-                result,
-                options
-              );
-              console.log(chalk.green("✓"), title);
-              download$.report();
-              passed.push(item);
-              resolve();
-            } catch (e) {
-              const error = e as Error;
-              console.log(chalk.red("𐄂"), title);
-              download$.report();
-              failed.push({ error, item });
-              resolve();
-            }
-          } else {
-            const error = new Error(
-              `No Youtube search result available to download for '${title}'.`
-            );
-            console.log(chalk.red("𐄂"), title);
-            download$.report();
-            failed.push({ error, item });
-            resolve();
-          }
-        })
-    );
-  }
+      if (Library.exists(source)) {
+        download$.report();
+        passed.push(item);
+        return;
+      } else if (result) {
+        try {
+          download.result = await downloadYoutubeSong(title, result, options);
+          console.log(chalk.green("✓"), title);
+          download$.report();
+          passed.push(item);
+          return;
+        } catch (e) {
+          const error = e as Error;
+          console.log(chalk.red("𐄂"), title);
+          download$.report();
+          failed.push({ error, item });
+          return;
+        }
+      } else {
+        const error = new Error(
+          `No Youtube search result available to download for '${title}'.`
+        );
+        console.log(chalk.red("𐄂"), title);
+        download$.report();
+        failed.push({ error, item });
+        return;
+      }
+    })
+  );
 
   await download(downloads);
 
@@ -237,15 +226,14 @@ export async function downloadSpotifyTracks<TOptions extends SpotiOptions>(
 
   restoreWarnings();
 
-  // return { passed, failed };
-  return { passed: [], failed: [] };
+  return { passed, failed };
 }
 
 export function cleanDownloadRemnants<TOptions extends SpotiOptions>(
   options?: TOptions
 ): void {
   // @TODO Clean up remnants of m4a/mp4 files
-  // @TODO Look for any zero-byte MP3 files to delete
+  // @TODO Look for any zero-byte/zero-duration MP3 files to delete
 }
 
 export const gracefullyCleanupDownloads: ProcessExitRegister = () => ({
