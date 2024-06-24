@@ -14,6 +14,8 @@ export interface SyncCliOptions extends SpotiCliOptions {
   cache: boolean;
   format: AudioFormat;
   init: boolean;
+  prefixes: boolean;
+  suffixes: boolean;
 }
 
 export default new Command()
@@ -24,6 +26,8 @@ export default new Command()
   .option("-f, --format", "The output audio file format", Audio.DEFAULT_FORMAT)
   .option("-i, --init", "Initialize metadata file only", false)
   .option("--no-cache", "Disables using cached search results")
+  .option("--no-prefixes", "Disallow prefixes in file names")
+  .option("--no-suffixes", "Disallolw suffixes in file names")
   .allowUnknownOption(true)
   .action(
     createActionHandler<SyncCliArgs, SyncCliOptions>(

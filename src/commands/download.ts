@@ -14,6 +14,8 @@ export type DownloadCliArgs = [string];
 export interface DownloadCliOptions extends SpotiCliOptions {
   cache: boolean;
   format: AudioFormat;
+  prefixes: boolean;
+  suffixes: boolean;
 }
 
 export default new Command()
@@ -22,6 +24,8 @@ export default new Command()
   .argument("<url>", "A Spotify URL to download tracks from")
   .option("-f, --format", "The output audio file format", Audio.DEFAULT_FORMAT)
   .option("--no-cache", "Disables using cached search results")
+  .option("--no-prefixes", "Disallow prefixes in file names")
+  .option("--no-suffixes", "Disallolw suffixes in file names")
   .allowUnknownOption(true)
   .action(
     createActionHandler<DownloadCliArgs, DownloadCliOptions>(

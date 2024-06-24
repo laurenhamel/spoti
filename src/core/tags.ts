@@ -71,11 +71,13 @@ export async function addTrackTag<TOptions extends SpotiOptions>(
 ): Promise<void> {
   return new Promise(async (resolve) => {
     const id = item.track.id;
-    const path = item.download.result?.path;
+    const file = item.download.result?.file;
+    const existing = file ? Library.find(file) : undefined;
+    const src = existing?.raw?.file ?? file;
 
-    if (path) {
+    if (src) {
       const tags = await generateTrackTag(item);
-      await Library.tag(path, tags, id);
+      await Library.tag(src, tags, id);
     }
 
     progress?.();

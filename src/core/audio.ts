@@ -14,8 +14,10 @@ export async function convertAudioFile<
   progress?: () => void
 ): Promise<void> {
   return new Promise(async (resolve) => {
-    const dest = item.download.file;
-    const src = Library.source(dest);
+    const { file } = item.download;
+    const existing = Library.find(file);
+    const dest = existing?.raw.file ?? file;
+    const src = Library.source(file);
     const bitrate = item.download.result?.bitrate;
 
     const padding = 75;

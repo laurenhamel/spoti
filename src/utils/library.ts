@@ -1,7 +1,6 @@
 import { Youtube } from "../models";
 import {
   createWriteStream,
-  existsSync,
   readFileSync,
   rmSync,
   statSync,
@@ -11,7 +10,7 @@ import { basename, extname, join } from "node:path";
 import { sync as glob } from "glob";
 import { Audio } from "./audio";
 import id3, { type Tags } from "node-id3";
-import { find, findIndex, get, isNil } from "lodash-es";
+import { find, findIndex, get, isNil, merge } from "lodash-es";
 import { spawnSync } from "node:child_process";
 import { pool, Deferred } from "./promise";
 import { Progress } from "./progress";
@@ -27,12 +26,28 @@ export interface LibraryMetadata {
   id?: string;
 }
 
-export interface LibraryItem {
+export interface LibraryOptions extends SpotiOptions {
+  /**
+   * Whether to support prefixes in file names
+   */
+  prefixes: boolean;
+
+  /**
+   * Whether to support suffixes in file names
+   */
+  suffixes: boolean;
+}
+
+export interface LibrarySource {
   title: string;
-  file: string;
   path: string;
+  file: string;
   format: AudioFormat | VideoFormat;
   size: number;
+}
+
+export interface LibraryItem extends LibrarySource {
+  raw: LibrarySource;
   metadata: () => Promise<LibraryMetadata>;
 }
 
@@ -45,17 +60,39 @@ export class Library {
 
   static mounted: Promise<boolean> = this.mounted$.promise;
 
+  static options$: LibraryOptions = {
+    verbose: false,
+    prefixes: true,
+    suffixes: true,
+  };
+
+  static get options(): LibraryOptions {
+    return this.options$;
+  }
+
+  static set options(options: LibraryOptions) {
+    this.options$ = merge(
+      {
+        verbose: false,
+        prefixes: true,
+        suffixes: true,
+      },
+      options
+    );
+  }
+
   /**
    * Mount the library to the given directory
    * @param dir - The root directory of the library
    */
   static async mount<TOptions extends SpotiOptions>(
     dir: string,
-    options?: TOptions
+    options: TOptions = {} as TOptions
   ): Promise<boolean> {
     this.dir = dir;
     this.files = this.scan(this.dir);
-    options?.verbose && this.files.forEach((file) => console.log(file));
+    this.options = options as unknown as LibraryOptions;
+    this.options.verbose && this.files.forEach((file) => console.log(file));
     this.library = await this.hydrate(this.files);
     this.mounted$.resolve(true);
     return this.mounted;
@@ -153,8 +190,9 @@ export class Library {
     const title = this.title(file);
     const path = this.path(file, format);
     const size = this.size(file);
+    const raw = { title, file, path, format, size };
     const metadata = this.metadata(file);
-    return { title, file, format, path, size, metadata };
+    return { title, file, path, format, size, raw, metadata };
   }
 
   /**
@@ -213,13 +251,72 @@ export class Library {
   }
 
   /**
-   * Get metadata from the library
-   * @param file - The file to get metadata for
+   * Find the target file with the given name within the library
+   * @param target - The target file to find within the library
    * @returns
    */
-  static get(file: string): LibraryItem | undefined {
-    const path = this.path(file);
-    return find(this.library, { file }) ?? find(this.library, { path });
+  static find(target: string): LibraryItem | undefined {
+    let result: LibraryItem | undefined;
+
+    for (const item of this.library) {
+      const { file, path, format } = item;
+
+      if (file === target || path === target) {
+        result = item;
+      } else if (format === Audio.format(target)) {
+        const { prefix, suffix } = this.normalize(item, target);
+        result = prefix || suffix ? item : undefined;
+      }
+
+      if (result) {
+        break;
+      }
+    }
+
+    return result;
+  }
+
+  private static normalize(
+    item: LibraryItem,
+    target: string
+  ): {
+    prefix?: string;
+    suffix?: string;
+    base: string;
+  } {
+    const title = this.title(target);
+
+    let base: string = item.title;
+    let prefix: string | undefined;
+    let suffix: string | undefined;
+
+    if (base.includes(title)) {
+      const start = base.indexOf(title);
+      const end = start + title.length;
+      prefix = base.slice(0, start);
+      suffix = base.slice(end);
+      base = base.slice(start, end);
+    }
+
+    prefix = prefix?.length === 0 ? undefined : prefix;
+    suffix = suffix?.length === 0 ? undefined : suffix;
+
+    if (base !== item.title) {
+      item.title = base;
+      item.file = this.file(base, item.format);
+      item.path = this.path(base, item.format);
+    }
+
+    return { base, prefix, suffix };
+  }
+
+  /**
+   * Get metadata from the library
+   * @param target - The target file to get metadata for
+   * @returns
+   */
+  static get(target: string): LibraryItem | undefined {
+    return this.find(target);
   }
 
   /**
@@ -424,7 +521,7 @@ export class Library {
    * @returns
    */
   static exists(file: string): boolean {
-    return existsSync(this.path(file));
+    return !!this.find(file);
   }
 
   /**
