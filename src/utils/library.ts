@@ -238,8 +238,10 @@ export class Library {
     id?: string,
     duration?: number
   ): Promise<void> {
-    if (this.exists(file)) {
-      const path = this.path(file);
+    const item = this.find(file);
+
+    if (item) {
+      const path = item.raw.path;
 
       this.assignId(tags, id);
       this.assignDuration(tags, duration);
@@ -259,9 +261,11 @@ export class Library {
     let result: LibraryItem | undefined;
 
     for (const item of this.library) {
-      const { file, path, format } = item;
+      const { file, path, format, raw } = item;
 
       if (file === target || path === target) {
+        result = item;
+      } else if (raw.file === target || raw.path === target) {
         result = item;
       } else if (format === Audio.format(target)) {
         const { prefix, suffix } = this.normalize(item, target);
