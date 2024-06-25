@@ -76,7 +76,7 @@ export async function transformAudioFiles<TOptions extends SpotiOptions>(
   const dispatch = pool(25);
 
   const tasks: (() => Promise<void>)[] = items.map(
-    (item) => async () => convertAudioFile(item, options, progress)
+    (item) => () => convertAudioFile(item, options, progress)
   );
 
   console.log("");
