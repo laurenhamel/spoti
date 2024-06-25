@@ -182,10 +182,11 @@ export class Library {
 
   /**
    * Parse information about the given file
-   * @param file - The file to collect metadata for
+   * @param target - The target file to collect metadata for
    * @returns
    */
-  static parse(file: string): LibraryItem {
+  static parse(target: string): LibraryItem {
+    const file = this.file(target);
     const format = Audio.format(file);
     const title = this.title(file);
     const path = this.path(file, format);
@@ -280,6 +281,35 @@ export class Library {
     return result;
   }
 
+  /**
+   * Find the index of the target file with the given name within the library
+   * @param target - The target file to find within the library
+   * @returns
+   */
+  static findIndex(target: string): number {
+    let result: number = -1;
+
+    for (let i = 0; i < this.library.length; i++) {
+      const item = this.library[i];
+      const { file, path, format, raw } = item;
+
+      if (file === target || path === target) {
+        result = i;
+      } else if (raw.file === target || raw.path === target) {
+        result = i;
+      } else if (format === Audio.format(target)) {
+        const { prefix, suffix } = this.normalize(item, target);
+        result = prefix || suffix ? i : result;
+      }
+
+      if (result > -1) {
+        break;
+      }
+    }
+
+    return result;
+  }
+
   private static normalize(
     item: LibraryItem,
     target: string
@@ -328,15 +358,15 @@ export class Library {
    * @param file - The file to set metdata for
    * @param value - The metadata to set
    */
-  static set(file: string, metadata: LibraryItem): void {
-    const path = this.path(file);
-    const index =
-      findIndex(this.library, { file }) ?? findIndex(this.library, { path });
+  static set(file: string, metadata: LibraryItem): number {
+    const index = this.findIndex(file);
 
     if (index > -1) {
       this.library[index] = metadata;
+      return index;
     } else {
       this.library.push(metadata);
+      return this.library.length - 1;
     }
   }
 

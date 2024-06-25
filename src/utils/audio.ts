@@ -58,7 +58,10 @@ export class Audio {
         }
       );
 
-      status === 0 && Library.remove(src);
+      if (status === 0) {
+        Library.set(src, Library.parse(dest));
+        Library.remove(src);
+      }
 
       return status === -1
         ? reject(stderr)
