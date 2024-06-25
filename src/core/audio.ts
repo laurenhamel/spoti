@@ -3,7 +3,7 @@ import {
   type SpotiOptions,
   type SpotifyDownloadResult,
 } from "../types";
-import { Audio, pool, retry, Format, Library } from "../utils";
+import { Audio, pool, Format, Library } from "../utils";
 import chalk from "chalk";
 
 export async function convertAudioFile<
@@ -54,11 +54,7 @@ export async function convertAudioFile<
       passed(src, dest);
     } else if (Library.exists(src)) {
       try {
-        await retry(
-          () => Audio.convert(Library.path(src), Library.path(dest), bitrate),
-          3,
-          1000 // 1s
-        );
+        await Audio.convert(Library.path(src), Library.path(dest), bitrate);
         passed(src, dest);
       } catch (e) {
         failed(src, dest);
