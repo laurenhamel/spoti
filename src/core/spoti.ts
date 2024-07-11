@@ -5,7 +5,7 @@ import { getSpotifyType } from "./spotify";
 import { SpotifySearchResult, type SpotiOptions } from "../types";
 import chalk from "chalk";
 import { getSpotifyTrack } from "./tracks";
-import { castArray, padStart } from "lodash-es";
+import { get, castArray, padStart } from "lodash-es";
 
 export class Spoti {
   static async metadata<
@@ -75,8 +75,11 @@ export class Spoti {
 
     if (options?.verbose) {
       for (const { error } of failed) {
+        const info = get(error, "info");
         console.error("");
         console.error(chalk.red(error.message));
+        console.error(chalk.dim.red(error.stack));
+        info && console.error(chalk.dim.red(info));
       }
     }
 

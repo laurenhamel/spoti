@@ -86,19 +86,42 @@ export function pool(
   };
 }
 
+export interface RetryHandlers {
+  before?: (payload: { attempt: number; retried: boolean }) => void;
+  after?: (payload: {
+    error?: Error;
+    attempt: number;
+    retrying: boolean;
+  }) => void;
+}
+
 export async function retry<TResult>(
   async: () => Promise<TResult>,
   retries: number,
   wait: number,
+  { before, after }: RetryHandlers | undefined = {},
   attempt = 1
 ): Promise<TResult> {
   try {
+    const retried = attempt > 1;
+    before?.({ attempt, retried });
     const result = await async();
+    after?.({ attempt, retrying: false });
     return result;
-  } catch (error) {
-    if (attempt <= retries) {
+  } catch (e) {
+    const error = e as Error;
+    const retrying = attempt <= retries;
+    after?.({ attempt, error, retrying });
+
+    if (retrying) {
       await sleep(wait);
-      return retry<TResult>(async, retries, wait, attempt + 1);
+      return retry<TResult>(
+        async,
+        retries,
+        wait,
+        { before, after },
+        attempt + 1
+      );
     } else {
       throw error;
     }

@@ -99,7 +99,22 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
         console.log();
         console.log(chalk.bold.dim("Request"));
         console.log(chalk.magenta(request.method), chalk.cyan(base));
-        console.log(request);
+        console.log({
+          ...request,
+          parameters:
+            request.method === RestApiMethod.GET
+              ? params
+                ? qs.parse(params, {
+                    comma: true,
+                    ignoreQueryPrefix: true,
+                    parseArrays: true,
+                    duplicates: "combine",
+                    allowEmptyArrays: true,
+                    allowDots: true,
+                  })
+                : {}
+              : undefined,
+        });
       }
 
       const response = await fetch(url, request);

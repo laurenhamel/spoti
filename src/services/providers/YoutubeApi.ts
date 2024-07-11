@@ -144,6 +144,13 @@ class YoutubeApi {
         format: "mp4",
       };
 
+      if (options?.verbose) {
+        console.log();
+        console.log(chalk.bold.dim("Request"));
+        console.log(chalk.magenta("GET"), chalk.cyan("<youtube>/getInfo"));
+        console.log({ parameters: { id } });
+      }
+
       const { info, api } = await this.getSongInfo(id);
       const format = info.chooseFormat(config);
       const duration = info.basic_info.duration;
@@ -159,7 +166,12 @@ class YoutubeApi {
       const stream = await retry(
         () => api.download(id, config),
         10,
-        10000 // 10s
+        10000, // 10s
+        this.handleRetry(
+          "<youtube>/download",
+          { parameters: { id, ...config } },
+          options
+        )
       );
 
       const file = Library.new(input.path);
@@ -180,7 +192,8 @@ class YoutubeApi {
       const result = await retry(
         () => download(song.id as string),
         5,
-        5000 // 5s
+        5000, // 5s
+        this.handleRetry("download", { title, song }, options)
       );
       return result;
     } catch (error) {
@@ -189,6 +202,49 @@ class YoutubeApi {
       progress$.done();
       progress$.remove();
     }
+  }
+
+  private handleRetry<TOptions extends SpotiOptions>(
+    request: string,
+    data?: unknown,
+    options?: TOptions
+  ): RetryHandlers {
+    return {
+      before: () => {
+        if (options?.verbose) {
+          console.log("");
+          console.log(chalk.bold.dim("Request"));
+          console.log(chalk.magenta("GET"), chalk.cyan(request));
+          console.log(data);
+        }
+      },
+      after: ({ error }) => {
+        const status = (error?: Error): string => {
+          if (error) {
+            const { stack } = error;
+            const info = get(error, "info");
+            const message = chalk.dim(info ? `${stack}\n${info}` : stack);
+
+            switch (true) {
+              case error instanceof SyntaxError:
+                return chalk.red(`400 Bad Request\n${message}`);
+              default:
+                return chalk.red(`XXX Error\n${message}`);
+            }
+          }
+
+          return chalk.green("200 OK");
+        };
+
+        if (options?.verbose) {
+          console.log("");
+          console.log(chalk.bold.dim("Response"));
+          console.log(chalk.magenta.dim("GET"), chalk.cyan.dim(request));
+          console.log(data);
+          console.log(status(error));
+        }
+      },
+    };
   }
 }
 
