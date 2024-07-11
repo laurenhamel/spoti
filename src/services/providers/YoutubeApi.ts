@@ -1,20 +1,24 @@
 import { Innertube, ClientType, Utils, UniversalCache } from "youtubei.js";
 import { Youtube } from "../../models";
 import { AudioFormat, SpotiOptions } from "../../types";
-import { Audio, getDownloadData, Library } from "../../utils";
+import { Audio, getDownloadData, Library, RetryHandlers } from "../../utils";
 import { Progress, retry } from "../../utils";
 import chalk from "chalk";
 import { type DownloadOptions } from "youtubei.js/dist/src/types";
 import { type VideoInfo } from "youtubei.js/dist/src/parser/youtube";
-import { isNaN } from "lodash-es";
+import { get, isNaN } from "lodash-es";
 import { InnertubeApiInstance } from "../../models/youtube";
+import { statSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
+import { sync as glob } from "glob";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const CACHE = resolve(__dirname, "../../../.youtube/cache");
+const CACHE_ROOT = resolve(__dirname, "../../../.youtube/cache");
+const CACHE_API = join(CACHE_ROOT, "api");
+const CACHE_BACKUP = join(CACHE_ROOT, "backup");
 
 export type YoutubeApiRequestMethod = <
   TResponse extends Record<string, unknown> | unknown[] = any,
@@ -37,8 +41,10 @@ class YoutubeApi {
   }
 
   private construct() {
+    this.validateCache();
+
     Innertube.create({
-      cache: new UniversalCache(true, join(CACHE, "api")),
+      cache: new UniversalCache(true, CACHE_API),
       generate_session_locally: true,
     }).then((api) => {
       this.api = api;
@@ -46,11 +52,33 @@ class YoutubeApi {
 
     Innertube.create({
       client_type: ClientType.TV_EMBEDDED,
-      cache: new UniversalCache(true, join(CACHE, "backup")),
+      cache: new UniversalCache(true, CACHE_BACKUP),
       generate_session_locally: true,
     }).then((api) => {
       this.backup = api;
     });
+  }
+
+  /**
+   * If the cache is too far out of date, we may see request start to fail.
+   * For that reason, invalidate the cache every so often, and start over.
+   */
+  private validateCache(session = 1000 * 60 * 60 * 24 /* 24h */): void {
+    const now = Date.now();
+    const deadline = now - session;
+
+    const validate = (path: string): void => {
+      const files = glob(join(path, "*"), { nodir: true });
+      const modified = files.map((file) => statSync(file).mtime.getTime());
+      const oldest = Math.min(...modified);
+
+      if (oldest <= deadline) {
+        files.forEach((file) => rmSync(file));
+      }
+    };
+
+    validate(CACHE_API);
+    validate(CACHE_BACKUP);
   }
 
   async searchSongs<
