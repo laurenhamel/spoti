@@ -5,6 +5,13 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
+"@bufbuild/protobuf@npm:^2.0.0":
+  version: 2.2.0
+  resolution: "@bufbuild/protobuf@npm:2.2.0"
+  checksum: 10c0/00eac1a77d53b5700e0a91c83c9feb0c4014c230d503a1f9b2c4dcc30e7b806ed26e5bebcb4116f74d827373ed98e5f236358a08ee6b64d1b2780ad5a45e63c9
+  languageName: node
+  linkType: hard
+
 "@colors/colors@npm:1.5.0":
   version: 1.5.0
   resolution: "@colors/colors@npm:1.5.0"
@@ -1015,12 +1022,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jintr@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "jintr@npm:2.0.0"
+"jintr@npm:^2.1.1":
+  version: 2.1.1
+  resolution: "jintr@npm:2.1.1"
   dependencies:
     acorn: "npm:^8.8.0"
-  checksum: 10c0/2f75338e7d20b5433bf8a8eefd19bad2ff0a433484d9c33d192febee70c34274fe2579f52e48550e1675de11c1d19653df5b4fc6a28fd0e32e7d2c77a09f6c75
+  checksum: 10c0/70db5429fb16e1eff2a4d7741885bf2ec1b751a82319911d8075745e0c6d5cc0d75cb59ecd70a38534accc60d0b23e9334631049517b40dc3a2bc6dbe99b2e2f
   languageName: node
   linkType: hard
 
@@ -1489,7 +1496,7 @@ __metadata:
     typescript: "npm:^5.4.5"
     window-size: "npm:^1.1.1"
     yargs: "npm:^17.7.2"
-    youtubei.js: "npm:^10.1.0"
+    youtubei.js: "npm:10.5.0"
   bin:
     spoti: ./bin/cli.js
   languageName: unknown
@@ -1750,13 +1757,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"youtubei.js@npm:^10.1.0":
-  version: 10.1.0
-  resolution: "youtubei.js@npm:10.1.0"
+"youtubei.js@npm:10.5.0":
+  version: 10.5.0
+  resolution: "youtubei.js@npm:10.5.0"
   dependencies:
-    jintr: "npm:^2.0.0"
+    "@bufbuild/protobuf": "npm:^2.0.0"
+    jintr: "npm:^2.1.1"
     tslib: "npm:^2.5.0"
     undici: "npm:^5.19.1"
-  checksum: 10c0/82674274ae966bdf029586198af97eccb45e17fa833b00acaaed972b1b56d77e695a176ec1915cee7b3eec13aec21721345114c6889bb335f017df7b19b42cc8
+  checksum: 10c0/4449c236d336e0e436364caf7791b175876cf8433583e666a4ae8e122490faffd9abb0346ee3c9946019098ab369384322fe309d38a27bdb6c28a50de69bb11a
   languageName: node
   linkType: hard

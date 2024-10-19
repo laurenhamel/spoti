@@ -115,7 +115,7 @@ class YoutubeApi {
     let info = await api.getInfo(id);
 
     const { playability_status: playability } = info;
-    const { status } = playability;
+    const { status } = playability ?? {};
 
     if (options?.verbose) {
       console.log(chalk.dim.bold('Playability'));
