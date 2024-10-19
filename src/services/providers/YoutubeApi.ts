@@ -106,13 +106,21 @@ class YoutubeApi {
     return (response.songs?.contents ?? []) as unknown[] as TResponse;
   }
 
-  private async getSongInfo(
-    id: string
+  private async getSongInfo< TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions>(
+    title: string,
+    id: string,
+    options?: TOptions
   ): Promise<{ info: VideoInfo; api: InnertubeApiInstance }> {
     let api = this.api;
     let info = await api.getInfo(id);
 
-    const { status } = info.playability_status;
+    const { playability_status: playability } = info;
+    const { status } = playability;
+
+    if (options?.verbose) {
+      console.log(chalk.dim.bold('Playability'));
+      console.log(title, `(${chalk.blue(id)})`, chalk.yellow(status), playability);
+    }
 
     if (status === "LOGIN_REQUIRED") {
       api = this.backup;
@@ -179,7 +187,7 @@ class YoutubeApi {
         console.log({ parameters: { id } });
       }
 
-      const { info, api } = await this.getSongInfo(id);
+      const { info, api } = await this.getSongInfo(title, id, options);
       const format = info.chooseFormat(config);
       const duration = info.basic_info.duration;
 
