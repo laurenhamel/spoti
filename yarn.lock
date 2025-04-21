@@ -1022,12 +1022,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jintr@npm:^2.1.1":
-  version: 2.1.1
-  resolution: "jintr@npm:2.1.1"
+"jintr@npm:^3.3.0":
+  version: 3.3.0
+  resolution: "jintr@npm:3.3.0"
   dependencies:
     acorn: "npm:^8.8.0"
-  checksum: 10c0/70db5429fb16e1eff2a4d7741885bf2ec1b751a82319911d8075745e0c6d5cc0d75cb59ecd70a38534accc60d0b23e9334631049517b40dc3a2bc6dbe99b2e2f
+  checksum: 10c0/88a62d4748c85fddb8bb4284066fcaeb77c4ecfa9bd3f93ccdcc2ebc2e701e86d2c8d1a079026044b0aca8be451c121da4c95b494bfbaf8540ef9128fa2d1f0b
   languageName: node
   linkType: hard
 
@@ -1496,7 +1496,7 @@ __metadata:
     typescript: "npm:^5.4.5"
     window-size: "npm:^1.1.1"
     yargs: "npm:^17.7.2"
-    youtubei.js: "npm:10.5.0"
+    youtubei.js: "npm:13.3.0"
   bin:
     spoti: ./bin/cli.js
   languageName: unknown
@@ -1757,14 +1757,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"youtubei.js@npm:10.5.0":
-  version: 10.5.0
-  resolution: "youtubei.js@npm:10.5.0"
+"youtubei.js@npm:13.3.0":
+  version: 13.3.0
+  resolution: "youtubei.js@npm:13.3.0"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.0.0"
-    jintr: "npm:^2.1.1"
+    jintr: "npm:^3.3.0"
     tslib: "npm:^2.5.0"
     undici: "npm:^5.19.1"
-  checksum: 10c0/4449c236d336e0e436364caf7791b175876cf8433583e666a4ae8e122490faffd9abb0346ee3c9946019098ab369384322fe309d38a27bdb6c28a50de69bb11a
+  checksum: 10c0/5611fcc2400549f3d75cee0f6afbcaacc3759532814943db76d9b8fc8f18ab380c7fa71088b965bf53a065062d9bb4fec66457bec585da45a97685c8cebd5dc9
   languageName: node
   linkType: hard
