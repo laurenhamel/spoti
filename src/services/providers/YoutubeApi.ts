@@ -245,6 +245,25 @@ class YoutubeApi {
     data?: unknown,
     options?: TOptions
   ): RetryHandlers {
+    const status = (error?: Error): { code: number; message: string } => {
+      if (error) {
+        const { stack } = error;
+        const info = get(error, "info");
+        const code = get(info, 'response.status', -1);
+        const message = chalk.dim(info ? `${stack}\n${JSON.stringify(info)}` : stack);
+
+        switch (true) {
+          case error instanceof SyntaxError: {
+            return { code: 400, message: chalk.red(`400 Bad Request\n${message}`) };
+          }
+          default:
+            return { code, message: chalk.red(`${code} Error\n${message}`) };
+        }
+      }
+
+      return { code: 200, message: chalk.green("200 OK") };
+    };
+
     return {
       before: () => {
         if (options?.verbose) {
@@ -255,30 +274,18 @@ class YoutubeApi {
         }
       },
       after: ({ error }) => {
-        const status = (error?: Error): string => {
-          if (error) {
-            const { stack } = error;
-            const info = get(error, "info");
-            const message = chalk.dim(info ? `${stack}\n${info}` : stack);
-
-            switch (true) {
-              case error instanceof SyntaxError:
-                return chalk.red(`400 Bad Request\n${message}`);
-              default:
-                return chalk.red(`XXX Error\n${message}`);
-            }
-          }
-
-          return chalk.green("200 OK");
-        };
+        const { code, message } = status(error);
 
         if (options?.verbose) {
           console.log("");
           console.log(chalk.bold.dim("Response"));
           console.log(chalk.magenta.dim("GET"), chalk.cyan.dim(request));
           console.log(data);
-          console.log(status(error));
+          console.log(message);
         }
+
+        // Only continue if we haven't received a rejection code.
+        return ![403].includes(code);
       },
     };
   }

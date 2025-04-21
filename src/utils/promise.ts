@@ -92,7 +92,7 @@ export interface RetryHandlers {
     error?: Error;
     attempt: number;
     retrying: boolean;
-  }) => void;
+  }) => (boolean | void);
 }
 
 export async function retry<TResult>(
@@ -111,9 +111,9 @@ export async function retry<TResult>(
   } catch (e) {
     const error = e as Error;
     const retrying = attempt <= retries;
-    after?.({ attempt, error, retrying });
+    const proceed = after?.({ attempt, error, retrying }) ?? true;
 
-    if (retrying) {
+    if (retrying && proceed) {
       await sleep(wait);
       return retry<TResult>(
         async,
