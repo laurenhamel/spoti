@@ -1,4 +1,12 @@
-import { Innertube, ClientType, Utils, UniversalCache } from "youtubei.js";
+import {
+  Innertube,
+  ClientType,
+  Utils,
+  UniversalCache,
+  SessionOptions,
+  Platform,
+  Types,
+} from "youtubei.js";
 import { Youtube } from "../../models";
 import { AudioFormat, SpotiOptions } from "../../types";
 import { Audio, getDownloadData, Library, RetryHandlers } from "../../utils";
@@ -23,39 +31,73 @@ const CACHE_BACKUP = join(CACHE_ROOT, "backup");
 export type YoutubeApiRequestMethod = <
   TResponse extends Record<string, unknown> | unknown[] = any,
   TData extends Record<string, unknown> = any,
-  TOptions extends SpotiOptions = SpotiOptions
+  TOptions extends SpotiOptions = SpotiOptions,
 >(
   data?: TData,
-  options?: TOptions
+  options?: TOptions,
 ) => TResponse;
 
 class YoutubeApi {
-  // @ts-ignore asynchronous initialization
-  private api: Youtube.InnertubeApiInstance;
-
-  // @ts-ignore asynchronous initialization
-  private backup: Youtube.InnertubeApiInstance;
-
   constructor() {
     this.construct();
   }
 
+  private constructed: boolean = false;
+
   private construct() {
     this.validateCache();
 
-    Innertube.create({
-      cache: new UniversalCache(true, CACHE_API),
-      generate_session_locally: true,
-    }).then((api) => {
-      this.api = api;
-    });
+    // Provide a JavaScript evaluator for Innertube
+    Platform.shim.eval = async (
+      data: Types.BuildScriptResult,
+      env: Record<string, Types.VMPrimative>,
+    ) => {
+      const properties = [];
+      if (env.n) properties.push(`n: exportedVars.nFunction("${env.n}")`);
+      // prettier-ignore
+      if (env.sig) properties.push(`sig: exportedVars.sigFunction("${env.sig}")`);
+      const code = `${data.output}\nreturn { ${properties.join(", ")} }`;
+      return new Function(code)();
+    };
 
-    Innertube.create({
-      client_type: ClientType.TV_EMBEDDED,
-      cache: new UniversalCache(true, CACHE_BACKUP),
-      generate_session_locally: true,
-    }).then((api) => {
-      this.backup = api;
+    this.constructed = true;
+  }
+
+  private api$: Youtube.InnertubeApiInstance | undefined;
+
+  private async api(
+    options?: SessionOptions,
+  ): Promise<Youtube.InnertubeApiInstance> {
+    return new Promise(async (resolve) => {
+      if (!this.api$) {
+        this.api$ = await Innertube.create({
+          client_type: ClientType.WEB,
+          cache: new UniversalCache(true, CACHE_API),
+          generate_session_locally: true,
+          ...options,
+        });
+      }
+
+      resolve(this.api$);
+    });
+  }
+
+  private backup$: Youtube.InnertubeApiInstance | undefined;
+
+  private async backup(
+    options?: SessionOptions,
+  ): Promise<Youtube.InnertubeApiInstance> {
+    return new Promise(async (resolve) => {
+      if (!this.backup$) {
+        this.backup$ = await Innertube.create({
+          client_type: ClientType.TV_EMBEDDED,
+          cache: new UniversalCache(true, CACHE_BACKUP),
+          generate_session_locally: true,
+          ...options,
+        });
+      }
+
+      resolve(this.backup$);
     });
   }
 
@@ -84,9 +126,9 @@ class YoutubeApi {
   async searchSongs<
     TResponse extends Record<string, unknown> | unknown[] = Youtube.Song[],
     TData extends Record<string, unknown> = { query: string },
-    TOptions extends SpotiOptions = SpotiOptions
+    TOptions extends SpotiOptions = SpotiOptions,
   >(data?: TData, options?: TOptions): Promise<TResponse> {
-    !this.api && this.construct();
+    if (!this.constructed) this.construct();
 
     const query = data?.query as string | undefined;
 
@@ -94,40 +136,52 @@ class YoutubeApi {
       throw new Error("Missing 'query' for Youtube Music song search.");
     }
 
+    const api = await this.api();
+
     const response = await retry(
-      () =>
-        this.api.music.search(query, {
-          type: "song",
-        }),
+      () => api.music.search(query, { type: "song" }),
       5,
-      5000 // 5s
+      5000, // 5s
     );
 
     return (response.songs?.contents ?? []) as unknown[] as TResponse;
   }
 
-  private async getSongInfo< TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions>(
+  private async getSongInfo<
+    TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions,
+  >(
     title: string,
     id: string,
-    options?: TOptions
-  ): Promise<{ info: VideoInfo; api: InnertubeApiInstance }> {
-    let api = this.api;
+    options?: TOptions,
+  ): Promise<{
+    info: VideoInfo;
+    api: InnertubeApiInstance;
+    client: "WEB" | "TV_EMBEDDED";
+  }> {
+    let api = await this.api();
+    let client: "WEB" | "TV_EMBEDDED" = "WEB";
     let info = await api.getInfo(id);
 
     const { playability_status: playability } = info;
     const { status } = playability ?? {};
 
     if (options?.verbose) {
-      console.log(chalk.dim.bold('Playability'));
-      console.log(title, `(${chalk.blue(id)})`, chalk.yellow(status), playability);
+      console.log(chalk.dim.bold("Playability"));
+      console.log(
+        title,
+        `(${chalk.blue(id)})`,
+        chalk.yellow(status),
+        playability,
+      );
     }
 
     if (status === "LOGIN_REQUIRED") {
-      api = this.backup;
-      info = await api.getInfo(id, "TV_EMBEDDED");
+      api = await this.backup();
+      client = "TV_EMBEDDED";
+      info = await api.getInfo(id, { client: "TV_EMBEDDED" });
     }
 
-    return { info, api };
+    return { info, api, client };
   }
 
   async downloadSong<
@@ -136,9 +190,9 @@ class YoutubeApi {
       song: Youtube.Song;
       file: string;
     },
-    TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions
+    TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions,
   >(data?: TData, options?: TOptions): Promise<TResponse> {
-    !this.api && this.construct();
+    if (!this.constructed) this.construct();
 
     const title = data?.title as string | undefined;
     const song = data?.song as Youtube.Song | undefined;
@@ -170,16 +224,10 @@ class YoutubeApi {
             !isNaN(download) && progress$?.update(downloaded, chalk.dim(title));
           }
         };
-      })()
+      })(),
     );
 
     const download = async (id: string): Promise<TResponse> => {
-      const config: DownloadOptions = {
-        type: "audio",
-        quality: "best",
-        format: "mp4",
-      };
-
       if (options?.verbose) {
         console.log();
         console.log(chalk.bold.dim("Request"));
@@ -187,7 +235,15 @@ class YoutubeApi {
         console.log({ parameters: { id } });
       }
 
-      const { info, api } = await this.getSongInfo(title, id, options);
+      const { info, api, client } = await this.getSongInfo(title, id, options);
+
+      const config: DownloadOptions = {
+        type: "video+audio",
+        quality: "best",
+        format: "mp4",
+        client,
+      };
+
       const format = info.chooseFormat(config);
       const duration = info.basic_info.duration;
 
@@ -206,8 +262,8 @@ class YoutubeApi {
         this.handleRetry(
           "<youtube>/download",
           { parameters: { id, ...config } },
-          options
-        )
+          options,
+        ),
       );
 
       const file = Library.new(input.path);
@@ -229,7 +285,7 @@ class YoutubeApi {
         () => download(song.id as string),
         5,
         5000, // 5s
-        this.handleRetry("download", { title, song }, options)
+        this.handleRetry("download", { title, song }, options),
       );
       return result;
     } catch (error) {
@@ -243,18 +299,23 @@ class YoutubeApi {
   private handleRetry<TOptions extends SpotiOptions>(
     request: string,
     data?: unknown,
-    options?: TOptions
+    options?: TOptions,
   ): RetryHandlers {
     const status = (error?: Error): { code: number; message: string } => {
       if (error) {
         const { stack } = error;
         const info = get(error, "info");
-        const code = get(info, 'response.status', -1);
-        const message = chalk.dim(info ? `${stack}\n${JSON.stringify(info)}` : stack);
+        const code = get(info, "response.status", -1);
+        const message = chalk.dim(
+          info ? `${stack}\n${JSON.stringify(info)}` : stack,
+        );
 
         switch (true) {
           case error instanceof SyntaxError: {
-            return { code: 400, message: chalk.red(`400 Bad Request\n${message}`) };
+            return {
+              code: 400,
+              message: chalk.red(`400 Bad Request\n${message}`),
+            };
           }
           default:
             return { code, message: chalk.red(`${code} Error\n${message}`) };
