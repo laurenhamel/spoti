@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env node --no-warnings
 import { spawnSync } from "node:child_process";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,8 +18,6 @@ spawnSync(
   [
     "--cwd",
     CWD,
-    "node",
-    "--loader",
     "tsx",
     resolve(__dirname, "../src/index.ts"),
     ...argv,
@@ -33,5 +31,5 @@ spawnSync(
       ...process.env,
       NODE_NO_WARNINGS: 1,
     },
-  }
+  },
 );
