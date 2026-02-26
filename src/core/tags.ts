@@ -12,7 +12,7 @@ import { includes, map } from "lodash-es";
 
 async function generateImageTag(
   url: string,
-  description = ""
+  description = "",
 ): Promise<Tags["image"]> {
   try {
     const image = await fetch(url);
@@ -30,7 +30,7 @@ async function generateImageTag(
 }
 
 export async function generateTrackTag(
-  item: SpotifyDownloadResult
+  item: SpotifyDownloadResult,
 ): Promise<Tags> {
   const result = item as SpotifyTagResult;
 
@@ -41,7 +41,7 @@ export async function generateTrackTag(
     if (includes(Object.values(AudioFormat), format)) {
       const image = await generateImageTag(
         track.album.images[0].url,
-        track.album.name
+        track.album.name,
       );
 
       result.tags = {
@@ -67,7 +67,7 @@ export async function generateTrackTag(
 export async function addTrackTag<TOptions extends SpotiOptions>(
   item: SpotifyDownloadResult,
   options?: TOptions,
-  progress?: () => void
+  progress?: () => void,
 ): Promise<void> {
   return new Promise(async (resolve) => {
     const id = item.track.id;
@@ -88,12 +88,12 @@ export async function addTrackTag<TOptions extends SpotiOptions>(
 export async function hydrateTrackTags<TOptions extends SpotiOptions>(
   items: SpotifyDownloadResult[],
   options?: TOptions,
-  progress?: () => void
+  progress?: () => void,
 ): Promise<void[]> {
   const dispatch = pool(25);
 
   const tasks: (() => Promise<void>)[] = items.map(
-    (item) => () => addTrackTag(item, options, progress)
+    (item) => () => addTrackTag(item, options, progress),
   );
 
   return dispatch(tasks);

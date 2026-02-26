@@ -1,4 +1,3 @@
-import { Youtube } from "../models";
 import {
   createWriteStream,
   readFileSync,
@@ -10,7 +9,7 @@ import { basename, extname, join } from "node:path";
 import { sync as glob } from "glob";
 import { Audio } from "./audio";
 import id3, { type Tags } from "node-id3";
-import { find, findIndex, get, isNil, merge } from "lodash-es";
+import { find, get, isNil, merge, pick } from "lodash-es";
 import { spawnSync } from "node:child_process";
 import { pool, Deferred } from "./promise";
 import { Progress } from "./progress";
@@ -77,7 +76,7 @@ export class Library {
         prefixes: true,
         suffixes: true,
       },
-      options
+      options,
     );
   }
 
@@ -87,7 +86,7 @@ export class Library {
    */
   static async mount<TOptions extends SpotiOptions>(
     dir: string,
-    options: TOptions = {} as TOptions
+    options: TOptions = {} as TOptions,
   ): Promise<boolean> {
     this.dir = dir;
     this.files = this.scan(this.dir);
@@ -132,7 +131,7 @@ export class Library {
         nodir: true,
         dot: true,
         cwd: dir,
-      })
+      }),
     );
 
     return files.map((file) => file.normalize());
@@ -161,7 +160,7 @@ export class Library {
           const message = `${reports} / ${files.length}`;
           progress$.update(percentage, message);
         };
-      })()
+      })(),
     );
 
     const dispatch = pool(25);
@@ -226,28 +225,33 @@ export class Library {
   }
 
   /**
-   * Save ID3 tags to the given file
+   * Save ID3 tags to the given file by merging them with existing tags
    * @param file - The file to tag
    * @param tags - The tags to save
    * @param id - The Spotify ID if available
    * @param duration - The duration if available
+   * @param preserve - A list of ID3 tags that should be preserved in the initial file when present
    * @returns
    */
   static async tag(
     file: string,
     tags: Tags,
     id?: string,
-    duration?: number
+    duration?: number,
+    preserve: (keyof Tags)[] = ["genre", "bpm", "initialKey"],
   ): Promise<void> {
     const item = this.find(file);
 
     if (item) {
       const path = item.raw.path;
 
-      this.assignId(tags, id);
-      this.assignDuration(tags, duration);
+      const previous = await ID3.read(readFileSync(path));
+      const next = merge({}, previous, tags, pick(previous, ...preserve));
 
-      await ID3.write(tags, path);
+      this.assignId(next, id);
+      this.assignDuration(next, duration);
+
+      await ID3.write(next, path);
 
       this.set(file, this.parse(file));
     }
@@ -312,7 +316,7 @@ export class Library {
 
   private static normalize(
     item: LibraryItem,
-    target: string
+    target: string,
   ): {
     prefix?: string;
     suffix?: string;
@@ -468,7 +472,7 @@ export class Library {
    */
   static new(
     dest: string,
-    format = Audio.format(dest)
+    format = Audio.format(dest),
   ): {
     path: string;
     file: string;
@@ -602,7 +606,7 @@ export class Library {
           cwd: this.dir,
           encoding: "utf-8",
           shell: true,
-        }
+        },
       );
 
       duration = parseFloat(stdout.trim()) * 1000;
@@ -649,7 +653,7 @@ export class Library {
    */
   static async ready(
     file: string,
-    criteria?: { size?: number; duration?: number }
+    criteria?: { size?: number; duration?: number },
   ): Promise<boolean> {
     const item = this.get(file);
 
@@ -664,7 +668,7 @@ export class Library {
 
   private static async assertSize(
     item: LibraryItem,
-    expected?: number
+    expected?: number,
   ): Promise<boolean> {
     return !isNil(expected) ? item.size >= expected : true;
   }
@@ -672,7 +676,7 @@ export class Library {
   private static async assertDuration(
     item: LibraryItem,
     expected?: number,
-    buffer = 2000
+    buffer = 2000,
   ): Promise<boolean> {
     if (!isNil(expected)) {
       const { duration } = await item.metadata();
