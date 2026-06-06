@@ -1478,7 +1478,7 @@ __metadata:
     typescript: "npm:^5.4.5"
     window-size: "npm:^1.1.1"
     yargs: "npm:^17.7.2"
-    youtubei.js: "npm:16.0.1"
+    youtubei.js: "npm:17.0.1"
   bin:
     spoti: ./bin/cli.js
   languageName: unknown
@@ -1723,12 +1723,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"youtubei.js@npm:16.0.1":
-  version: 16.0.1
-  resolution: "youtubei.js@npm:16.0.1"
+"youtubei.js@npm:17.0.1":
+  version: 17.0.1
+  resolution: "youtubei.js@npm:17.0.1"
   dependencies:
     "@bufbuild/protobuf": "npm:^2.0.0"
     meriyah: "npm:^6.1.4"
-  checksum: 10c0/46ef1c35075f33cf48a81b307636a8a5142a80f06068dc5bfac347705644da90556f6d2fdceeb91b1eec5401d17df89ffe471c46038b8f98f3eb02e1419b05a3
+  checksum: 10c0/18b188d9a706feca6b6a23582c00b3fdb955a1be823854b9c4b0312ccf7c3539db28a78184fb4927289388e363d5594f39df63e7253874b39317077309088d98
   languageName: node
   linkType: hard
