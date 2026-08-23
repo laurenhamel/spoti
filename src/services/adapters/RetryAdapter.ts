@@ -1,4 +1,4 @@
-import { sleep } from "../../utils/timing";
+import { sleep } from "../../utils/promise";
 import { type RetryAdapterInstance } from "./types";
 import { merge } from "lodash-es";
 import { type Headers } from "node-fetch";

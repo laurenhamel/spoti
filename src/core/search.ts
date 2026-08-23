@@ -4,7 +4,6 @@ import { type SpotiOptions } from "../types/config";
 import { type SpotifySearchResult } from "../types/spotify";
 import { type YoutubeSearchResult } from "../types/youtube";
 import { cache } from "../utils/cache";
-import { pool } from "../utils/promise";
 import Fuse from "fuse.js";
 import { find, map, sum } from "lodash-es";
 
@@ -144,8 +143,7 @@ export async function searchYoutubeSong<
 >(
   item: Spotify.Item,
   options?: TOptions,
-  progress?: () => void,
-  throttle?: () => Promise<void>
+  progress?: () => void
 ): Promise<YoutubeSearchResult> {
   const { track } = item;
   const { artists, name: song, uri } = track;
@@ -164,8 +162,6 @@ export async function searchYoutubeSong<
   }
 
   try {
-    // Optionally throttle requests to help prevent rate limiting and IP address blocking
-    await throttle?.();
     const results = await YoutubeApi.searchSongs({ query }, options);
     const result = findBestSearchResult(results, item, options);
 
@@ -183,13 +179,11 @@ export async function hydrateYoutubeSearch<TOptions extends SpotiOptions>(
   options?: TOptions,
   progress?: () => void
 ): Promise<void> {
-  const dispatch = pool(25);
-
   const tasks: (() => Promise<YoutubeSearchResult>)[] = items.map(
     (item) => () => searchYoutubeSong(item, options, progress)
   );
 
-  const results = await dispatch<YoutubeSearchResult>(tasks);
+  const results = await Promise.all(tasks.map((task) => task()));
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
