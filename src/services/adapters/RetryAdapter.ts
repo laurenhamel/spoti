@@ -45,6 +45,19 @@ export default class RetryAdapter implements RetryAdapterInstance {
     return this.config.timeout;
   }
 
+  sleep(status: number, headers: Headers): number | undefined {
+    if (!this.codes.includes(status)) return;
+
+    const retryAfter = headers.get(this.header);
+
+    if (!retryAfter) return this.timeout;
+
+    const seconds = Number(retryAfter);
+    return Number.isFinite(seconds) && seconds >= 0
+      ? seconds * 1000
+      : this.timeout;
+  }
+
   async retry<
     TResponse extends Record<string, unknown>,
     TRequest extends () => Promise<TResponse> = () => Promise<TResponse>,
@@ -54,9 +67,9 @@ export default class RetryAdapter implements RetryAdapterInstance {
     request: TRequest,
     attempt = 1
   ): Promise<TResponse> {
-    if (this.codes.includes(status) && attempt <= this.config.max) {
-      const retry = headers.get(this.header);
-      const wait = retry ? parseInt(retry) * 1000 : this.timeout;
+    const wait = this.sleep(status, headers);
+
+    if (wait !== undefined && attempt <= this.config.max) {
       console.log(`Retrying in ${wait / 1000}s...`);
       await sleep(wait);
       return request();

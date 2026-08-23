@@ -2,6 +2,7 @@ import { type SpotiOptions } from "../../types/config";
 import {
   type RetryAdapterInstance,
   type AuthorizationAdapterInstance,
+  type PolicyAdapterInstance,
 } from "../adapters";
 import chalk from "chalk";
 import { merge, template, snakeCase, trimEnd, trimStart } from "lodash-es";
@@ -27,6 +28,7 @@ export interface RestApiConfig<TEndpoints extends RestApiEndpoints> {
 
 export interface RestApiAdapters {
   authorization?: AuthorizationAdapterInstance;
+  policy?: PolicyAdapterInstance;
   retry?: RetryAdapterInstance;
 }
 
@@ -117,7 +119,7 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
       });
     }
 
-    const response = await fetch(url, request);
+    const response = await this.police(() => fetch(url, request));
 
     return this.response<TResponse, TOptions>(
       response,
@@ -155,6 +157,8 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
       console.log(chalk[color](`${status} ${message}`));
     }
 
+    if (status === 429) this.pause(this.sleep(status, headers));
+
     if (ok) {
       const body = await response.json();
       return body as TResponse;
@@ -187,6 +191,20 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
     Record<"Authorization", string> | undefined
   > {
     return this.config.adapters?.authorization?.authorize();
+  }
+
+  private async police<TResponse>(
+    request: () => Promise<TResponse>
+  ): Promise<TResponse> {
+    return this.config.adapters?.policy?.police(request) ?? request();
+  }
+
+  private sleep(status: number, headers: Headers): number | undefined {
+    return this.config.adapters?.retry?.sleep(status, headers);
+  }
+
+  private pause(wait: number | undefined): void {
+    if (wait !== undefined) this.config.adapters?.policy?.pause(wait);
   }
 
   private async retry<

@@ -1,6 +1,7 @@
 import {
   AccessTokenAdapter,
   AccessTokenAdapterType,
+  PolicyAdapter,
   RetryAdapter,
 } from "../adapters";
 import {
@@ -60,6 +61,7 @@ const SpotifyApi = new RestApi({
         };
       },
     }),
+    policy: new PolicyAdapter(),
     retry: new RetryAdapter(),
   },
 });
