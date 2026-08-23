@@ -1,7 +1,7 @@
-import { merge } from "lodash-es";
+import { sleep } from "../../utils/timing";
 import { type RetryAdapterInstance } from "./types";
+import { merge } from "lodash-es";
 import { type Headers } from "node-fetch";
-import { sleep } from "../../utils";
 
 export interface RetryAdapterConfig {
   codes: number[];
@@ -47,7 +47,7 @@ export default class RetryAdapter implements RetryAdapterInstance {
 
   async retry<
     TResponse extends Record<string, unknown>,
-    TRequest extends () => Promise<TResponse> = () => Promise<TResponse>
+    TRequest extends () => Promise<TResponse> = () => Promise<TResponse>,
   >(
     status: number,
     headers: Headers,

@@ -1,5 +1,5 @@
-import { Spotify } from "../models";
-import { AudioFormat } from "./audio";
+import { type Spotify } from "../models";
+import { type AudioFormat } from "./audio";
 import {
   type YoutubeDownloadResult,
   type YoutubeSearchResult,

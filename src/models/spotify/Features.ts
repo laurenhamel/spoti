@@ -1,4 +1,4 @@
-import { Type } from "./shared";
+import { type Type } from "./shared";
 
 export type Features = {
   [key: string]: unknown;
@@ -10,7 +10,7 @@ export type Features = {
   analysis_url: string;
   /**
    * A measurement of how suitable track is for dancing based on musical components,
-   * such as tempo, rhtyhm stability, beat strength, and overal regularlity, ranging
+   * such as tempo, rhythm stability, beat strength, and overall regularity, ranging
    * from 0 (low) - 1 (high).
    */
   danceability: number;
@@ -60,10 +60,10 @@ export type Features = {
   /**
    * A measurement indicating the presence of spoken words within a track, ranging from 0 (low) -
    * to 1 (high), where a value of 0.66 or higher suggests a track is composed entirely of spoken
-   * work (e.g.,talk show, podcase, audio book, poetry, etc.) and a value of 0.33 or lower suggest
+   * work (e.g.,talk show, podcast, audio book, poetry, etc.) and a value of 0.33 or lower suggest
    * a track is more musical.
    */
-  speeachiness: number;
+  speechiness: number;
   /**
    * The overall estimated tempo of the track in beats per minute (BPM).
    */

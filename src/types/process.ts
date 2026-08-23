@@ -1,4 +1,4 @@
-export type ProcessExitCallback = () => void;
+export type ProcessExitCallback = () => void | Promise<void>;
 
 export type ProcessExitSignal = "SIGINT" | "SIGTERM";
 

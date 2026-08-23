@@ -1,2 +1,2 @@
 export * as Spotify from "./spotify";
-export * as Youtube from "./youtube";
+export type * as Youtube from "./youtube";

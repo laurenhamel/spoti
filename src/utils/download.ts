@@ -1,7 +1,8 @@
+import { type Youtube } from "../models";
+import { AudioFormat } from "../types/audio";
+import { VideoFormat } from "../types/video";
 import { Format } from "./format";
 import { Library } from "./library";
-import { AudioFormat, VideoFormat } from "../types";
-import { Youtube } from "../models";
 
 export function getDownloadData(
   title: string,

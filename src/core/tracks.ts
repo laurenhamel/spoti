@@ -1,5 +1,6 @@
-import { Spotify } from "../models";
-import { type SpotiOptions, type SpotifySearchResult } from "../types";
+import { type Spotify } from "../models";
+import { type SpotiOptions } from "../types/config";
+import { type SpotifySearchResult } from "../types/spotify";
 import { getSpotifyFeatures } from "./features";
 import { searchYoutubeSong } from "./search";
 

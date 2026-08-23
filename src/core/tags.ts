@@ -1,18 +1,19 @@
+import { AudioFormat } from "../types/audio";
+import { type SpotiOptions } from "../types/config";
 import {
-  AudioFormat,
-  SpotifyTagResult,
-  type SpotiOptions,
+  type SpotifyTagResult,
   type SpotifyDownloadResult,
-  type YoutubeDownloadResult,
-} from "../types";
-import { type Tags, TagConstants } from "node-id3";
-import fetch from "node-fetch";
-import { pool, Library } from "../utils";
+} from "../types/spotify";
+import { type YoutubeDownloadResult } from "../types/youtube";
+import { Library } from "../utils/library";
+import { pool } from "../utils/promise";
 import { includes, map } from "lodash-es";
+import fetch from "node-fetch";
+import { type Tags, TagConstants } from "node-id3";
 
 async function generateImageTag(
   url: string,
-  description = "",
+  description = ""
 ): Promise<Tags["image"]> {
   try {
     const image = await fetch(url);
@@ -24,13 +25,13 @@ async function generateImageTag(
       type: { id: TagConstants.AttachedPicture.PictureType.FRONT_COVER },
       imageBuffer: buffer,
     };
-  } catch (e) {
+  } catch (_) {
     // Image cannot be added to track ID3 tags
   }
 }
 
 export async function generateTrackTag(
-  item: SpotifyDownloadResult,
+  item: SpotifyDownloadResult
 ): Promise<Tags> {
   const result = item as SpotifyTagResult;
 
@@ -41,7 +42,7 @@ export async function generateTrackTag(
     if (includes(Object.values(AudioFormat), format)) {
       const image = await generateImageTag(
         track.album.images[0].url,
-        track.album.name,
+        track.album.name
       );
 
       result.tags = {
@@ -59,7 +60,7 @@ export async function generateTrackTag(
     }
   }
 
-  result.tags = result.tags ?? ({} as Tags);
+  result.tags = result.tags ?? {};
 
   return result.tags;
 }
@@ -67,33 +68,30 @@ export async function generateTrackTag(
 export async function addTrackTag<TOptions extends SpotiOptions>(
   item: SpotifyDownloadResult,
   options?: TOptions,
-  progress?: () => void,
+  progress?: () => void
 ): Promise<void> {
-  return new Promise(async (resolve) => {
-    const id = item.track.id;
-    const file = item.download.result?.file;
-    const existing = file ? Library.find(file) : undefined;
-    const src = existing?.raw?.file ?? file;
+  const id = item.track.id;
+  const file = item.download.result?.file;
+  const existing = file ? Library.find(file) : undefined;
+  const src = existing?.raw?.file ?? file;
 
-    if (src) {
-      const tags = await generateTrackTag(item);
-      await Library.tag(src, tags, id);
-    }
+  if (src) {
+    const tags = await generateTrackTag(item);
+    await Library.tag(src, tags, id);
+  }
 
-    progress?.();
-    resolve();
-  });
+  progress?.();
 }
 
 export async function hydrateTrackTags<TOptions extends SpotiOptions>(
   items: SpotifyDownloadResult[],
   options?: TOptions,
-  progress?: () => void,
+  progress?: () => void
 ): Promise<void[]> {
   const dispatch = pool(25);
 
   const tasks: (() => Promise<void>)[] = items.map(
-    (item) => () => addTrackTag(item, options, progress),
+    (item) => () => addTrackTag(item, options, progress)
   );
 
   return dispatch(tasks);

@@ -3,10 +3,12 @@ import json from "@eslint/json";
 import markdown from "@eslint/markdown";
 import tsParser from "@typescript-eslint/parser";
 import prettier from "eslint-config-prettier/flat";
+import { createTypeScriptImportResolver } from "eslint-import-resolver-typescript";
+import { importX, createNodeResolver } from "eslint-plugin-import-x";
 import lodash from "eslint-plugin-lodash-es";
 import { defineConfig, globalIgnores, type Config } from "eslint/config";
 import globals from "globals";
-import tseslint from "typescript-eslint";
+import ts from "typescript-eslint";
 
 export default defineConfig(
   globalIgnores([
@@ -21,16 +23,29 @@ export default defineConfig(
   ]),
   {
     files: ["**/*.{js,ts}"],
-    extends: [js.configs.recommended, tseslint.configs.recommendedTypeChecked],
+    extends: [
+      js.configs.recommended,
+      ts.configs.recommendedTypeChecked,
+      importX.flatConfigs.recommended,
+    ],
     languageOptions: {
+      ecmaVersion: "latest",
       globals: globals.node,
       parser: tsParser,
+      sourceType: "module",
       parserOptions: {
         parser: tsParser,
         project: "./tsconfig.json",
       },
     },
+    settings: {
+      "import-x/resolver-next": [
+        createTypeScriptImportResolver({ project: "./tsconfig.json" }),
+        createNodeResolver(),
+      ],
+    },
     rules: {
+      "preserve-caught-error": "off",
       "@typescript-eslint/consistent-type-exports": [
         "error",
         {
@@ -45,6 +60,14 @@ export default defineConfig(
           prefer: "type-imports",
         },
       ],
+      "@typescript-eslint/no-empty-object-type": "off",
+      "@typescript-eslint/no-implied-eval": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unused-expressions": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -54,6 +77,9 @@ export default defineConfig(
           varsIgnorePattern: "^_",
         },
       ],
+      "@typescript-eslint/require-await": "off",
+      "@typescript-eslint/restrict-template-expressions": "off",
+      "@typescript-eslint/unbound-method": "off",
     },
   },
   {

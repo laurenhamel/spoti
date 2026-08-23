@@ -1,5 +1,5 @@
-import { map } from "lodash-es";
 import { sleep } from "./timing";
+import limit from "p-limit";
 
 export class Deferred<TResponse = void> {
   promise: Promise<TResponse>;
@@ -8,11 +8,11 @@ export class Deferred<TResponse = void> {
 
   result: TResponse | undefined;
 
-  // @ts-ignore Capturing callback of promise
+  // @ts-expect-error Capturing callback of promise
   resolve: (value: TResponse | PromiseLike<TResponse>) => void;
 
-  // @ts-ignore Capturing callback of promise
-  reject: (value: TResponse | PromiseLike<TResponse>) => void;
+  // @ts-expect-error Capturing callback of promise
+  reject: (value: Error) => void;
 
   constructor() {
     this.promise = new Promise<TResponse>((resolve, reject) => {
@@ -26,7 +26,7 @@ export class Deferred<TResponse = void> {
         reject(value);
       };
     }).then((result) => {
-      this.result = result as TResponse;
+      this.result = result;
     }) as Promise<TResponse>;
   }
 }
@@ -36,53 +36,14 @@ export function pool(
 ): <TResponse>(
   callbacks: (() => Promise<TResponse>)[]
 ) => Promise<TResponse[]> {
-  const slots = new Array(max).fill(null).map(() => new Deferred());
+  const task = limit(max);
 
   return async <TResponse>(
     callbacks: (() => Promise<TResponse>)[]
   ): Promise<TResponse[]> => {
-    const results = new Array(callbacks.length)
-      .fill(null)
-      .map(() => new Deferred<TResponse>());
-
-    const prepared = callbacks.map((callback, index) => ({ callback, index }));
-    const initial = prepared.slice(0, max);
-    const rest = prepared.slice(max);
-
-    const next =
-      (slot: number) =>
-      (response?: { result: TResponse; index: number }): Promise<any> => {
-        if (response) {
-          const deferred = results[response.index];
-          deferred.resolve(response.result);
-        }
-
-        const item = rest.shift();
-
-        if (item) {
-          const { callback, index } = item;
-          return callback().then((result) => next(slot)({ index, result }));
-        }
-
-        return Promise.resolve();
-      };
-
-    for (let i = 0; i < slots.length; i++) {
-      const { promise, resolve } = slots[i];
-      const item = initial[i];
-
-      if (item) {
-        const { callback, index } = initial[i];
-        promise.then(() =>
-          callback().then((result) => next(i)({ index, result }))
-        );
-        resolve();
-      }
-    }
-
-    await Promise.all(map(results, "promise"));
-
-    return map(results, "result") as TResponse[];
+    const tasks = callbacks.map(task);
+    const results = await Promise.all(tasks);
+    return results;
   };
 }
 
@@ -92,7 +53,7 @@ export interface RetryHandlers {
     error?: Error;
     attempt: number;
     retrying: boolean;
-  }) => (boolean | void);
+  }) => boolean | void;
 }
 
 export async function retry<TResult>(

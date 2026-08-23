@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { trimStart, zip, zipObject, merge, isArray, isObject } from "lodash-es";
 import {
   readdirSync,
   existsSync,
@@ -7,7 +9,6 @@ import {
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { trimStart, zip, zipObject, merge, isArray, isObject } from "lodash-es";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -28,18 +29,18 @@ export class Cache {
     return this.ext === "json" ? JSON.parse : (value: string) => value;
   }
 
-  private get stringify(): (value: any) => string {
+  private get stringify(): (value: unknown) => string {
     return this.ext === "json"
       ? JSON.stringify
-      : (value: any) => value.toString();
+      : (value: unknown) => `${value}`;
   }
 
   private merge(value: any, data: any): any {
     return isArray(value)
       ? [...value, ...data]
       : isObject(value)
-      ? merge({}, value, data)
-      : value + data;
+        ? merge({}, value, data)
+        : value + data;
   }
 
   private sanitize(key: string): string {

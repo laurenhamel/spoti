@@ -1,7 +1,7 @@
-import { type ExternalUrls, type Followers, Type } from "./shared";
 import { type Image } from "./Image";
 import { type Owner } from "./Owner";
 import { type Tracks } from "./Tracks";
+import { type ExternalUrls, type Followers, type Type } from "./shared";
 
 export type Playlist = {
   [key: string]: unknown;

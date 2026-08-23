@@ -1,15 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { type SpotiOptions } from "../types/config";
+import { Library } from "./library";
 import { type Command } from "commander";
 import yargs from "yargs";
-import { type SpotiOptions } from "../types";
-import { Library } from "./library";
 
-export type ActionParameters<TArgs extends any[], TOptions extends object> = [
-  ...TArgs,
-  TOptions,
-  Command
-];
+export type ActionParameters<
+  TArgs extends object[],
+  TOptions extends object,
+> = [...TArgs, TOptions, Command];
 
-export type ActionHandler<TArgs extends any[], TOptions extends object> = (
+export type ActionHandler<TArgs extends object[], TOptions extends object> = (
   ...params: ActionParameters<TArgs, TOptions>
 ) => void | Promise<void>;
 
@@ -29,7 +29,7 @@ function cleanGlobals(args: any[], argv: any): any[] {
 
 export function createActionHandler<
   TArgs extends any[],
-  TOptions extends SpotiOptions
+  TOptions extends SpotiOptions,
 >(callback: ActionHandler<TArgs, TOptions>): Parameters<Command["action"]>[0] {
   return async (...params: Parameters<Parameters<Command["action"]>[0]>) => {
     const command = params.slice(-1)[0] as Command;

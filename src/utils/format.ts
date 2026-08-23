@@ -1,7 +1,8 @@
-import { Spotify, Youtube } from "../models";
+import { type Spotify } from "../models";
+import { type AudioFormat } from "../types/audio";
+import { Duration } from "./duration";
 import { compact, map, padStart, padEnd, trimStart } from "lodash-es";
 import { dirname, basename, join, extname } from "node:path";
-import { Duration } from "./duration";
 
 export class Format {
   /**
@@ -98,7 +99,7 @@ export class Format {
    */
   static file(
     track: Spotify.Track,
-    ext: Youtube.AudioFormat,
+    ext: AudioFormat,
     format = this.format
   ): string {
     const handlers: Record<
@@ -179,7 +180,7 @@ export class Format {
   /**
    * Get the extension of the audio file.
    */
-  static getExt(ext: Youtube.AudioFormat): () => string {
+  static getExt(ext: AudioFormat): () => string {
     return () => ext;
   }
 

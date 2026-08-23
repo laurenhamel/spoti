@@ -1,6 +1,6 @@
+import { type Spotify } from "../models";
+import { type SpotifyMetadataResult } from "../types/spotify";
 import { trimStart } from "lodash-es";
-import { Spotify } from "../models";
-import { type SpotifyMetadataResult } from "../types";
 
 export function isSpotifyURL(url: string): boolean {
   try {

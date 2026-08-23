@@ -7,4 +7,4 @@ export * from "./AccessTokenAdapter";
 export { default as RetryAdapter } from "./RetryAdapter";
 export * from "./RetryAdapter";
 
-export * from "./types";
+export type * from "./types";

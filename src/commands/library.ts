@@ -1,26 +1,25 @@
-import { Command } from "commander";
+import { prepareDownloadResults } from "../core/downloads";
+import { Metadata } from "../core/metadata";
+import { Spoti } from "../core/spoti";
+import { generateTrackTag } from "../core/tags";
+import { type SpotiCliOptions } from "../types/config";
+import { type SpotifyMetadataResult } from "../types/spotify";
+import { createActionHandler } from "../utils/action";
+import { Duration } from "../utils/duration";
 import {
-  Metadata,
-  prepareDownloadResults,
-  Spoti,
-  generateTrackTag,
-} from "../core";
-import { type SpotiCliOptions, type SpotifyMetadataResult } from "../types";
-import {
-  createActionHandler,
   Library,
   type LibraryItem,
-  Progress,
-  Duration,
-  Size,
   type LibraryMetadata,
-  pool,
-} from "../utils";
+} from "../utils/library";
+import { Progress } from "../utils/progress";
+import { pool } from "../utils/promise";
+import { Size } from "../utils/size";
 import chalk from "chalk";
-import Table, { HorizontalTableRow } from "cli-table3";
+import Table, { type HorizontalTableRow } from "cli-table3";
+import { Command } from "commander";
+import stringify from "fast-safe-stringify";
 import { compact, map, sortBy, zipObject } from "lodash-es";
 import Window from "window-size";
-import stringify from "fast-safe-stringify";
 
 export type LibraryCliArgs = [string?];
 
@@ -98,77 +97,73 @@ export default new Command()
 
         const dispatch = pool(25);
 
-        const tasks = sortBy(data, "title").map(
-          (item) => () =>
-            new Promise<FileInfo>(async (resolve) => {
-              const metadata: LibraryMetadata = options?.more
-                ? item.tags
-                  ? {
-                      tags: item.tags,
-                      duration: item.duration ?? Library.duration(item.file),
-                      id: item.id,
+        const tasks = sortBy(data, "title").map((item) => async () => {
+          const metadata: LibraryMetadata = options?.more
+            ? item.tags
+              ? {
+                  tags: item.tags,
+                  duration: item.duration ?? Library.duration(item.file),
+                  id: item.id,
+                }
+              : await item.metadata()
+            : {
+                tags: {},
+                duration: item.duration ?? 0,
+                id: item.id,
+              };
+
+          item.tags = metadata.tags;
+          item.id = metadata.id;
+          item.duration = metadata.duration;
+
+          progress$.report();
+
+          const table = new Table();
+
+          const rows: HorizontalTableRow[] = [
+            [HEADING.Title, Progress.label(item.title, CLAMP)],
+            [HEADING.File, item.file],
+            [HEADING.Format, item.format],
+            [HEADING.Size, Size.format(item.size)],
+          ];
+
+          if (options?.more) {
+            rows.push(
+              [HEADING.Id, item.id ?? "-"],
+              [HEADING.Duration, Duration.format(item.duration)],
+              [
+                HEADING.Tags,
+                stringify(
+                  item.tags,
+                  (key, value) => {
+                    switch (key) {
+                      case "image": {
+                        return "[Image]";
+                      }
+                      case "userDefinedText": {
+                        const keys = map(value, "description");
+                        const values = map(value, "value");
+                        return zipObject(keys, values);
+                      }
+                      case "raw": {
+                        return;
+                      }
+                      default: {
+                        return value;
+                      }
                     }
-                  : await item.metadata()
-                : {
-                    tags: {},
-                    duration: item.duration ?? 0,
-                    id: item.id,
-                  };
+                  },
+                  2
+                ),
+              ]
+            );
+          }
 
-              item.tags = metadata.tags;
-              item.id = metadata.id;
-              item.duration = metadata.duration;
+          table.push(...compact(rows));
 
-              progress$.report();
-              resolve(item);
-            }).then((item) => {
-              const table = new Table();
-
-              const rows: HorizontalTableRow[] = [
-                [HEADING.Title, Progress.label(item.title, CLAMP)],
-                [HEADING.File, item.file],
-                [HEADING.Format, item.format],
-                [HEADING.Size, Size.format(item.size)],
-              ];
-
-              if (options?.more) {
-                rows.push(
-                  [HEADING.Id, item.id ?? "-"],
-                  [HEADING.Duration, Duration.format(item.duration as number)],
-                  [
-                    HEADING.Tags,
-                    stringify(
-                      item.tags,
-                      (key, value) => {
-                        switch (key) {
-                          case "image": {
-                            return "[Image]";
-                          }
-                          case "userDefinedText": {
-                            const keys = map(value, "description");
-                            const values = map(value, "value");
-                            return zipObject(keys, values);
-                          }
-                          case "raw": {
-                            return;
-                          }
-                          default: {
-                            return value;
-                          }
-                        }
-                      },
-                      2
-                    ),
-                  ]
-                );
-              }
-
-              table.push(...compact(rows));
-
-              console.log("");
-              console.log(table.toString());
-            })
-        );
+          console.log("");
+          console.log(table.toString());
+        });
 
         await dispatch(tasks);
       }

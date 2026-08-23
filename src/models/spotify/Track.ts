@@ -4,7 +4,7 @@ import {
   type ExternalIds,
   type ExternalUrls,
   type VideoThumbnail,
-  Type,
+  type Type,
 } from "./shared";
 
 export type Track = {

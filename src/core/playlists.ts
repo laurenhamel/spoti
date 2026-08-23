@@ -1,10 +1,11 @@
-import { Spotify } from "../models";
-import chalk from "chalk";
+import { type Spotify } from "../models";
 import { SpotifyApi } from "../services";
-import { type SpotiOptions, type SpotifySearchResult } from "../types";
-import { Progress } from "../utils";
+import { type SpotiOptions } from "../types/config";
+import { type SpotifySearchResult } from "../types/spotify";
+import { Progress } from "../utils/progress";
 import { hydrateSpotifyFeatures } from "./features";
 import { hydrateYoutubeSearch } from "./search";
+import chalk from "chalk";
 
 export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   model: Spotify.Playlist,
@@ -29,7 +30,7 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
     (() => {
       let reports = 0;
 
-      return (amount = limit): void => {
+      return (amount: number = limit): void => {
         reports += amount;
         const percentage = reports / (total * 3);
         progress$.update(percentage);
@@ -67,7 +68,7 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
     const offset = i * limit;
 
     fetches.push(
-      new Promise<void>(async (resolve) => {
+      (async () => {
         const payload = { id, offset, limit };
         const tracks = await SpotifyApi.getPlaylistTracks<Spotify.Tracks>(
           payload,
@@ -76,8 +77,7 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
 
         results.push(tracks.items as SpotifySearchResult[]);
         fetches$.report();
-        resolve();
-      })
+      })()
     );
   }
 
@@ -119,10 +119,9 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
 
   for (const group of results) {
     searches.push(
-      new Promise<void>(async (resolve) => {
+      (async () => {
         await hydrateYoutubeSearch(group, options, increment);
-        resolve();
-      })
+      })()
     );
   }
 
@@ -160,11 +159,10 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
 
   for (const group of results) {
     features.push(
-      new Promise<void>(async (resolve) => {
+      (async () => {
         await hydrateSpotifyFeatures(group, options);
         features$.report();
-        resolve();
-      })
+      })()
     );
   }
 

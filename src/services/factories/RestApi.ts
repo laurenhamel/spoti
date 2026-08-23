@@ -1,22 +1,23 @@
-import fetch, { type Headers, type Response } from "node-fetch";
-import qs from "qs";
-import { merge, template, snakeCase, trimEnd, trimStart } from "lodash-es";
-import chalk from "chalk";
-import { SpotiOptions } from "../../types/config";
+import { type SpotiOptions } from "../../types/config";
 import {
   type RetryAdapterInstance,
   type AuthorizationAdapterInstance,
 } from "../adapters";
+import chalk from "chalk";
+import { merge, template, snakeCase, trimEnd, trimStart } from "lodash-es";
+import fetch, { type Headers, type Response } from "node-fetch";
+import qs from "qs";
 
 export type RestApiInstance<
-  TInstance extends InstanceType<typeof RestApi<RestApiEndpoints>>
-> = TInstance extends InstanceType<
-  typeof RestApi<infer TEndpoints extends RestApiEndpoints>
->
-  ? InstanceType<typeof RestApi<TEndpoints>> & {
-      [method in keyof TEndpoints]: RestApiRequestMethod;
-    }
-  : any;
+  TInstance extends InstanceType<typeof RestApi<RestApiEndpoints>>,
+> =
+  TInstance extends InstanceType<
+    typeof RestApi<infer TEndpoints extends RestApiEndpoints>
+  >
+    ? InstanceType<typeof RestApi<TEndpoints>> & {
+        [method in keyof TEndpoints]: RestApiRequestMethod;
+      }
+    : unknown;
 
 export interface RestApiConfig<TEndpoints extends RestApiEndpoints> {
   api: string;
@@ -45,9 +46,9 @@ export interface RestApiEndpointConfig {
 }
 
 export type RestApiRequestMethod = <
-  TResponse extends Record<string, unknown> = any,
-  TData extends Record<string, unknown> = any,
-  TOptions extends SpotiOptions = SpotiOptions
+  TResponse extends Record<string, unknown> = Record<string, unknown>,
+  TData extends Record<string, unknown> = Record<string, unknown>,
+  TOptions extends SpotiOptions = SpotiOptions,
 >(
   data?: TData,
   options?: TOptions
@@ -72,7 +73,7 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
   private async request<
     TData extends Record<string, unknown>,
     TResponse extends Record<string, unknown>,
-    TOptions extends SpotiOptions = SpotiOptions
+    TOptions extends SpotiOptions = SpotiOptions,
   >(
     method: RestApiMethod,
     endpoint: string,
@@ -87,61 +88,57 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
     const base = trimEnd(this.config.api, "/") + "/" + trimStart(path, "/");
     const url = base + params;
 
-    try {
-      const authorization = await this.authorize();
-      const request = {
-        method,
-        body,
-        headers: { "Content-Type": "application/json", ...authorization },
-      };
+    const authorization = await this.authorize();
+    const request = {
+      method,
+      body,
+      headers: { "Content-Type": "application/json", ...authorization },
+    };
 
-      if (options?.verbose) {
-        console.log();
-        console.log(chalk.bold.dim("Request"));
-        console.log(chalk.magenta(request.method), chalk.cyan(base));
-        console.log({
-          ...request,
-          parameters:
-            request.method === RestApiMethod.GET
-              ? params
-                ? qs.parse(params, {
-                    comma: true,
-                    ignoreQueryPrefix: true,
-                    parseArrays: true,
-                    duplicates: "combine",
-                    allowEmptyArrays: true,
-                    allowDots: true,
-                  })
-                : {}
-              : undefined,
-        });
-      }
-
-      const response = await fetch(url, request);
-
-      return this.response<TResponse, TOptions>(
-        response,
-        (attempt) => () =>
-          this.request<TData, TResponse, TOptions>(
-            method,
-            endpoint,
-            data,
-            options,
-            retries,
-            attempt
-          ),
-        options,
-        retries,
-        attempt
-      );
-    } catch (error) {
-      throw error;
+    if (options?.verbose) {
+      console.log();
+      console.log(chalk.bold.dim("Request"));
+      console.log(chalk.magenta(request.method), chalk.cyan(base));
+      console.log({
+        ...request,
+        parameters:
+          request.method === RestApiMethod.GET
+            ? params
+              ? qs.parse(params, {
+                  comma: true,
+                  ignoreQueryPrefix: true,
+                  parseArrays: true,
+                  duplicates: "combine",
+                  allowEmptyArrays: true,
+                  allowDots: true,
+                })
+              : {}
+            : undefined,
+      });
     }
+
+    const response = await fetch(url, request);
+
+    return this.response<TResponse, TOptions>(
+      response,
+      (attempt) => () =>
+        this.request<TData, TResponse, TOptions>(
+          method,
+          endpoint,
+          data,
+          options,
+          retries,
+          attempt
+        ),
+      options,
+      retries,
+      attempt
+    );
   }
 
   private async response<
     TResponse extends Record<string, unknown>,
-    TOptions extends SpotiOptions = SpotiOptions
+    TOptions extends SpotiOptions = SpotiOptions,
   >(
     response: Response,
     signature: (attempt: number) => () => Promise<TResponse>,
@@ -149,40 +146,38 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
     retries = true,
     attempt = 1
   ): Promise<TResponse> {
-    try {
-      const { ok, status, statusText: message, headers } = response;
+    const { ok, status, statusText: message, headers } = response;
 
-      if (options?.verbose) {
-        const color = getStatusColor(status);
-        console.log();
-        console.log(chalk.bold.dim("Response"));
-        console.log(chalk[color](`${status} ${message}`));
-      }
+    if (options?.verbose) {
+      const color = getStatusColor(status);
+      console.log();
+      console.log(chalk.bold.dim("Response"));
+      console.log(chalk[color](`${status} ${message}`));
+    }
 
-      if (ok) {
-        const body = await response.json();
-        return body as TResponse;
-      } else if (retries) {
-        try {
-          const result = await this.retry<TResponse>(
-            status,
-            headers,
-            signature(attempt + 1)
-          );
+    if (ok) {
+      const body = await response.json();
+      return body as TResponse;
+    } else if (retries) {
+      try {
+        const result = await this.retry<TResponse>(
+          status,
+          headers,
+          signature(attempt + 1)
+        );
 
-          if (result) {
-            return result;
-          } else {
-            throw new Error("No retry adapter found.");
-          }
-        } catch (error) {
-          throw new Error(`Request failed: ${status} ${message}. ${error}`);
+        if (result) {
+          return result;
+        } else {
+          throw new Error("No retry adapter found.");
         }
-      } else {
-        throw new Error(message);
+      } catch (error) {
+        throw new Error(
+          `Request failed: ${status} ${message}. ${error as Error}`
+        );
       }
-    } catch (error) {
-      throw error;
+    } else {
+      throw new Error(message);
     }
   }
 
@@ -196,7 +191,7 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
 
   private async retry<
     TResponse extends Record<string, unknown>,
-    TRequest extends () => Promise<TResponse> = () => Promise<TResponse>
+    TRequest extends () => Promise<TResponse> = () => Promise<TResponse>,
   >(
     status: number,
     headers: Headers,
@@ -233,9 +228,9 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
     retry = true
   ): RestApiRequestMethod {
     return async <
-      TResponse extends Record<string, unknown> = any,
-      TData extends Record<string, unknown> = any,
-      TOptions extends SpotiOptions = SpotiOptions
+      TResponse extends Record<string, unknown> = Record<string, unknown>,
+      TData extends Record<string, unknown> = Record<string, unknown>,
+      TOptions extends SpotiOptions = SpotiOptions,
     >(
       data?: TData,
       options?: TOptions
@@ -255,9 +250,9 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
     retry = true
   ): RestApiRequestMethod {
     return async <
-      TResponse extends Record<string, unknown> = any,
-      TData extends Record<string, unknown> = any,
-      TOptions extends SpotiOptions = SpotiOptions
+      TResponse extends Record<string, unknown> = Record<string, unknown>,
+      TData extends Record<string, unknown> = Record<string, unknown>,
+      TOptions extends SpotiOptions = SpotiOptions,
     >(
       data?: TData,
       options?: TOptions
@@ -277,9 +272,9 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
     retry = true
   ): RestApiRequestMethod {
     return async <
-      TResponse extends Record<string, unknown> = any,
-      TData extends Record<string, unknown> = any,
-      TOptions extends SpotiOptions = SpotiOptions
+      TResponse extends Record<string, unknown> = Record<string, unknown>,
+      TData extends Record<string, unknown> = Record<string, unknown>,
+      TOptions extends SpotiOptions = SpotiOptions,
     >(
       data?: TData,
       options?: TOptions
@@ -299,9 +294,9 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
     retry = true
   ): RestApiRequestMethod {
     return async <
-      TResponse extends Record<string, unknown> = any,
-      TData extends Record<string, unknown> = any,
-      TOptions extends SpotiOptions = SpotiOptions
+      TResponse extends Record<string, unknown> = Record<string, unknown>,
+      TData extends Record<string, unknown> = Record<string, unknown>,
+      TOptions extends SpotiOptions = SpotiOptions,
     >(
       data?: TData,
       options?: TOptions
@@ -321,9 +316,9 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
     retry = true
   ): RestApiRequestMethod {
     return async <
-      TResponse extends Record<string, unknown> = any,
-      TData extends Record<string, unknown> = any,
-      TOptions extends SpotiOptions = SpotiOptions
+      TResponse extends Record<string, unknown> = Record<string, unknown>,
+      TData extends Record<string, unknown> = Record<string, unknown>,
+      TOptions extends SpotiOptions = SpotiOptions,
     >(
       data?: TData,
       options?: TOptions
@@ -342,6 +337,6 @@ function getStatusColor(status: number): "red" | "green" | "yellow" {
   return status >= 200 && status < 400
     ? "green"
     : status >= 400
-    ? "red"
-    : "yellow";
+      ? "red"
+      : "yellow";
 }

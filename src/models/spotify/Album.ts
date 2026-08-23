@@ -1,6 +1,6 @@
-import { type ExternalUrls, Type } from "./shared";
 import { type Artist } from "./Artist";
 import { type Image } from "./Image";
+import { type ExternalUrls, type Type } from "./shared";
 
 export type Album = {
   [key: string]: unknown;

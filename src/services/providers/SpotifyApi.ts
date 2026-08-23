@@ -1,14 +1,14 @@
 import {
+  AccessTokenAdapter,
+  AccessTokenAdapterType,
+  RetryAdapter,
+} from "../adapters";
+import {
   RestApi,
   RestApiMethod,
   type RestApiInstance,
   type RestApiRequestMethod,
 } from "../factories";
-import {
-  AccessTokenAdapter,
-  AccessTokenAdapterType,
-  RetryAdapter,
-} from "../adapters";
 
 export type SpotifyApiRequestMethod = RestApiRequestMethod;
 

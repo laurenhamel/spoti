@@ -1,5 +1,5 @@
-export * from "./Download";
-export * from "./Search";
-export * from "./Song";
-export * from "./shared";
-export * from "./utils";
+export type * from "./Download";
+export type * from "./Search";
+export type * from "./Song";
+export type * from "./shared";
+export type * from "./utils";

@@ -1,6 +1,6 @@
+import { type AuthorizationAdapterInstance } from "./types";
 import fetch from "node-fetch";
 import qs from "qs";
-import { type AuthorizationAdapterInstance } from "./types";
 
 export enum AccessTokenAdapterType {
   FORM = "application/x-www-form-urlencoded",
@@ -15,7 +15,7 @@ export interface AccessTokenAdapterData {
 
 export interface AccessTokenAdapterConfig<
   TResponse extends Record<string, unknown>,
-  TCredentials extends Record<string, unknown> = Record<string, unknown>
+  TCredentials extends Record<string, unknown> = Record<string, unknown>,
 > {
   url: string;
   type: AccessTokenAdapterType;
@@ -24,14 +24,13 @@ export interface AccessTokenAdapterConfig<
 }
 
 export type AccessTokenAdapterHandler<
-  TResponse extends Record<string, unknown>
+  TResponse extends Record<string, unknown>,
 > = (response: TResponse) => AccessTokenAdapterData;
 
 export default class AccessTokenAdapter<
   TResponse extends Record<string, unknown>,
-  TCredentials extends Record<string, unknown> = Record<string, unknown>
-> implements AuthorizationAdapterInstance
-{
+  TCredentials extends Record<string, unknown> = Record<string, unknown>,
+> implements AuthorizationAdapterInstance {
   readonly config: AccessTokenAdapterConfig<TResponse, TCredentials>;
 
   constructor(config: AccessTokenAdapterConfig<TResponse, TCredentials>) {
@@ -88,19 +87,15 @@ export default class AccessTokenAdapter<
 
   private async refresh(): Promise<AccessTokenAdapterData> {
     if (!this.valid) {
-      try {
-        const response = await fetch(this.url, {
-          method: "POST",
-          body: this.body,
-          headers: { "Content-Type": this.type },
-        });
+      const response = await fetch(this.url, {
+        method: "POST",
+        body: this.body,
+        headers: { "Content-Type": this.type },
+      });
 
-        const data = (await response.json()) as TResponse;
+      const data = (await response.json()) as TResponse;
 
-        this.token = this.handler(data);
-      } catch (error) {
-        throw error;
-      }
+      this.token = this.handler(data);
     }
 
     return this.token as AccessTokenAdapterData;

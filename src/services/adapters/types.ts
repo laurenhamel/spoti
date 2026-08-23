@@ -7,7 +7,7 @@ export interface AuthorizationAdapterInstance {
 export interface RetryAdapterInstance {
   retry: <
     TResponse extends Record<string, unknown>,
-    TRequest extends () => Promise<TResponse> = () => Promise<TResponse>
+    TRequest extends () => Promise<TResponse> = () => Promise<TResponse>,
   >(
     status: number,
     headers: Headers,

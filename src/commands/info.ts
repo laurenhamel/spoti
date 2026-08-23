@@ -1,16 +1,18 @@
-import { Command } from "commander";
-import {
-  Metadata,
-  prepareDownloadResults,
-  Spoti,
-  generateTrackTag,
-} from "../core";
-import { type SpotifyMetadataResult, type SpotiCliOptions } from "../types";
-import { createActionHandler, Library, Progress, Duration } from "../utils";
+import { prepareDownloadResults } from "../core/downloads";
+import { Metadata } from "../core/metadata";
+import { Spoti } from "../core/spoti";
+import { generateTrackTag } from "../core/tags";
+import { type SpotiCliOptions } from "../types/config";
+import { type SpotifyMetadataResult } from "../types/spotify";
+import { createActionHandler } from "../utils/action";
+import { Duration } from "../utils/duration";
+import { Library } from "../utils/library";
+import { Progress } from "../utils/progress";
 import chalk from "chalk";
 import Table from "cli-table3";
+import { Command } from "commander";
 import { sortBy } from "lodash-es";
-import { Tags } from "node-id3";
+import { type Tags } from "node-id3";
 
 export type InfoCliArgs = [string?];
 

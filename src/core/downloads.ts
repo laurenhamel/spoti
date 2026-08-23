@@ -1,24 +1,23 @@
-import { Youtube } from "../models";
+import { type Youtube } from "../models";
+import { YoutubeApi } from "../services";
+import { type AudioFormat } from "../types/audio";
+import { type SpotiOptions } from "../types/config";
+import { type ProcessExitRegister } from "../types/process";
 import {
-  type SpotiOptions,
-  type YoutubeDownloadResult,
   type SpotifyDownloadResult,
   type SpotifySearchResult,
-} from "../types";
-import { YoutubeApi } from "../services";
-import { map } from "lodash-es";
-import {
-  Audio,
-  Format,
-  Library,
-  pool,
-  Progress,
-  silenceWarnings,
-} from "../utils";
-import chalk from "chalk";
+} from "../types/spotify";
+import { type YoutubeDownloadResult } from "../types/youtube";
+import { Audio } from "../utils/audio";
+import { silenceWarnings } from "../utils/console";
+import { Format } from "../utils/format";
+import { Library } from "../utils/library";
+import { Progress } from "../utils/progress";
+import { pool } from "../utils/promise";
 import { transformAudioFiles } from "./audio";
 import { hydrateTrackTags } from "./tags";
-import { AudioFormat, type ProcessExitRegister } from "../types";
+import chalk from "chalk";
+import { map } from "lodash-es";
 
 export async function downloadYoutubeSong<TOptions extends SpotiOptions>(
   title: string,
@@ -35,7 +34,7 @@ export async function downloadYoutubeSong<TOptions extends SpotiOptions>(
 }
 
 export function createDownloadResult<
-  TOptions extends SpotiOptions & { format?: AudioFormat }
+  TOptions extends SpotiOptions & { format?: AudioFormat },
 >(options?: TOptions): (item: SpotifySearchResult) => SpotifyDownloadResult {
   return (item) => {
     const format = options?.format ?? Audio.DEFAULT_FORMAT;
@@ -56,8 +55,8 @@ export function prepareDownloadResults<TOptions extends SpotiOptions>(
     );
 }
 
-export function sortDownloadResults<TData = any>(
-  callback: (data: TData) => string = (data) => (data as any).toString(),
+export function sortDownloadResults<TData = Record<string, unknown>>(
+  callback: (data: TData) => string,
   order: "ASC" | "DESC" = "ASC"
 ): (a: TData, b: TData) => number {
   const factor = order === "ASC" ? 1 : -1;
@@ -70,7 +69,7 @@ export function sortDownloadResults<TData = any>(
 }
 
 export async function downloadSpotifyTracks<
-  TOptions extends SpotiOptions & { force?: boolean }
+  TOptions extends SpotiOptions & { force?: boolean },
 >(
   items: SpotifySearchResult[],
   options?: TOptions
@@ -232,7 +231,7 @@ export async function downloadSpotifyTracks<
 }
 
 export function cleanDownloadRemnants<TOptions extends SpotiOptions>(
-  options?: TOptions
+  _options?: TOptions
 ): void {
   // @TODO Clean up remnants of m4a/mp4 files
   // @TODO Look for any zero-byte/zero-duration MP3 files to delete

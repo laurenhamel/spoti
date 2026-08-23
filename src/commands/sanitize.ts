@@ -1,8 +1,14 @@
-import { Command } from "commander";
-import { Metadata, prepareDownloadResults, Spoti } from "../core";
-import { type SpotifyMetadataResult, type SpotiCliOptions } from "../types";
-import { createActionHandler, Format, Library, Progress } from "../utils";
+import { prepareDownloadResults } from "../core/downloads";
+import { Metadata } from "../core/metadata";
+import { Spoti } from "../core/spoti";
+import { type SpotiCliOptions } from "../types/config";
+import { type SpotifyMetadataResult } from "../types/spotify";
+import { createActionHandler } from "../utils/action";
+import { Format } from "../utils/format";
+import { Library } from "../utils/library";
+import { Progress } from "../utils/progress";
 import chalk from "chalk";
+import { Command } from "commander";
 import { castArray, map, trimStart } from "lodash-es";
 import { existsSync, renameSync } from "node:fs";
 import { basename, join } from "node:path";

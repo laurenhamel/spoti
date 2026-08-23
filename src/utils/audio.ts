@@ -1,9 +1,10 @@
-import { Youtube } from "../models";
-import { AudioFormat, VideoFormat } from "../types";
-import { extname } from "path";
-import { spawnSync } from "child_process";
+import { type Youtube } from "../models";
+import { AudioFormat } from "../types/audio";
+import { type VideoFormat } from "../types/video";
 import { Library } from "./library";
+import { spawnSync } from "child_process";
 import { trimStart } from "lodash-es";
+import { extname } from "path";
 
 export class Audio {
   static readonly DEFAULT_FORMAT: AudioFormat = AudioFormat.MP3;
@@ -14,7 +15,7 @@ export class Audio {
    * @returns
    */
   static format<
-    TFormat extends AudioFormat | VideoFormat = AudioFormat | VideoFormat
+    TFormat extends AudioFormat | VideoFormat = AudioFormat | VideoFormat,
   >(file: string): TFormat {
     return trimStart(extname(file), ".") as TFormat;
   }
@@ -30,46 +31,44 @@ export class Audio {
     dest: string,
     bitrate?: number
   ): Promise<Youtube.DownloadOf<AudioFormat>> {
-    return new Promise((resolve, reject) => {
-      const input = '"' + Library.file(src).replace(/"/g, '\\"') + '"';
-      const output = '"' + Library.file(dest).replace(/"/g, '\\"') + '"';
-      const format = this.format<AudioFormat>(dest);
+    const input = '"' + Library.file(src).replace(/"/g, '\\"') + '"';
+    const output = '"' + Library.file(dest).replace(/"/g, '\\"') + '"';
+    const format = this.format<AudioFormat>(dest);
 
-      const flags: Record<AudioFormat, string[]> = {
-        [AudioFormat.MP3]: [
-          "-c:a",
-          "libmp3lame",
-          "-q:a",
-          "2",
-          ...(bitrate ? ["-b:a", `${(bitrate / 1000).toFixed(0)}k`] : []),
-        ],
-        [AudioFormat.M4A]: [],
-        [AudioFormat.AAC]: ["-c:a", "aac_at"],
-        [AudioFormat.WAV]: [],
-      };
+    const flags: Record<AudioFormat, string[]> = {
+      [AudioFormat.MP3]: [
+        "-c:a",
+        "libmp3lame",
+        "-q:a",
+        "2",
+        ...(bitrate ? ["-b:a", `${(bitrate / 1000).toFixed(0)}k`] : []),
+      ],
+      [AudioFormat.M4A]: [],
+      [AudioFormat.AAC]: ["-c:a", "aac_at"],
+      [AudioFormat.WAV]: [],
+    };
 
-      const { status, stderr } = spawnSync(
-        "ffmpeg",
-        ["-i", input, "-y", ...flags[format], output],
-        {
-          shell: true,
-          encoding: "utf-8",
-          cwd: Library.dir,
-        }
-      );
-
-      if (status === 0) {
-        Library.set(src, Library.parse(dest));
-        Library.remove(src);
+    const { status, stderr } = spawnSync(
+      "ffmpeg",
+      ["-i", input, "-y", ...flags[format], output],
+      {
+        shell: true,
+        encoding: "utf-8",
+        cwd: Library.dir,
       }
+    );
 
-      return status === -1
-        ? reject(stderr)
-        : resolve({
-            file: Library.file(dest),
-            path: Library.path(dest),
-            format,
-          });
-    });
+    if (status === 0) {
+      Library.set(src, Library.parse(dest));
+      Library.remove(src);
+    }
+
+    if (status === -1) throw new Error(stderr);
+
+    return {
+      file: Library.file(dest),
+      path: Library.path(dest),
+      format,
+    };
   }
 }

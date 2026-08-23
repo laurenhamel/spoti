@@ -1,12 +1,11 @@
+import { Metadata } from "../core/metadata";
+import { Spoti } from "../core/spoti";
+import { type AudioFormat } from "../types/audio";
+import { type SpotiCliOptions } from "../types/config";
+import { createActionHandler } from "../utils/action";
+import { Audio } from "../utils/audio";
+import { parseSpotifyURL, isSpotifyURL } from "../utils/spotify";
 import { Command } from "commander";
-import { AudioFormat, type SpotiCliOptions } from "../types";
-import { Metadata, Spoti } from "../core";
-import {
-  Audio,
-  parseSpotifyURL,
-  isSpotifyURL,
-  createActionHandler,
-} from "../utils";
 
 export type SyncCliArgs = [string, string?];
 

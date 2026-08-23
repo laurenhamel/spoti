@@ -1,16 +1,21 @@
-import { MultiProgressBars, type AddOptions } from "multi-progress-bars";
-import { padEnd } from "lodash-es";
-import { type ProcessExitRegister } from "../types";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { type ProcessExitRegister } from "../types/process";
 import { Format } from "./format";
+import { padEnd } from "lodash-es";
+import { MultiProgressBars, type AddOptions } from "multi-progress-bars";
 
 export class Progress {
   static progress: MultiProgressBars;
 
   readonly label: string;
 
-  private reporter: Function | undefined;
+  private reporter: ((...args: any[]) => void) | undefined;
 
-  constructor(label: string, options: AddOptions, reporter?: Function) {
+  constructor(
+    label: string,
+    options: AddOptions,
+    reporter?: (...args: any[]) => void
+  ) {
     if (!Progress.progress) {
       Progress.progress = new MultiProgressBars({
         initMessage: " Spoti ",

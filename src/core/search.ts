@@ -1,18 +1,17 @@
-import { Spotify, Youtube } from "../models";
+import { type Spotify, type Youtube } from "../models";
 import { YoutubeApi } from "../services";
-import {
-  SpotifySearchResult,
-  type SpotiOptions,
-  type YoutubeSearchResult,
-} from "../types";
-import { cache, pool } from "../utils";
-import { find, map, sum } from "lodash-es";
+import { type SpotiOptions } from "../types/config";
+import { type SpotifySearchResult } from "../types/spotify";
+import { type YoutubeSearchResult } from "../types/youtube";
+import { cache } from "../utils/cache";
+import { pool } from "../utils/promise";
 import Fuse from "fuse.js";
+import { find, map, sum } from "lodash-es";
 
 export function findBestSearchResult<TOptions extends SpotiOptions>(
   songs: Youtube.Song[],
   item: Spotify.Item,
-  options?: TOptions
+  _options?: TOptions
 ): Youtube.Song {
   interface PreparedSearchResult {
     song: Youtube.Song;
@@ -141,42 +140,42 @@ export function findBestSearchResult<TOptions extends SpotiOptions>(
 }
 
 export async function searchYoutubeSong<
-  TOptions extends SpotiOptions & { cache?: boolean }
+  TOptions extends SpotiOptions & { cache?: boolean },
 >(
   item: Spotify.Item,
   options?: TOptions,
   progress?: () => void,
   throttle?: () => Promise<void>
 ): Promise<YoutubeSearchResult> {
-  return new Promise<YoutubeSearchResult>(async (resolve) => {
-    const { track } = item;
-    const { artists, name: song, uri } = track;
-    const artist = artists[0].name;
-    const query = [artist, song].join(" ").trim();
-    const cached = options?.cache ?? true;
+  const { track } = item;
+  const { artists, name: song, uri } = track;
+  const artist = artists[0].name;
+  const query = [artist, song].join(" ").trim();
+  const cached = options?.cache ?? true;
 
-    if (cached) {
-      const resource = cache.get<SpotifySearchResult>(uri);
+  if (cached) {
+    const resource = cache.get<SpotifySearchResult>(uri);
 
-      if (resource?.search) {
-        progress?.();
-        return resolve(resource.search);
-      }
-    }
-
-    try {
-      // Optionally throttle requests to help prevent rate limiting and IP address blocking
-      await throttle?.();
-      const results = await YoutubeApi.searchSongs({ query }, options);
-      const result = findBestSearchResult(results, item, options);
-      resolve({ query, result });
-    } catch (e) {
-      // @TODO If we cannot acquire search results, then the song may not exist on Youtube
-      resolve({ query });
-    } finally {
+    if (resource?.search) {
       progress?.();
+
+      return resource.search;
     }
-  });
+  }
+
+  try {
+    // Optionally throttle requests to help prevent rate limiting and IP address blocking
+    await throttle?.();
+    const results = await YoutubeApi.searchSongs({ query }, options);
+    const result = findBestSearchResult(results, item, options);
+
+    return { query, result };
+  } catch (_) {
+    // @TODO If we cannot acquire search results, then the song may not exist on Youtube
+    return { query };
+  } finally {
+    progress?.();
+  }
 }
 
 export async function hydrateYoutubeSearch<TOptions extends SpotiOptions>(

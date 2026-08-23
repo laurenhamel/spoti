@@ -1,12 +1,9 @@
-import { Command } from "commander";
-import { type SpotiCliOptions } from "../types";
-import { getSpotifyType } from "../core";
-import {
-  parseSpotifyURL,
-  validateSpotifyURL,
-  createActionHandler,
-} from "../utils";
+import { getSpotifyType } from "../core/spotify";
+import { type SpotiCliOptions } from "../types/config";
+import { createActionHandler } from "../utils/action";
+import { parseSpotifyURL, validateSpotifyURL } from "../utils/spotify";
 import chalk from "chalk";
+import { Command } from "commander";
 
 export type MetaCliArgs = [string];
 
@@ -32,7 +29,7 @@ export default new Command()
         console.log();
       }
 
-      const meta = await getSpotifyType(id, type, options);
+      await getSpotifyType(id, type, options);
 
       switch (type) {
         default: {

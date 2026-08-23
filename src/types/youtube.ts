@@ -1,4 +1,4 @@
-import { Youtube } from "../models";
+import { type Youtube } from "../models";
 
 export type YoutubeSearchResult = {
   query: string;

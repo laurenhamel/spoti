@@ -1,13 +1,11 @@
-import { Command } from "commander";
-import { Spoti } from "../core";
-import { AudioFormat, type SpotiCliOptions } from "../types";
-import {
-  Audio,
-  parseSpotifyURL,
-  validateSpotifyURL,
-  createActionHandler,
-} from "../utils";
+import { Spoti } from "../core/spoti";
+import { type AudioFormat } from "../types/audio";
+import { type SpotiCliOptions } from "../types/config";
+import { createActionHandler } from "../utils/action";
+import { Audio } from "../utils/audio";
+import { parseSpotifyURL, validateSpotifyURL } from "../utils/spotify";
 import chalk from "chalk";
+import { Command } from "commander";
 
 export type DownloadCliArgs = [string];
 

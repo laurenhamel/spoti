@@ -1,3 +1,15 @@
 {
-  "words": ["spoti", "trivago", "youtubei"]
+  "words": [
+    "acousticness",
+    "callees",
+    "danceability",
+    "innertube",
+    "isrc",
+    "instrumentalness",
+    "nodir",
+    "speechiness",
+    "spoti",
+    "trivago",
+    "youtubei"
+  ]
 }

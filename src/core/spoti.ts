@@ -1,16 +1,17 @@
 import { Spotify } from "../models";
+import { type SpotiOptions } from "../types/config";
+import { type SpotifySearchResult } from "../types/spotify";
 import { downloadSpotifyTracks } from "./downloads";
 import { getSpotifyPlaylist } from "./playlists";
 import { getSpotifyType } from "./spotify";
-import { SpotifySearchResult, type SpotiOptions } from "../types";
-import chalk from "chalk";
 import { getSpotifyTrack } from "./tracks";
+import chalk from "chalk";
 import { get, castArray, padStart } from "lodash-es";
 
 export class Spoti {
   static async metadata<
     TType extends Spotify.Type,
-    TOptions extends SpotiOptions
+    TOptions extends SpotiOptions,
   >(
     id: string,
     type: TType,
@@ -21,7 +22,7 @@ export class Spoti {
 
   static async search<
     TType extends Spotify.Type,
-    TOptions extends SpotiOptions
+    TOptions extends SpotiOptions,
   >(
     id: string,
     type: TType,
@@ -36,7 +37,8 @@ export class Spoti {
       }
       case Spotify.Type.TRACK: {
         const model = metadata as Spotify.Track;
-        return castArray(await getSpotifyTrack(model, options));
+        const result = await getSpotifyTrack(model, options);
+        return castArray(result);
       }
       default: {
         throw new Error(`Sorry, ${type}s not yet supported.`);
@@ -46,7 +48,7 @@ export class Spoti {
 
   static async download<
     TType extends Spotify.Type,
-    TOptions extends SpotiOptions
+    TOptions extends SpotiOptions,
   >(
     id: string,
     type: TType,

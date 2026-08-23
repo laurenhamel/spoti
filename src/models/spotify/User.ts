@@ -1,4 +1,4 @@
-import { type ExternalUrls, type Followers, Type } from "./shared";
+import { type ExternalUrls, type Followers, type Type } from "./shared";
 
 export type User = {
   [key: string]: unknown;

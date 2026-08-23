@@ -1,4 +1,5 @@
-import { type AudioFormat, type VideoFormat } from "../../types";
+import { type AudioFormat } from "../../types/audio";
+import { type VideoFormat } from "../../types/video";
 
 export type Download = {
   file: string;
