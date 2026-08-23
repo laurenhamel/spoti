@@ -1,4 +1,5 @@
 import { sleep } from "./timing";
+import { isFunction } from "lodash-es";
 import limit from "p-limit";
 
 export class Deferred<TResponse = void> {
@@ -59,7 +60,7 @@ export interface RetryHandlers {
 export async function retry<TResult>(
   async: () => Promise<TResult>,
   retries: number,
-  wait: number,
+  wait: number | ((attempt: number) => number),
   { before, after }: RetryHandlers | undefined = {},
   attempt = 1
 ): Promise<TResult> {
@@ -75,7 +76,8 @@ export async function retry<TResult>(
     const proceed = after?.({ attempt, error, retrying }) ?? true;
 
     if (retrying && proceed) {
-      await sleep(wait);
+      const delay = isFunction(wait) ? wait(attempt) : wait;
+      await sleep(delay);
       return retry<TResult>(
         async,
         retries,

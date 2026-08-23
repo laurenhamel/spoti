@@ -8,6 +8,7 @@ import { Library } from "../../utils/library";
 import { Progress } from "../../utils/progress";
 import { retry } from "../../utils/promise";
 import { type RetryHandlers } from "../../utils/promise";
+import { PolicyAdapter } from "../adapters";
 import chalk from "chalk";
 import { sync as glob } from "glob";
 import { get, isNaN } from "lodash-es";
@@ -31,6 +32,28 @@ const CACHE_ROOT = resolve(__dirname, "../../../.youtube/cache");
 const CACHE_API = join(CACHE_ROOT, "api");
 const CACHE_BACKUP = join(CACHE_ROOT, "backup");
 
+const YOUTUBE_RATE_LIMIT = {
+  limit: 5,
+  interval: 1000,
+  strict: true,
+};
+
+const YOUTUBE_RETRIES = 5;
+
+const youtubeRetryDelay = (attempt: number): number =>
+  Math.min(1000 * 2 ** (attempt - 1), 30000);
+
+const RETRYABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504];
+
+const RETRYABLE_NETWORK_CODES = [
+  "EAI_AGAIN",
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "ENOTFOUND",
+  "ETIMEDOUT",
+  "UND_ERR_CONNECT_TIMEOUT",
+];
+
 export type YoutubeApiRequestMethod = <
   TResponse extends Record<string, unknown> | unknown[] = Record<
     string,
@@ -47,6 +70,13 @@ class YoutubeApi {
   constructor() {
     this.construct();
   }
+
+  private readonly policy = new PolicyAdapter({
+    rateLimit: YOUTUBE_RATE_LIMIT,
+  });
+
+  private readonly fetch: typeof fetch = (input, init) =>
+    this.policy.police(() => fetch(input, init));
 
   private constructed: boolean = false;
 
@@ -80,6 +110,7 @@ class YoutubeApi {
         cache: new UniversalCache(true, CACHE_API),
         generate_session_locally: true,
         ...options,
+        fetch: this.fetch,
       });
     }
 
@@ -97,6 +128,7 @@ class YoutubeApi {
         cache: new UniversalCache(true, CACHE_BACKUP),
         generate_session_locally: true,
         ...options,
+        fetch: this.fetch,
       });
     }
 
@@ -142,8 +174,9 @@ class YoutubeApi {
 
     const response = await retry(
       () => api.music.search(query, { type: "song" }),
-      5,
-      5000 // 5s
+      YOUTUBE_RETRIES,
+      youtubeRetryDelay,
+      this.handleRetry("<youtube>/music/search", { parameters: { query } }, _options)
     );
 
     return (response.songs?.contents ?? []) as unknown[] as TResponse;
@@ -260,16 +293,7 @@ class YoutubeApi {
         return output as unknown as TResponse;
       }
 
-      const stream = await retry(
-        () => api.download(id, config),
-        10,
-        10000, // 10s
-        this.handleRetry(
-          "<youtube>/download",
-          { parameters: { id, ...config } },
-          options
-        )
-      );
+      const stream = await api.download(id, config);
 
       const file = Library.new(input.path);
 
@@ -291,8 +315,8 @@ class YoutubeApi {
     try {
       result = await retry(
         () => download(song.id as string),
-        5,
-        5000, // 5s
+        YOUTUBE_RETRIES,
+        youtubeRetryDelay,
         this.handleRetry("download", { title, song }, options)
       );
     } catch (e) {
@@ -312,11 +336,19 @@ class YoutubeApi {
     data?: unknown,
     options?: TOptions
   ): RetryHandlers {
-    const status = (error?: Error): { code: number; message: string } => {
+    const status = (
+      error?: Error
+    ): { code: number; message: string; retryable: boolean } => {
       if (error) {
         const { stack } = error;
         const info = get(error, "info");
         const code = get(info, "response.status", -1);
+        const networkCode = get(
+          error,
+          "cause.code",
+          get(error, "code")
+        ) as string | undefined;
+        const errorType = get(info, "error_type");
         const message = chalk.dim(
           info ? `${stack}\n${JSON.stringify(info)}` : stack
         );
@@ -326,14 +358,22 @@ class YoutubeApi {
             return {
               code: 400,
               message: chalk.red(`400 Bad Request\n${message}`),
+              retryable: false,
             };
           }
           default:
-            return { code, message: chalk.red(`${code} Error\n${message}`) };
+            return {
+              code,
+              message: chalk.red(`${code} Error\n${message}`),
+              retryable:
+                RETRYABLE_STATUS_CODES.includes(code) ||
+                RETRYABLE_NETWORK_CODES.includes(networkCode ?? "") ||
+                errorType === "FETCH_FAILED",
+            };
         }
       }
 
-      return { code: 200, message: chalk.green("200 OK") };
+      return { code: 200, message: chalk.green("200 OK"), retryable: false };
     };
 
     return {
@@ -346,7 +386,7 @@ class YoutubeApi {
         }
       },
       after: ({ error }) => {
-        const { code, message } = status(error);
+        const { message, retryable } = status(error);
 
         if (options?.verbose) {
           console.log("");
@@ -356,8 +396,7 @@ class YoutubeApi {
           console.log(message);
         }
 
-        // Only continue if we haven't received a rejection code.
-        return ![403].includes(code);
+        return retryable;
       },
     };
   }
