@@ -1,4 +1,18 @@
 {
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "eslint.enable": true,
+  "eslint.format.enable": true,
+  "eslint.validate": [
+    "javascript",
+    "typescript",
+    "json",
+    "jsonc",
+    "markdown",
+    "mdx",
+    "yaml"
+  ],
   "search.exclude": {
     "**/.yarn": true,
     "**/.pnp.*": true
