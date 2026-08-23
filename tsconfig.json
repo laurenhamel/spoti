@@ -3,12 +3,22 @@
     "allowJs": true,
     "esModuleInterop": true,
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "noEmit": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
     "target": "ESNext"
   },
-  "include": ["./src/**/*.ts", "./bin/**/*.ts"]
+  "include": ["**/*.ts", "**/*.js", "**/*.json"],
+  "exclude": [
+    ".git",
+    ".spoti",
+    ".youtube",
+    "dist",
+    "docs",
+    "node_modules",
+    "temp",
+    "tmp"
+  ]
 }
