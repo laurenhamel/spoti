@@ -10,7 +10,12 @@
     "bin"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "format": "yarn format:check --write; yarn lint:fix --quiet",
+    "format:check": "prettier . \"$@\"",
+    "lint": "eslint . \"$@\"",
+    "lint:fix": "yarn lint --fix \"$@\"",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "typecheck": "tsc \"$@\""
   },
   "keywords": [
     "spotify",
@@ -22,12 +27,25 @@
   "license": "ISC",
   "packageManager": "yarn@4.18.0",
   "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@eslint/json": "2.0.1",
+    "@eslint/markdown": "8.0.3",
+    "@trivago/prettier-plugin-sort-imports": "6.0.2",
     "@types/lodash-es": "4.17.12",
     "@types/node": "26.2.0",
     "@types/qs": "6.15.1",
     "@types/window-size": "1.1.4",
     "@types/yargs": "17.0.35",
-    "typescript": "7.0.2"
+    "@typescript-eslint/parser": "8.67.0",
+    "eslint": "10.9.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-lodash-es": "1.2.1",
+    "globals": "17.11.0",
+    "jiti": "2.7.0",
+    "prettier": "3.9.6",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
+    "typescript-7": "npm:typescript@7.0.2",
+    "typescript-eslint": "8.67.0"
   },
   "dependencies": {
     "chalk": "6.0.0",
