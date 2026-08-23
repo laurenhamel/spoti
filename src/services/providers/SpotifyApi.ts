@@ -56,7 +56,7 @@ const SpotifyApi = new RestApi({
         return {
           token: response.access_token,
           type: response.token_type,
-          expires: new Date(Date.now() + response.expires_in),
+          expires: new Date(Date.now() + response.expires_in * 1000),
         };
       },
     }),

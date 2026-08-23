@@ -80,7 +80,7 @@ export default class AccessTokenAdapter<
   }
 
   private get valid(): boolean {
-    return !!this.token && this.token.expires.getTime() < Date.now();
+    return !!this.token && this.token.expires.getTime() > Date.now();
   }
 
   private token: AccessTokenAdapterData | undefined;
