@@ -1,4 +1,4 @@
-import { sleep } from "./timing";
+import { type RetryHandlers } from "../types/promise";
 import { isFunction } from "lodash-es";
 import limit from "p-limit";
 
@@ -48,15 +48,6 @@ export function pool(
   };
 }
 
-export interface RetryHandlers {
-  before?: (payload: { attempt: number; retried: boolean }) => void;
-  after?: (payload: {
-    error?: Error;
-    attempt: number;
-    retrying: boolean;
-  }) => boolean | void;
-}
-
 export async function retry<TResult>(
   async: () => Promise<TResult>,
   retries: number,
@@ -89,4 +80,26 @@ export async function retry<TResult>(
       throw error;
     }
   }
+}
+
+export async function sleep(
+  wait: number,
+  meanwhile?: { callback: () => void; done?: () => void; interval: number }
+): Promise<void> {
+  return new Promise((resolve) => {
+    let interval: NodeJS.Timeout;
+
+    if (meanwhile) {
+      interval = setInterval(meanwhile.callback, meanwhile.interval);
+    }
+
+    setTimeout(() => {
+      if (interval) {
+        clearInterval(interval);
+        meanwhile?.done?.();
+      }
+
+      resolve();
+    }, wait);
+  });
 }
