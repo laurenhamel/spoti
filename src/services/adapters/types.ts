@@ -4,6 +4,10 @@ export interface AuthorizationAdapterInstance {
   authorize: () => Promise<Record<"Authorization", string>>;
 }
 
+export interface PolicyAdapterInstance {
+  police: <TResponse>(request: () => Promise<TResponse>) => Promise<TResponse>;
+}
+
 export interface RetryAdapterInstance {
   retry: <
     TResponse extends Record<string, unknown>,

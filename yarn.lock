@@ -3054,6 +3054,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"p-throttle@npm:8.1.0":
+  version: 8.1.0
+  resolution: "p-throttle@npm:8.1.0"
+  checksum: 10c0/884e0424ee64eae1456840fdfc5eac09368ede4d725734c51b0a3ddb12419b78c7bdbf9c6741410563b9bafa9cedb239da540c0e9c58981c590b15d59c18f0ee
+  languageName: node
+  linkType: hard
+
 "parse-imports-exports@npm:^0.2.4":
   version: 0.2.4
   resolution: "parse-imports-exports@npm:0.2.4"
@@ -3291,6 +3298,7 @@ __metadata:
     node-fetch: "npm:3.3.2"
     node-id3: "npm:0.2.9"
     p-limit: "npm:7.3.1"
+    p-throttle: "npm:8.1.0"
     prettier: "npm:3.9.6"
     pretty-bytes: "npm:7.1.1"
     pretty-ms: "npm:9.3.0"
