@@ -16,20 +16,16 @@ const pwd = '"' + PWD.replace(/"/g, '\\"') + '"';
 spawnSync(
   "yarn",
   [
-    "--cwd",
-    CWD,
     "tsx",
     resolve(__dirname, "../src/index.ts"),
     ...argv,
+    "--cwd",
+    CWD,
     "--pwd",
     pwd,
   ],
   {
-    shell: true,
     stdio: "inherit",
-    env: {
-      ...process.env,
-      NODE_NO_WARNINGS: 1,
-    },
+    env: process.env,
   }
 );
