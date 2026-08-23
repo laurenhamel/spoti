@@ -4,7 +4,14 @@
 
 ## Usage
 
-`// TODO`
+1. Install the `npm` package globally:
+   ```sh
+   npm i -g spoti
+   ```
+2. Run the `spoti` CLI from anywhere:
+   ```sh
+   spoti --help
+   ```
 
 ## Contributing
 

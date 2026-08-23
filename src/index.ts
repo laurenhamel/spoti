@@ -10,8 +10,6 @@ import chalk from "chalk";
 import { Command } from "commander";
 import "dotenv/config";
 
-console.log("Hello from Spoti!");
-
 const program = new Command()
   .name(pkg.name)
   .description(pkg.description)
