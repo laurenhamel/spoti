@@ -8,8 +8,8 @@
     "spoti": "bin/cli.js"
   },
   "files": [
-    "src",
-    "bin"
+    "*",
+    "!node_modules"
   ],
   "scripts": {
     "format": "yarn format:check --write; yarn lint:fix --quiet",
