@@ -4,7 +4,9 @@
   "description": "Yet another Spotify music downloader",
   "type": "module",
   "main": "./bin/cli.js",
-  "bin": "./bin/cli.js",
+  "bin": {
+    "spoti": "bin/cli.js"
+  },
   "files": [
     "src",
     "bin"
