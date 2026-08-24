@@ -27,7 +27,7 @@ export default new Command()
   .option("-i, --init", "Initialize metadata file only", false)
   .option("--no-cache", "Disables using cached search results")
   .option("--no-prefixes", "Disallow prefixes in file names")
-  .option("--no-suffixes", "Disallolw suffixes in file names")
+  .option("--no-suffixes", "Disallow suffixes in file names")
   .allowUnknownOption(true)
   .action(
     createActionHandler<SyncCliArgs, SyncCliOptions>(
