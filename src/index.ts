@@ -1,6 +1,7 @@
 import pkg from "../package.json";
 import { gracefullyCleanupDownloads } from "./core/downloads";
 import { registerCommands } from "./utils/commands";
+import { loadEnv } from "./utils/environment";
 import {
   registerProcessExitHandlers,
   gracefullyStopProcess,
@@ -8,7 +9,8 @@ import {
 import { Progress } from "./utils/progress";
 import chalk from "chalk";
 import { Command } from "commander";
-import "dotenv/config";
+
+loadEnv();
 
 const program = new Command()
   .name(pkg.name)

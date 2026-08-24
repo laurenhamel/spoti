@@ -1,31 +1,9 @@
 #!/usr/bin/env node --no-warnings
-import { spawnSync } from "node:child_process";
-import { resolve, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import "tsx/esm";
+import { tsImport } from "tsx/esm/api";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const { loadEnv } = await tsImport("../src/utils/environment", import.meta.url);
 
-const argv = process.argv.slice(2);
+loadEnv();
 
-const CWD = resolve(__dirname, "../");
-const PWD = process.env.PWD;
-
-const pwd = '"' + PWD.replace(/"/g, '\\"') + '"';
-
-spawnSync(
-  "yarn",
-  [
-    "tsx",
-    resolve(__dirname, "../src/index.ts"),
-    ...argv,
-    "--cwd",
-    CWD,
-    "--pwd",
-    pwd,
-  ],
-  {
-    stdio: "inherit",
-    env: process.env,
-  }
-);
+await import("../src/index");

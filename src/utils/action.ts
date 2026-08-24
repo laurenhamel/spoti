@@ -37,8 +37,7 @@ export function createActionHandler<
     const args = cleanGlobals(params.slice(0, -2), argv) as TArgs;
     const options = { ...argv, ...command.optsWithGlobals() } as TOptions;
     const next: ActionParameters<TArgs, TOptions> = [...args, options, command];
-    process.env.PWD = options.pwd ?? process.env.PWD ?? process.cwd();
-    await Library.mount(process.env.PWD, options);
+    await Library.mount(process.env.PWD!, options);
     return callback(...next);
   };
 }
