@@ -13,7 +13,6 @@ export default new Command()
   .name("meta")
   .description("Retrieve metadata for a Spotify URL")
   .argument("<url>", "A Spotify URL to retrieve metadata for")
-  .allowUnknownOption(true)
   .action(
     createActionHandler<MetaCliArgs, MetaCliOptions>(async (url, options) => {
       validateSpotifyURL(url);

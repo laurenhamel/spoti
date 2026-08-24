@@ -25,7 +25,6 @@ export default new Command()
   .option("--no-cache", "Disables using cached search results")
   .option("--no-prefixes", "Disallow prefixes in file names")
   .option("--no-suffixes", "Disallow suffixes in file names")
-  .allowUnknownOption(true)
   .action(
     createActionHandler<DownloadCliArgs, DownloadCliOptions>(
       async (url, options) => {

@@ -16,8 +16,7 @@ const program = new Command()
   .name(pkg.name)
   .description(pkg.description)
   .version(pkg.version)
-  .option("--verbose", "Output more information", false)
-  .allowUnknownOption(true);
+  .option("--verbose", "Output more information", false);
 
 await registerCommands(program);
 
@@ -30,9 +29,6 @@ registerProcessExitHandlers(
 
 try {
   await program.parseAsync(process.argv);
-  console.log("");
-  console.log("Done!", "Thanks for using Spoti!");
-  console.log("");
   process.exit(0);
 } catch (e) {
   const error = e as Error;

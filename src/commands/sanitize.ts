@@ -21,7 +21,6 @@ export default new Command()
   .name("sanitize")
   .description("Sanitize file name(s)")
   .argument("[file]", "An MP3 file or Spoti metadata file")
-  .allowUnknownOption(true)
   .action(
     createActionHandler<SanitizeCliArgs, SanitizeCliOptions>(
       async (file, options) => {

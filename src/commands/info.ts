@@ -25,7 +25,6 @@ export default new Command()
   .description("Read ID3 tag information from MP3 file(s)")
   .argument("[file]", "An MP3 file or Spoti metadata file")
   .option("-u, --update", "Update the ID3 tags of the MP3 file(s)", false)
-  .allowUnknownOption(true)
   .action(
     createActionHandler<InfoCliArgs, InfoCliOptions>(async (file, options) => {
       const files: { title: string; file: string; id?: string; tags?: Tags }[] =

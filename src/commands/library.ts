@@ -32,7 +32,6 @@ export default new Command()
   .description("Retrieve information about your music library")
   .argument("[file]", "An MP3 file or Spoti metadata file")
   .option("-m, --more", "Output more data (ID3 tags and duration)", false)
-  .allowUnknownOption(true)
   .action(
     createActionHandler<LibraryCliArgs, LibraryCliOptions>(
       async (file, options) => {
