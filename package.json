@@ -4,9 +4,7 @@
   "description": "Yet another Spotify music downloader",
   "type": "module",
   "main": "./bin/cli.js",
-  "bin": {
-    "spoti": "bin/cli.js"
-  },
+  "bin": "bin/cli.js",
   "files": [
     "*",
     "!node_modules"
@@ -46,7 +44,9 @@
     "eslint-plugin-lodash-es": "1.2.1",
     "globals": "17.11.0",
     "jiti": "2.7.0",
+    "playwright": "1.47.0",
     "prettier": "3.9.6",
+    "type-fest": "5.8.0",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "typescript-7": "npm:typescript@7.0.2",
     "typescript-eslint": "8.67.0"
@@ -69,6 +69,7 @@
     "pretty-ms": "9.3.0",
     "qs": "6.15.3",
     "tsx": "4.23.12",
+    "uri-template-matcher": "1.1.2",
     "window-size": "1.1.1",
     "yargs": "18.1.0",
     "youtubei.js": "18.0.0"

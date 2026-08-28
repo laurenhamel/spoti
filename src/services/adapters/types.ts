@@ -20,3 +20,23 @@ export interface RetryAdapterInstance {
     request: TRequest
   ) => Promise<TResponse>;
 }
+
+export interface PaginationAdapterInstance {
+  paginate: <TResponse>(
+    response: TResponse,
+    target: string | PaginationOptions,
+    page: (url: string) => Promise<{
+      response: TResponse;
+      pagination?: string | PaginationOptions;
+    }>
+  ) => Promise<TResponse>;
+}
+
+export interface PaginationOptions {
+  target: string;
+  offset?: string;
+  total?: string;
+  limit?: string;
+  previous?: string;
+  next?: string;
+}

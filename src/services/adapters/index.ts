@@ -7,6 +7,9 @@ export * from "./AccessTokenAdapter";
 export { default as RetryAdapter } from "./RetryAdapter";
 export * from "./RetryAdapter";
 
+export { default as PaginationAdapter } from "./PaginationAdapter";
+export * from "./PaginationAdapter";
+
 export { default as PolicyAdapter } from "./PolicyAdapter";
 export * from "./PolicyAdapter";
 

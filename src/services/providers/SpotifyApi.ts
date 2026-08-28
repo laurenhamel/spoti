@@ -1,6 +1,7 @@
 import {
   AccessTokenAdapter,
   AccessTokenAdapterType,
+  PaginationAdapter,
   PolicyAdapter,
   RetryAdapter,
 } from "../adapters";
@@ -18,20 +19,50 @@ const SpotifyApi = new RestApi({
   endpoints: {
     getPlaylist: {
       method: RestApiMethod.GET,
-      path: "/playlists/<%= id %>",
+      path: "/playlists/{id}",
+      pagination: {
+        target: "items.items",
+        offset: "items.offset",
+        total: "items.total",
+        limit: "items.limit",
+        previous: "items.previous",
+        next: "items.next",
+      },
     },
+    /** @deprecated */
     getPlaylistTracks: {
       method: RestApiMethod.GET,
-      path: "/playlists/<%= id %>/tracks",
-      data: { limit: 50 },
+      path: "/playlists/{id}/tracks",
+      data: { limit: null },
+      pagination: {
+        target: "items",
+        offset: "offset",
+        total: "total",
+        limit: "limit",
+        previous: "previous",
+        next: "next",
+      },
+    },
+    getPlaylistItems: {
+      method: RestApiMethod.GET,
+      path: "/playlists/{id}/items",
+      data: { limit: null },
+      pagination: {
+        target: "items",
+        offset: "offset",
+        total: "total",
+        limit: "limit",
+        previous: "previous",
+        next: "next",
+      },
     },
     getTrack: {
       method: RestApiMethod.GET,
-      path: "/tracks/<%= id %>",
+      path: "/tracks/{id}",
     },
     getTrackAudioFeatures: {
       method: RestApiMethod.GET,
-      path: "/audio-features/<%= id %>",
+      path: "/audio-features/{id}",
       retry: false,
     },
     getTracksAudioFeatures: {
@@ -63,6 +94,7 @@ const SpotifyApi = new RestApi({
     }),
     policy: new PolicyAdapter(),
     retry: new RetryAdapter(),
+    pagination: new PaginationAdapter(),
   },
 });
 

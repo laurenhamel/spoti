@@ -3,24 +3,45 @@ import {
   type RetryAdapterInstance,
   type AuthorizationAdapterInstance,
   type PolicyAdapterInstance,
+  type PaginationAdapterInstance,
+  type PaginationOptions,
 } from "../adapters";
 import chalk from "chalk";
-import { merge, template, snakeCase, trimEnd, trimStart } from "lodash-es";
+import {
+  find,
+  merge,
+  snakeCase,
+  trimEnd,
+  trimStart,
+  isNil,
+  escapeRegExp,
+} from "lodash-es";
 import fetch, { type Headers, type Response } from "node-fetch";
 import qs from "qs";
+import {
+  UriTemplateExpander,
+  UriTemplateMatcher,
+  type MatchResult,
+} from "uri-template-matcher";
 
 export type RestApiInstance<
-  TInstance extends InstanceType<typeof RestApi<RestApiEndpoints>>,
+  TInstance extends InstanceType<
+    typeof RestApi<Record<string, RestApiEndpointOptions>>
+  >,
 > =
   TInstance extends InstanceType<
-    typeof RestApi<infer TEndpoints extends RestApiEndpoints>
+    typeof RestApi<
+      infer TEndpoints extends Record<string, RestApiEndpointOptions>
+    >
   >
     ? InstanceType<typeof RestApi<TEndpoints>> & {
         [method in keyof TEndpoints]: RestApiRequestMethod;
       }
     : unknown;
 
-export interface RestApiConfig<TEndpoints extends RestApiEndpoints> {
+export interface RestApiOptions<
+  TEndpoints extends Record<string, RestApiEndpointOptions>,
+> {
   api: string;
   endpoints: TEndpoints;
   adapters?: RestApiAdapters;
@@ -30,6 +51,7 @@ export interface RestApiAdapters {
   authorization?: AuthorizationAdapterInstance;
   policy?: PolicyAdapterInstance;
   retry?: RetryAdapterInstance;
+  pagination?: PaginationAdapterInstance;
 }
 
 export enum RestApiMethod {
@@ -40,11 +62,12 @@ export enum RestApiMethod {
   PUT = "PUT",
 }
 
-export interface RestApiEndpointConfig {
+export interface RestApiEndpointOptions {
   method: RestApiMethod;
   path: string;
   data?: Record<string, unknown>;
   retry?: boolean;
+  pagination?: string | PaginationOptions;
 }
 
 export type RestApiRequestMethod = <
@@ -56,20 +79,63 @@ export type RestApiRequestMethod = <
   options?: TOptions
 ) => Promise<TResponse>;
 
-export type RestApiEndpoints = Record<string, RestApiEndpointConfig>;
+type RestApiEndpointConfig<TEndpoint extends RestApiEndpointOptions> =
+  TEndpoint & {
+    matches: (endpoint: string) => boolean;
+    parse: (endpoint: string) => MatchResult | null;
+    expand: (data?: Record<string, unknown>) => string;
+  };
 
-export default class RestApi<TEndpoints extends RestApiEndpoints> {
+interface RestApiConfig<
+  TEndpoints extends Record<string, RestApiEndpointOptions>,
+> {
+  api: string;
+  endpoints: {
+    [TEndpoint in keyof TEndpoints]: RestApiEndpointConfig<
+      TEndpoints[TEndpoint]
+    >;
+  };
+  adapters?: RestApiAdapters;
+}
+
+export default class RestApi<
+  TEndpoints extends Record<string, RestApiEndpointOptions>,
+> {
   readonly config: RestApiConfig<TEndpoints>;
 
-  constructor(config: RestApiConfig<TEndpoints>) {
-    this.config = config;
+  matcher: InstanceType<typeof UriTemplateMatcher>;
+
+  constructor(options: RestApiOptions<TEndpoints>) {
+    this.config = options as RestApiConfig<TEndpoints>;
+    this.matcher = new UriTemplateMatcher();
 
     for (const name in this.config.endpoints) {
-      const { method, path, data, retry } = this.config.endpoints[name];
-      const fn =
-        this[snakeCase(method) as "get" | "post" | "put" | "delete" | "patch"];
-      Object.assign(this, { [name]: fn.call(this, path, data, retry) });
+      const endpoint = this.config.endpoints[name];
+      const { method, path, data, retry, pagination } = endpoint;
+      const matcher = new UriTemplateMatcher();
+      const expander = new UriTemplateExpander(path);
+
+      this.matcher.add(path);
+      matcher.add(path);
+
+      this.config.endpoints[name] = merge({}, endpoint, {
+        matches: (endpoint: string) => !isNil(matcher.match(endpoint)),
+        parse: (endpoint: string) => this.matcher.match(endpoint),
+        expand: (data: Record<string, unknown>) => expander.expand(data),
+      });
+
+      type MethodName = "get" | "post" | "put" | "delete" | "patch";
+
+      const fn = this[snakeCase(method) as MethodName];
+
+      Object.assign(this, {
+        [name]: fn.call(this, path, data, retry, pagination),
+      });
     }
+  }
+
+  private find(path: string): RestApiEndpointConfig<RestApiEndpointOptions> {
+    return find(Object.values(this.config.endpoints), { path })!;
   }
 
   private async request<
@@ -82,9 +148,11 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
     data?: TData,
     options?: TOptions,
     retries = true,
+    pagination?: string | PaginationOptions,
     attempt = 1
   ): Promise<TResponse> {
-    const path = template(endpoint)(data);
+    const config = this.find(endpoint);
+    const path = config.expand(data);
     const params = this.params<TData>(method, data);
     const body = this.body<TData>(method, data);
     const base = trimEnd(this.config.api, "/") + "/" + trimStart(path, "/");
@@ -121,19 +189,48 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
 
     const response = await this.police(() => fetch(url, request));
 
+    const signature = (attempt: number) => () => {
+      return this.request<TData, TResponse, TOptions>(
+        method,
+        endpoint,
+        data,
+        options,
+        retries,
+        pagination,
+        attempt
+      );
+    };
+
+    const page = async (url: string) => {
+      const regex = new RegExp("^" + escapeRegExp(this.config.api));
+      const uri = url.replace(regex, "");
+      const { pathname, search } = new URL(uri, this.config.api);
+      const query = trimStart(search, "?");
+      const params = qs.parse(query);
+      const match = this.matcher.match(pathname);
+      const endpoint = match?.template ?? pathname;
+      const config = this.find(endpoint);
+      const data = merge({}, params, match?.params, config?.data) as TData;
+      const pagination = config?.pagination ?? undefined;
+
+      const response = await this.request<TData, TResponse, TOptions>(
+        method,
+        endpoint,
+        data,
+        options,
+        retries
+      );
+
+      return { response, pagination };
+    };
+
     return this.response<TResponse, TOptions>(
       response,
-      (attempt) => () =>
-        this.request<TData, TResponse, TOptions>(
-          method,
-          endpoint,
-          data,
-          options,
-          retries,
-          attempt
-        ),
+      signature,
+      page,
       options,
       retries,
+      pagination,
       attempt
     );
   }
@@ -144,8 +241,13 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
   >(
     response: Response,
     signature: (attempt: number) => () => Promise<TResponse>,
+    page: (url: string) => Promise<{
+      response: TResponse;
+      pagination?: string | PaginationOptions;
+    }>,
     options?: TOptions,
     retries = true,
+    pagination?: string | PaginationOptions,
     attempt = 1
   ): Promise<TResponse> {
     const { ok, status, statusText: message, headers } = response;
@@ -160,8 +262,9 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
     if (status === 429) this.pause(this.sleep(status, headers));
 
     if (ok) {
-      const body = await response.json();
-      return body as TResponse;
+      const body = (await response.json()) as TResponse;
+      const paginated = await this.paginate<TResponse>(body, pagination, page);
+      return paginated;
     } else if (retries) {
       try {
         const result = await this.retry<TResponse>(
@@ -222,6 +325,22 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
     );
   }
 
+  private async paginate<TResponse extends Record<string, unknown>>(
+    response: TResponse,
+    pagination: string | PaginationOptions | undefined,
+    page: (url: string) => Promise<{
+      response: TResponse;
+      pagination?: string | PaginationOptions;
+    }>
+  ): Promise<TResponse> {
+    if (!pagination) return response;
+
+    return (
+      this.config.adapters?.pagination?.paginate(response, pagination, page) ??
+      response
+    );
+  }
+
   private body<TData extends Record<string, unknown>>(
     method: RestApiMethod,
     data: TData = {} as TData
@@ -243,7 +362,8 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
   private get<TData extends Record<string, unknown>>(
     endpoint: string,
     initial: TData = {} as TData,
-    retry = true
+    retry = true,
+    pagination: string | PaginationOptions | undefined
   ): RestApiRequestMethod {
     return async <
       TResponse extends Record<string, unknown> = Record<string, unknown>,
@@ -258,14 +378,16 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
         endpoint,
         merge(initial, data),
         options,
-        retry
+        retry,
+        pagination
       );
   }
 
   private post<TData extends Record<string, unknown>>(
     endpoint: string,
     initial: TData = {} as TData,
-    retry = true
+    retry = true,
+    pagination: string | PaginationOptions | undefined
   ): RestApiRequestMethod {
     return async <
       TResponse extends Record<string, unknown> = Record<string, unknown>,
@@ -280,14 +402,16 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
         endpoint,
         merge(initial, data),
         options,
-        retry
+        retry,
+        pagination
       );
   }
 
   private put<TData extends Record<string, unknown>>(
     endpoint: string,
     initial: TData = {} as TData,
-    retry = true
+    retry = true,
+    pagination: string | PaginationOptions | undefined
   ): RestApiRequestMethod {
     return async <
       TResponse extends Record<string, unknown> = Record<string, unknown>,
@@ -302,14 +426,16 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
         endpoint,
         merge(initial, data),
         options,
-        retry
+        retry,
+        pagination
       );
   }
 
   private patch<TData extends Record<string, unknown>>(
     endpoint: string,
     initial: TData = {} as TData,
-    retry = true
+    retry = true,
+    pagination: string | PaginationOptions | undefined
   ): RestApiRequestMethod {
     return async <
       TResponse extends Record<string, unknown> = Record<string, unknown>,
@@ -324,14 +450,16 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
         endpoint,
         merge(initial, data),
         options,
-        retry
+        retry,
+        pagination
       );
   }
 
   private delete<TData extends Record<string, unknown>>(
     endpoint: string,
     initial: TData = {} as TData,
-    retry = true
+    retry = true,
+    pagination: string | PaginationOptions | undefined
   ): RestApiRequestMethod {
     return async <
       TResponse extends Record<string, unknown> = Record<string, unknown>,
@@ -346,7 +474,8 @@ export default class RestApi<TEndpoints extends RestApiEndpoints> {
         endpoint,
         merge(initial, data),
         options,
-        retry
+        retry,
+        pagination
       );
   }
 }

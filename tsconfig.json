@@ -11,14 +11,5 @@
     "target": "ESNext"
   },
   "include": ["**/*.ts", "**/*.js", "**/*.json"],
-  "exclude": [
-    ".git",
-    ".spoti",
-    ".youtube",
-    "dist",
-    "docs",
-    "node_modules",
-    "temp",
-    "tmp"
-  ]
+  "exclude": [".git", ".spoti", ".youtube", "dist", "docs", "node_modules"]
 }

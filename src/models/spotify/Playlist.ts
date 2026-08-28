@@ -17,7 +17,7 @@ export type Playlist = {
   primary_color: string | null;
   public: boolean;
   snapshot_id: string;
-  tracks: Tracks;
+  items: Tracks;
   type: Type.PLAYLIST;
   uri: string;
 };

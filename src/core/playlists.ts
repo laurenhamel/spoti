@@ -11,7 +11,7 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   model: Spotify.Playlist,
   options?: TOptions
 ): Promise<SpotifySearchResult[]> {
-  const { id, tracks } = model;
+  const { id, items: tracks } = model;
   const { total, items, limit } = tracks;
   const iterations = Math.ceil(total / limit) - 1;
   const results: SpotifySearchResult[][] = [items as SpotifySearchResult[]];
@@ -70,7 +70,7 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
     fetches.push(
       (async () => {
         const payload = { id, offset, limit };
-        const tracks = await SpotifyApi.getPlaylistTracks<Spotify.Tracks>(
+        const tracks = await SpotifyApi.getPlaylistItems<Spotify.Tracks>(
           payload,
           options
         );
