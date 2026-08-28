@@ -84,7 +84,6 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   await Promise.all(fetches);
 
   fetches$.done();
-  fetches$.remove();
   /* #endregion */
 
   // @TODO Look for existing metadata file for playlist ID
@@ -128,7 +127,6 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   await Promise.all(searches);
 
   searches$.done();
-  searches$.remove();
   /* #endregion */
 
   // @TODO Try to use existing audio features from metadata file here
@@ -169,13 +167,11 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   await Promise.all(features);
 
   features$.done();
-  features$.remove();
   /* #endregion */
 
   // @TODO Save new metadata file for the playlist ID
 
   progress$.done();
-  progress$.remove();
 
   console.log();
 

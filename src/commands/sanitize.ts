@@ -106,7 +106,6 @@ export default new Command()
         }
 
         progress$.done();
-        progress$.remove();
 
         console.log("");
         console.log(chalk.bold("Results:"));

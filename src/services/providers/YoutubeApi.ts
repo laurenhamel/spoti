@@ -324,7 +324,6 @@ class YoutubeApi {
     }
 
     progress$.done();
-    progress$.remove();
 
     if (error) throw error;
 

@@ -40,6 +40,7 @@ export class Progress {
 
   done(message: string = "") {
     Progress.progress?.done(this.label, { message });
+    Progress.progress?.close();
   }
 
   remove() {

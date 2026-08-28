@@ -168,7 +168,6 @@ export async function downloadSpotifyTracks<
   await download(downloads);
 
   download$.done();
-  download$.remove();
   /* #endregion */
 
   /* #region Convert */
@@ -195,7 +194,6 @@ export async function downloadSpotifyTracks<
   await transformAudioFiles(passed, options, () => convert$.report());
 
   convert$.done();
-  convert$.remove();
   /* #endregion */
 
   /* #region Tag */
@@ -222,7 +220,6 @@ export async function downloadSpotifyTracks<
   await hydrateTrackTags(passed, options, () => tag$.report());
 
   tag$.done();
-  tag$.remove();
   /* #endregion */
 
   restoreWarnings();

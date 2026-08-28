@@ -176,7 +176,6 @@ export class Library {
     const metadata = await dispatch(tasks);
 
     progress$.done();
-    progress$.remove();
 
     return metadata;
   }
