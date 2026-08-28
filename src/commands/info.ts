@@ -1,4 +1,5 @@
-import { getSpotifyType } from "../core/spotify";
+import { getSpotifyType, stringifyType } from "../core/spotify";
+import { Spotify } from "../models";
 import { type SpotiCliOptions } from "../types/config";
 import { createActionHandler } from "../utils/action";
 import { parseSpotifyURL, validateSpotifyURL } from "../utils/spotify";
@@ -31,10 +32,13 @@ export default new Command()
       }
 
       const data = await getSpotifyType(id, type, options);
-
-      console.log(data);
+      const info = stringifyType(type, data, options);
 
       switch (type) {
+        case Spotify.Type.PLAYLIST: {
+          console.log(info);
+          break;
+        }
         default: {
           throw new Error(
             `Sorry, retrieving information for ${type}s not yet supported.`

@@ -6,5 +6,5 @@ export type Item = {
   added_at: string;
   added_by: User;
   is_local: boolean;
-  track: Track;
+  item: Track;
 };
