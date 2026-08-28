@@ -38,7 +38,7 @@ export function createDownloadResult<
 >(options?: TOptions): (item: SpotifySearchResult) => SpotifyDownloadResult {
   return (item) => {
     const format = options?.format ?? Audio.DEFAULT_FORMAT;
-    const file = Format.file(item.track, format);
+    const file = Format.file(item.item, format);
     const path = Library.path(file);
     const title = Library.title(file);
     const download = { file, path, format, title };

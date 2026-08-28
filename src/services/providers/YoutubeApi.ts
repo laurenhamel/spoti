@@ -2,12 +2,12 @@ import { type Youtube } from "../../models";
 import { type InnertubeApiInstance } from "../../models/youtube";
 import { AudioFormat } from "../../types/audio";
 import { type SpotiOptions } from "../../types/config";
+import { type RetryHandlers } from "../../types/promise";
 import { Audio } from "../../utils/audio";
 import { getDownloadData } from "../../utils/download";
 import { Library } from "../../utils/library";
 import { Progress } from "../../utils/progress";
 import { retry } from "../../utils/promise";
-import { type RetryHandlers } from "../../utils/promise";
 import { PolicyAdapter } from "../adapters";
 import chalk from "chalk";
 import { sync as glob } from "glob";
@@ -176,7 +176,11 @@ class YoutubeApi {
       () => api.music.search(query, { type: "song" }),
       YOUTUBE_RETRIES,
       youtubeRetryDelay,
-      this.handleRetry("<youtube>/music/search", { parameters: { query } }, _options)
+      this.handleRetry(
+        "<youtube>/music/search",
+        { parameters: { query } },
+        _options
+      )
     );
 
     return (response.songs?.contents ?? []) as unknown[] as TResponse;
@@ -342,11 +346,8 @@ class YoutubeApi {
         const { stack } = error;
         const info = get(error, "info");
         const code = get(info, "response.status", -1);
-        const networkCode = get(
-          error,
-          "cause.code",
-          get(error, "code")
-        ) as string | undefined;
+        const networkCode = get(error, "cause.code", get(error, "code")) as
+          string | undefined;
         const errorType = get(info, "error_type");
         const message = chalk.dim(
           info ? `${stack}\n${JSON.stringify(info)}` : stack

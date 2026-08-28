@@ -47,7 +47,7 @@ export default new Command()
 
         for (const item of prepared) {
           const { file, path, title } = item.download;
-          const id = item.track.id;
+          const id = item.item.id;
           const tags = await generateTrackTag(item);
           data.push({ file, path, title, id, tags });
         }
