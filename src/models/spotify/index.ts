@@ -1,6 +1,5 @@
 export type * from "./Album";
 export type * from "./Artist";
-export type * from "./Features";
 export type * from "./Image";
 export type * from "./Item";
 export type * from "./Owner";

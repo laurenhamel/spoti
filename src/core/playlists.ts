@@ -3,7 +3,6 @@ import { SpotifyApi } from "../services";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifySearchResult } from "../types/spotify";
 import { Progress } from "../utils/progress";
-import { hydrateSpotifyFeatures } from "./features";
 import { hydrateYoutubeSearch } from "./search";
 import chalk from "chalk";
 
@@ -129,46 +128,7 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   searches$.done();
   /* #endregion */
 
-  // @TODO Try to use existing audio features from metadata file here
-
-  /* #region Features */
-  const features: Promise<void>[] = [];
-
-  const features$ = new Progress(
-    "Gathering audio features…",
-    {
-      type: "percentage",
-      percentage: 0,
-      message: `0 / ${total}`,
-      nameTransformFn: chalk.yellow,
-    },
-    (() => {
-      let reports = 0;
-
-      return (amount = limit): void => {
-        reports += amount;
-        const percentage = reports / total;
-        const message = `${reports} / ${total}`;
-        features$.update(percentage, message);
-        progress$.report(amount);
-      };
-    })()
-  );
-
-  for (const group of results) {
-    features.push(
-      (async () => {
-        await hydrateSpotifyFeatures(group, options);
-        features$.report();
-      })()
-    );
-  }
-
-  await Promise.all(features);
-
-  features$.done();
-  /* #endregion */
-
+  // @TODO Find third-party service for collection audio feature data
   // @TODO Save new metadata file for the playlist ID
 
   progress$.done();

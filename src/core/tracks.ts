@@ -1,7 +1,6 @@
 import { type Spotify } from "../models";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifySearchResult } from "../types/spotify";
-import { getSpotifyFeatures } from "./features";
 import { searchYoutubeSong } from "./search";
 
 export async function getSpotifyTrack<TOptions extends SpotiOptions>(
@@ -10,6 +9,5 @@ export async function getSpotifyTrack<TOptions extends SpotiOptions>(
 ): Promise<SpotifySearchResult> {
   const item = { item: model } as SpotifySearchResult;
   item.search = await searchYoutubeSong(item, options);
-  item.features = await getSpotifyFeatures(item, options);
   return item;
 }

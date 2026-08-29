@@ -53,9 +53,9 @@ export async function generateTrackTag(
         year: track.album.release_date.split("-")[0],
         fileUrl: track.href,
         trackNumber: track.track_number.toString(),
-        bpm: features?.tempo?.toString(),
-        initialKey: features?.key?.toString(),
         image,
+        // @TODO Use essentia.js for `initialKey` detection
+        // @TODO Use essentia.js for `bpm` detection
       };
     }
   }

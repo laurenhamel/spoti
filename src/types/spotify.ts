@@ -15,7 +15,6 @@ export type SpotifyMetadataResult = {
 
 export type SpotifySearchResult = Spotify.Item & {
   search: YoutubeSearchResult;
-  features?: Spotify.Features;
 };
 
 export type SpotifyDownloadResult = SpotifySearchResult & {

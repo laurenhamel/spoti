@@ -60,16 +60,6 @@ const SpotifyApi = new RestApi({
       method: RestApiMethod.GET,
       path: "/tracks/{id}",
     },
-    getTrackAudioFeatures: {
-      method: RestApiMethod.GET,
-      path: "/audio-features/{id}",
-      retry: false,
-    },
-    getTracksAudioFeatures: {
-      method: RestApiMethod.GET,
-      path: "/audio-features",
-      retry: false,
-    },
   },
   adapters: {
     authorization: new AccessTokenAdapter<{
