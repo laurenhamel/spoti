@@ -50,7 +50,7 @@ export function findBestSearchResult<TOptions extends SpotiOptions>(
     buffer = 10000 // 10s
   ): number[] => {
     return map(items, ({ duration: b }) => {
-      const a = item.track.duration_ms;
+      const a = item.item.duration_ms;
       const [min, max] = [a - buffer, a + buffer];
       return 1 - (b >= min ? 0.5 : 0) - (b <= max ? 0.5 : 0);
     });
@@ -66,7 +66,7 @@ export function findBestSearchResult<TOptions extends SpotiOptions>(
     items: PreparedSearchResult[],
     threshold = 0.6
   ): number[] => {
-    const title = item.track.name;
+    const title = item.item.name;
 
     const fuse = new Fuse(items, {
       isCaseSensitive: false,
@@ -94,7 +94,7 @@ export function findBestSearchResult<TOptions extends SpotiOptions>(
     items: PreparedSearchResult[],
     threshold = 0.6
   ): number[] => {
-    const artists = map(item.track.artists, "name").join(", ");
+    const artists = map(item.item.artists, "name").join(", ");
 
     const fuse = new Fuse(items, {
       isCaseSensitive: false,
@@ -145,8 +145,7 @@ export async function searchYoutubeSong<
   options?: TOptions,
   progress?: () => void
 ): Promise<YoutubeSearchResult> {
-  const { track } = item;
-  const { artists, name: song, uri } = track;
+  const { artists, name: song, uri } = item.item;
   const artist = artists[0].name;
   const query = [artist, song].join(" ").trim();
   const cached = options?.cache ?? true;
@@ -189,6 +188,6 @@ export async function hydrateYoutubeSearch<TOptions extends SpotiOptions>(
     const item = items[i];
     const search = results[i];
     item.search = search;
-    cache.set(item.track.uri, item);
+    cache.set(item.item.uri, item);
   }
 }

@@ -36,7 +36,7 @@ export async function generateTrackTag(
   const result = item as SpotifyTagResult;
 
   if (result.download.result) {
-    const { track, download, features } = item;
+    const { item: track, download } = item;
     const { format } = download.result as YoutubeDownloadResult;
 
     if (includes(Object.values(AudioFormat), format)) {
@@ -70,7 +70,7 @@ export async function addTrackTag<TOptions extends SpotiOptions>(
   options?: TOptions,
   progress?: () => void
 ): Promise<void> {
-  const id = item.track.id;
+  const id = item.item.id;
   const file = item.download.result?.file;
   const existing = file ? Library.find(file) : undefined;
   const src = existing?.raw?.file ?? file;

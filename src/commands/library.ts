@@ -47,8 +47,8 @@ export default new Command()
           const prepared = prepareDownloadResults(options)(items);
 
           for (const item of prepared) {
-            const id = item.track.id;
-            const duration = item.track.duration_ms;
+            const id = item.item.id;
+            const duration = item.item.duration_ms;
             const tags = await generateTrackTag(item);
             data.push({
               ...Library.parse(item.download.file),

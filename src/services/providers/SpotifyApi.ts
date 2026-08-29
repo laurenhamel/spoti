@@ -29,7 +29,7 @@ const SpotifyApi = new RestApi({
         next: "items.next",
       },
     },
-    /** @deprecated */
+    /** @deprecated Track pagination still uses this endpoint currently. */
     getPlaylistTracks: {
       method: RestApiMethod.GET,
       path: "/playlists/{id}/tracks",

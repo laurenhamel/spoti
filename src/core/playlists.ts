@@ -88,7 +88,7 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
 
   // @TODO Look for existing metadata file for playlist ID
   // If metadata file exists, read contents & hydrate existing track ID search results
-  // Then, only search for remaning items still missing search result
+  // Then, only search for remaining items still missing search result
 
   /* #region Searches */
   const searches: Promise<void>[] = [];
