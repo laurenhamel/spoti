@@ -6,6 +6,7 @@ import { Format } from "../utils/format";
 import chalk from "chalk";
 import Table from "cli-table3";
 import { map, padStart } from "lodash-es";
+import { type Primitive } from "type-fest";
 
 const noopSpotifyApiRequest: SpotifyApiRequestMethod = async <
   TResponse extends Record<string, unknown>,
@@ -33,13 +34,40 @@ export async function getSpotifyType<
   return callee<Spotify.ModelOf<TType>>({ id }, options);
 }
 
+function stringifyDetails(details?: Record<string, Primitive>): string[][] {
+  return details
+    ? map(details, (value, key) => {
+        return [chalk.bold(key), String(value)];
+      })
+    : [];
+}
+
 const stringifyNoop: SpotifyTypeStringifier<Spotify.Type> = () => "";
 
-const stringifyTrack: SpotifyTypeStringifier<Spotify.Type.TRACK> = () => "";
+const stringifyTrack: SpotifyTypeStringifier<Spotify.Type.TRACK> = (
+  data,
+  options,
+  details
+) => {
+  const { id, name, artists } = data;
+
+  const table = new Table();
+
+  table.push(
+    [chalk.bold("ID"), id],
+    [chalk.bold("Track"), name],
+    [chalk.bold("Artist"), map(artists, "name").join(", ")],
+    [chalk.bold("Duration"), Format.getDuration(data)],
+    ...stringifyDetails(details)
+  );
+
+  return table.toString();
+};
 
 const stringifyPlaylist: SpotifyTypeStringifier<Spotify.Type.PLAYLIST> = (
   data,
-  _options
+  options,
+  details
 ) => {
   const { id, description, name, items: tracks } = data;
   const owner = data.owner.display_name;
@@ -53,7 +81,8 @@ const stringifyPlaylist: SpotifyTypeStringifier<Spotify.Type.PLAYLIST> = (
     [chalk.bold("Playlist"), name],
     [chalk.bold("Description"), description],
     [chalk.bold("Songs"), length],
-    [chalk.bold("Owner"), owner]
+    [chalk.bold("Owner"), owner],
+    ...stringifyDetails(details)
   );
 
   const body = new Table({
@@ -85,7 +114,12 @@ const stringifyPlaylist: SpotifyTypeStringifier<Spotify.Type.PLAYLIST> = (
 export function stringifyType<
   TType extends Spotify.Type,
   TOptions extends SpotiOptions,
->(type: TType, data: Spotify.ModelOf<TType>, options: TOptions): string {
+>(
+  type: TType,
+  data: Spotify.ModelOf<TType>,
+  options: TOptions,
+  details?: Record<string, Primitive>
+): string {
   const callees: { [TType in Spotify.Type]: SpotifyTypeStringifier<TType> } = {
     [Spotify.Type.ALBUM]: stringifyNoop,
     [Spotify.Type.ARTIST]: stringifyNoop,
@@ -97,5 +131,5 @@ export function stringifyType<
 
   const callee = callees[type];
 
-  return callee<TOptions>(data, options);
+  return callee<TOptions>(data, options, details);
 }

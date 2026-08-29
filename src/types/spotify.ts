@@ -6,6 +6,7 @@ import {
   type YoutubeSearchResult,
 } from "./youtube";
 import { type Tags } from "node-id3";
+import { type Primitive } from "type-fest";
 
 export type SpotifyMetadataResult = {
   type: Spotify.Type;
@@ -35,5 +36,6 @@ export type SpotifyTypeStringifier<TType extends Spotify.Type> = <
   TOptions extends SpotiOptions,
 >(
   data: Spotify.ModelOf<TType>,
-  options?: TOptions
+  options?: TOptions,
+  details?: Record<string, Primitive>
 ) => string;

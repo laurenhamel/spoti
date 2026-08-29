@@ -5,6 +5,7 @@ import { createActionHandler } from "../utils/action";
 import { parseSpotifyURL, validateSpotifyURL } from "../utils/spotify";
 import chalk from "chalk";
 import { Command } from "commander";
+import { type Primitive } from "type-fest";
 
 export type InfoCliArgs = [string];
 
@@ -32,10 +33,13 @@ export default new Command()
       }
 
       const data = await getSpotifyType(id, type, options);
-      const info = stringifyType(type, data, options);
+      const details: Record<string, Primitive> = {};
+      const info = stringifyType(type, data, options, details);
 
       switch (type) {
-        case Spotify.Type.PLAYLIST: {
+        case Spotify.Type.PLAYLIST:
+        case Spotify.Type.TRACK: {
+          console.log();
           console.log(info);
           break;
         }
