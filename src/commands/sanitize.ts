@@ -1,9 +1,9 @@
-import { prepareDownloadResults } from "../core/downloads";
 import { Metadata } from "../core/metadata";
 import { Spoti } from "../core/spoti";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifyMetadataResult } from "../types/spotify";
 import { createAction } from "../utils/action";
+import { prepareDownloadResults } from "../utils/downloads";
 import { Format } from "../utils/format";
 import { Library } from "../utils/library";
 import { Progress } from "../utils/progress";

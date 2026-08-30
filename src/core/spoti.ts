@@ -1,8 +1,8 @@
 import { Spotify } from "../models";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifySearchResult } from "../types/spotify";
+import { downloadSpotifyTracks } from "../utils/downloads";
 import { getSpotifyType } from "../utils/spotify";
-import { downloadSpotifyTracks } from "./downloads";
 import { getSpotifyPlaylist } from "./playlists";
 import { getSpotifyTrack } from "./tracks";
 import chalk from "chalk";

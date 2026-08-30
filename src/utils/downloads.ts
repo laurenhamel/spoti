@@ -1,3 +1,5 @@
+import { transformAudioFiles } from "../core/audio";
+import { hydrateTrackTags } from "../core/tags";
 import { type Youtube } from "../models";
 import { YoutubeApi } from "../services";
 import { type AudioFormat } from "../types/audio";
@@ -8,14 +10,12 @@ import {
   type SpotifySearchResult,
 } from "../types/spotify";
 import { type YoutubeDownloadResult } from "../types/youtube";
-import { Audio } from "../utils/audio";
-import { silenceWarnings } from "../utils/console";
-import { Format } from "../utils/format";
-import { Library } from "../utils/library";
-import { Progress } from "../utils/progress";
-import { pool } from "../utils/promise";
-import { transformAudioFiles } from "./audio";
-import { hydrateTrackTags } from "./tags";
+import { Audio } from "./audio";
+import { silenceWarnings } from "./console";
+import { Format } from "./format";
+import { Library } from "./library";
+import { ProgressV2 } from "./progress";
+import { pool } from "./promise";
 import chalk from "chalk";
 import { map } from "lodash-es";
 
@@ -97,32 +97,18 @@ export async function downloadSpotifyTracks<
   const passed: SpotifyDownloadResult[] = [...existing];
   const failed: { error: Error; item: SpotifyDownloadResult }[] = [];
 
-  const download$ = new Progress(
-    "Downloading…",
-    {
-      type: "percentage",
-      percentage: 0,
-      message: `0 / ${prepared.length}`,
-      nameTransformFn: chalk.blue,
-    },
-    (() => {
-      let reports = 0;
-
-      return (): void => {
-        reports++;
-        const percentage = reports / prepared.length;
-        const message = `${reports} / ${prepared.length}`;
-        download$?.update(percentage, message);
-      };
-    })()
-  );
+  const downloading = new ProgressV2({
+    label: "Downloading…",
+    total: prepared.length,
+    color: chalk.blue,
+  });
 
   downloads.push(
     ...existing.map(
       (item) => () =>
         new Promise<void>((resolve) => {
           console.log(chalk.green("✓"), item.download.title);
-          download$.report();
+          downloading.increment();
           resolve();
         })
     )
@@ -136,20 +122,20 @@ export async function downloadSpotifyTracks<
       const source = Library.source(file);
 
       if (Library.exists(source)) {
-        download$.report();
+        downloading.increment();
         passed.push(item);
         return;
       } else if (result) {
         try {
           download.result = await downloadYoutubeSong(title, result, options);
           console.log(chalk.green("✓"), title);
-          download$.report();
+          downloading.increment();
           passed.push(item);
           return;
         } catch (e) {
           const error = e as Error;
           console.log(chalk.red("𐄂"), title);
-          download$.report();
+          downloading.increment();
           failed.push({ error, item });
           return;
         }
@@ -158,7 +144,7 @@ export async function downloadSpotifyTracks<
           `No Youtube search result available to download for '${title}'.`
         );
         console.log(chalk.red("𐄂"), title);
-        download$.report();
+        downloading.increment();
         failed.push({ error, item });
         return;
       }
@@ -167,59 +153,31 @@ export async function downloadSpotifyTracks<
 
   await download(downloads);
 
-  download$.done();
+  downloading.done();
   /* #endregion */
 
   /* #region Convert */
-  const convert$ = new Progress(
-    "Converting…",
-    {
-      type: "percentage",
-      percentage: 0,
-      message: `0 / ${passed.length}`,
-      nameTransformFn: chalk.blue,
-    },
-    (() => {
-      let reports = 0;
+  const converting = new ProgressV2({
+    label: "Converting…",
+    total: passed.length,
+    color: chalk.blue,
+  });
 
-      return (): void => {
-        reports++;
-        const percentage = reports / passed.length;
-        const message = `${reports} / ${passed.length}`;
-        convert$?.update(percentage, message);
-      };
-    })()
-  );
+  await transformAudioFiles(passed, options, () => converting.increment());
 
-  await transformAudioFiles(passed, options, () => convert$.report());
-
-  convert$.done();
+  converting.done();
   /* #endregion */
 
   /* #region Tag */
-  const tag$ = new Progress(
-    "Tagging…",
-    {
-      type: "percentage",
-      percentage: 0,
-      message: `0 / ${passed.length}`,
-      nameTransformFn: chalk.blue,
-    },
-    (() => {
-      let reports = 0;
+  const tagging = new ProgressV2({
+    label: "Tagging…",
+    total: passed.length,
+    color: chalk.blue,
+  });
 
-      return (): void => {
-        reports++;
-        const percentage = reports / passed.length;
-        const message = `${reports} / ${passed.length}`;
-        tag$?.update(percentage, message);
-      };
-    })()
-  );
+  await hydrateTrackTags(passed, options, () => tagging.increment());
 
-  await hydrateTrackTags(passed, options, () => tag$.report());
-
-  tag$.done();
+  tagging.done();
   /* #endregion */
 
   restoreWarnings();
