@@ -1,6 +1,7 @@
-import { type Youtube } from "../models";
+import { type Youtube, type Spotify } from "../models";
 
 export type YoutubeSearchResult = {
+  track: Spotify.Track;
   query: string;
   result?: Youtube.Song;
 };

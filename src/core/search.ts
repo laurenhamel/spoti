@@ -1,13 +1,19 @@
-import { type Spotify, type Youtube } from "../models";
+import { Spotify, type Youtube } from "../models";
 import { YoutubeApi } from "../services";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifySearchResult } from "../types/spotify";
-import { type YoutubeSearchResult } from "../types/youtube";
+import {
+  type YoutubeSearchOf,
+  type YoutubeSearchResult,
+} from "../types/youtube";
 import { cache } from "../utils/cache";
+import { Progress } from "../utils/progress";
+import chalk from "chalk";
 import Fuse from "fuse.js";
 import { find, map, sum } from "lodash-es";
 
 export function findBestSearchResult<TOptions extends SpotiOptions>(
+  query: string,
   songs: Youtube.Song[],
   item: Spotify.Item,
   _options?: TOptions
@@ -57,7 +63,33 @@ export function findBestSearchResult<TOptions extends SpotiOptions>(
   };
 
   /**
-   * Yields a decimal between 0-1 of similarity of the track's titles for each item, where 0 = exact match.
+   * Yields a decimal between 0-1 of similarity of the track's artists + title for each item, where 0 = exact match.
+   * @param items - The items to compare
+   * @param threshold - The search threshold to use
+   * @returns
+   */
+  const compareQuery = (
+    items: PreparedSearchResult[],
+    threshold = 0.6
+  ): number[] => {
+    const fuse = new Fuse(items, {
+      isCaseSensitive: false,
+      includeScore: true,
+      shouldSort: false,
+      threshold,
+      keys: ["title"],
+    });
+
+    const results = fuse.search(query);
+
+    return map(items, ({ index }) => {
+      const result = find(results, ["item.index", index]);
+      return result?.score ?? 1;
+    });
+  };
+
+  /**
+   * Yields a decimal between 0-1 of similarity of the track's title for each item, where 0 = exact match.
    * @param items - The items to compare
    * @param threshold - The search threshold to use
    * @returns
@@ -121,6 +153,7 @@ export function findBestSearchResult<TOptions extends SpotiOptions>(
     items: PreparedSearchResult[]
   ): ScoredSearchResult[] => {
     const results = [
+      compareQuery(items),
       compareDurations(items),
       compareTitles(items),
       compareArtists(items),
@@ -145,7 +178,8 @@ export async function searchYoutubeSong<
   options?: TOptions,
   progress?: () => void
 ): Promise<YoutubeSearchResult> {
-  const { artists, name: song, uri } = item.item;
+  const track = item.item;
+  const { artists, name: song, uri } = track;
   const artist = artists[0].name;
   const query = [artist, song].join(" ").trim();
   const cached = options?.cache ?? true;
@@ -156,28 +190,29 @@ export async function searchYoutubeSong<
     if (resource?.search) {
       progress?.();
 
-      return resource.search;
+      return { ...resource.search, track };
     }
   }
 
   try {
-    const results = await YoutubeApi.searchSongs({ query }, options);
-    const result = findBestSearchResult(results, item, options);
-
-    return { query, result };
+    const songs = await YoutubeApi.searchSongs({ query }, options);
+    const videos = await YoutubeApi.searchVideos({ query }, options);
+    const results = [...songs, ...videos];
+    const result = findBestSearchResult(query, results, item, options);
+    return { track, query, result };
   } catch (_) {
     // @TODO If we cannot acquire search results, then the song may not exist on Youtube
-    return { query };
+    return { track, query };
   } finally {
     progress?.();
   }
 }
 
-export async function hydrateYoutubeSearch<TOptions extends SpotiOptions>(
+export async function searchYoutubeSongs<TOptions extends SpotiOptions>(
   items: Spotify.Item[],
   options?: TOptions,
   progress?: () => void
-): Promise<void> {
+): Promise<YoutubeSearchResult[]> {
   const tasks: (() => Promise<YoutubeSearchResult>)[] = items.map(
     (item) => () => searchYoutubeSong(item, options, progress)
   );
@@ -190,4 +225,103 @@ export async function hydrateYoutubeSearch<TOptions extends SpotiOptions>(
     item.search = search;
     cache.set(item.item.uri, item);
   }
+
+  return results;
+}
+
+const searchNoop: YoutubeSearchOf<Spotify.Type> = () => Promise.resolve([]);
+
+const searchTrack: YoutubeSearchOf<Spotify.Type.TRACK> = async (
+  data,
+  options
+) => {
+  const progress = new Progress(
+    "Searching Youtube song…",
+    {
+      type: "percentage",
+      percentage: 0,
+      message: `0 / 1`,
+      nameTransformFn: chalk.yellow,
+    },
+    (() => {
+      let reports = 0;
+
+      return (amount: number = 1): void => {
+        reports += amount;
+        const percentage = reports / 1;
+        const message = `${reports} / 1`;
+        progress.update(percentage, message);
+      };
+    })()
+  );
+
+  const increment = () => progress.report(1);
+
+  const result = await searchYoutubeSong(
+    { item: data } as Spotify.Item,
+    options,
+    increment
+  );
+
+  progress.done();
+
+  return [result];
+};
+
+const searchPlaylist: YoutubeSearchOf<Spotify.Type.PLAYLIST> = async (
+  data,
+  options
+) => {
+  const tracks = data.items.items;
+  const total = tracks.length;
+
+  const progress = new Progress(
+    "Searching Youtube songs…",
+    {
+      type: "percentage",
+      percentage: 0,
+      message: `0 / ${total}`,
+      nameTransformFn: chalk.yellow,
+    },
+    (() => {
+      let reports = 0;
+
+      return (amount: number = 1): void => {
+        reports += amount;
+        const percentage = reports / total;
+        const message = `${reports} / ${total}`;
+        progress.update(percentage, message);
+      };
+    })()
+  );
+
+  const increment = () => progress.report(1);
+
+  const result = await searchYoutubeSongs(tracks, options, increment);
+
+  progress.done();
+
+  return result;
+};
+
+export async function searchYoutubeType<
+  TType extends Spotify.Type,
+  TOptions extends SpotiOptions,
+>(
+  type: TType,
+  data: Spotify.ModelOf<TType>,
+  options?: TOptions
+): Promise<YoutubeSearchResult[]> {
+  const callees: { [TType in Spotify.Type]: YoutubeSearchOf<TType> } = {
+    [Spotify.Type.ALBUM]: searchNoop,
+    [Spotify.Type.ARTIST]: searchNoop,
+    [Spotify.Type.FEATURES]: searchNoop,
+    [Spotify.Type.PLAYLIST]: searchPlaylist,
+    [Spotify.Type.TRACK]: searchTrack,
+    [Spotify.Type.USER]: searchNoop,
+  };
+
+  const callee = callees[type];
+
+  return callee<TOptions>(data, options);
 }

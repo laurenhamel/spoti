@@ -11,7 +11,7 @@ import { retry } from "../../utils/promise";
 import { PolicyAdapter } from "../adapters";
 import chalk from "chalk";
 import { sync as glob } from "glob";
-import { get, isNaN } from "lodash-es";
+import { filter, flatMap, get, isNaN } from "lodash-es";
 import { statSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -172,7 +172,7 @@ class YoutubeApi {
 
     const api = await this.api();
 
-    const response = await retry(
+    const result = await retry(
       () => api.music.search(query, { type: "song" }),
       YOUTUBE_RETRIES,
       youtubeRetryDelay,
@@ -183,7 +183,39 @@ class YoutubeApi {
       )
     );
 
-    return (response.songs?.contents ?? []) as unknown[] as TResponse;
+    return (result.songs?.contents ?? []) as unknown[] as TResponse;
+  }
+
+  async searchVideos<
+    TResponse extends Record<string, unknown> | unknown[] = Youtube.Song[],
+    TData extends Record<string, unknown> = { query: string },
+    TOptions extends SpotiOptions = SpotiOptions,
+  >(data?: TData, _options?: TOptions): Promise<TResponse> {
+    if (!this.constructed) this.construct();
+
+    const query = data?.query as string | undefined;
+
+    if (!query) {
+      throw new Error("Missing 'query' for Youtube Music video search.");
+    }
+
+    const api = await this.api();
+
+    const result = await retry(
+      () => api.music.search(query, { type: "video" }),
+      YOUTUBE_RETRIES,
+      youtubeRetryDelay,
+      this.handleRetry(
+        "<youtube>/music/search",
+        { parameters: { query } },
+        _options
+      )
+    );
+
+    return flatMap(
+      filter(result.contents ?? [], { type: "MusicShelf" }),
+      "contents"
+    ) as unknown[] as TResponse;
   }
 
   private async getSongInfo<
