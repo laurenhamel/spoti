@@ -1,8 +1,8 @@
-import { Spoti } from "../core/spoti";
 import { type AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
 import { createAction } from "../utils/action";
 import { Audio } from "../utils/audio";
+import { Spoti } from "../utils/spoti";
 import { parseSpotifyURL, validateSpotifyURL } from "../utils/spotify";
 import chalk from "chalk";
 import { Command } from "commander";

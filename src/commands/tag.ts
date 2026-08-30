@@ -1,4 +1,3 @@
-import { Spoti } from "../core/spoti";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifyMetadataResult } from "../types/spotify";
 import { createAction } from "../utils/action";
@@ -7,6 +6,7 @@ import { Duration } from "../utils/duration";
 import { Library } from "../utils/library";
 import { Metadata } from "../utils/metadata";
 import { Progress } from "../utils/progress";
+import { Spoti } from "../utils/spoti";
 import { generateTrackTag } from "../utils/tags";
 import chalk from "chalk";
 import Table from "cli-table3";

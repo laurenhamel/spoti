@@ -1,9 +1,9 @@
-import { Spoti } from "../core/spoti";
 import { type AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
 import { createAction } from "../utils/action";
 import { Audio } from "../utils/audio";
 import { Metadata } from "../utils/metadata";
+import { Spoti } from "../utils/spoti";
 import { parseSpotifyURL, isSpotifyURL } from "../utils/spotify";
 import { Command } from "commander";
 

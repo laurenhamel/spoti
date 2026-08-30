@@ -1,15 +1,16 @@
 import { Spotify } from "../models";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifySearchResult } from "../types/spotify";
-import { downloadSpotifyTracks } from "../utils/downloads";
-import { getSpotifyType } from "../utils/spotify";
+import { downloadSpotifyTracks } from "./downloads";
 import { getSpotifyPlaylist } from "./playlists";
+import { getSpotifyType } from "./spotify";
 import { getSpotifyTrack } from "./tracks";
 import chalk from "chalk";
 import { get, castArray, padStart } from "lodash-es";
 
 /** @deprecated */
 export class Spoti {
+  /** @deprecated */
   static async metadata<
     TType extends Spotify.Type,
     TOptions extends SpotiOptions,
@@ -21,6 +22,7 @@ export class Spoti {
     return getSpotifyType(id, type, options);
   }
 
+  /** @deprecated */
   static async search<
     TType extends Spotify.Type,
     TOptions extends SpotiOptions,
@@ -47,6 +49,7 @@ export class Spoti {
     }
   }
 
+  /** @deprecated */
   static async download<
     TType extends Spotify.Type,
     TOptions extends SpotiOptions,

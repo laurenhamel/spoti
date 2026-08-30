@@ -12,11 +12,7 @@ export default new Command()
   .name("library")
   .description("Retrieve information about your music library")
   .argument("[file]", "An MP3 file or Spoti metadata file")
-  .option(
-    "-m, --more",
-    "Output ID3 tags and calculate real duration (slower)",
-    false
-  )
+  .option("--more", "Output ID3 tags and calculate real duration (slower)")
   .option("--no-cache", "Disables using cached search results")
   .action(
     createAction<LibraryArguments, LibraryCliOptions>(
