@@ -8,6 +8,7 @@ import { getSpotifyTrack } from "./tracks";
 import chalk from "chalk";
 import { get, castArray, padStart } from "lodash-es";
 
+/** @deprecated */
 export class Spoti {
   static async metadata<
     TType extends Spotify.Type,

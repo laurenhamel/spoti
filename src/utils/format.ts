@@ -307,6 +307,51 @@ export class Format {
   static HIDDEN_FILE_SUFFIX = ".spoti" as const;
 
   /**
+   * Determines if the given filename is a hidden Spoti file
+   * @param file - The filename to check
+   */
+  static isHidden(file: string): boolean {
+    const base = basename(file);
+    return base.startsWith(Format.HIDDEN_FILE_PREFIX);
+  }
+
+  /**
+   * Parses the given file basename to its different parts
+   */
+  static parse(file: string): {
+    prefix?: string;
+    base: string;
+    ext: string;
+    suffix?: string;
+  } {
+    const input = basename(file);
+    const prefix = Format.isHidden(input) ? this.HIDDEN_FILE_PREFIX : undefined;
+    const clean = trimStart(input, this.HIDDEN_FILE_PREFIX);
+    const [base, ...exts] = basename(clean).split(".");
+    const first = "." + exts[0];
+    const suffix = first === this.HIDDEN_FILE_SUFFIX ? first : undefined;
+    const ext = "." + (suffix ? exts.slice(1) : exts).join(".");
+    return { prefix, base, ext, suffix };
+  }
+
+  /**
+   * Converts the parse object back to a file basename
+   */
+  static unparse({
+    prefix,
+    base,
+    ext,
+    suffix,
+  }: {
+    prefix?: string;
+    base: string;
+    ext: string;
+    suffix?: string;
+  }): string {
+    return compact([prefix, base, suffix, ext]).join("");
+  }
+
+  /**
    * Convert the given filename to a hidden file format
    */
   static hide(file: string): string {

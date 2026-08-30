@@ -530,7 +530,7 @@ export class Library {
 
   /**
    * Get the size of a file in bytes
-   * @param file - The file to retreive the size of
+   * @param file - The file to retrieve the size of
    * @returns
    */
   static size(file: string): number {
