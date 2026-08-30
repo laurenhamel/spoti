@@ -320,17 +320,43 @@ export class Format {
   /**
    * Truncate and/or pad the filename to the given length, keeping the extension intact
    */
-  static truncate(file: string, length: number): string {
+  static truncateFile(
+    file: string,
+    length: number,
+    sanitize: boolean = false
+  ): string {
     // Truncate
     if (file.length > length) {
       const ext = extname(file);
       const base = basename(file, ext);
       const clamp = length - ext.length - 1;
       const truncated = base.substring(0, clamp);
-      return truncated + "…" + ext;
+      const sanitized = sanitize ? this.sanitize(truncated) : truncated;
+      return sanitized + "…" + ext;
     }
 
     // Pad
-    return padEnd(file, length, " ");
+    const sanitized = sanitize ? this.sanitize(file) : file;
+    return padEnd(sanitized, length, " ");
+  }
+
+  /**
+   * Truncate and/or pad the text to the given length
+   */
+  static truncateText(
+    text: string,
+    length: number,
+    sanitize: boolean = false
+  ): string {
+    // Truncate
+    if (text.length > length) {
+      const truncated = text.substring(0, length - 1);
+      const sanitized = sanitize ? this.sanitize(truncated) : truncated;
+      return sanitized + "…";
+    }
+
+    // Pad
+    const sanitized = sanitize ? this.sanitize(text) : text;
+    return padEnd(sanitized, length, " ");
   }
 }

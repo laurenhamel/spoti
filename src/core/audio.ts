@@ -25,27 +25,27 @@ export async function convertAudioFile<
   const passed = (previous: string, next: string) => {
     console.log(
       chalk.green("✓"),
-      chalk.dim(Format.truncate(previous, padding)),
+      chalk.dim(Format.truncateFile(previous, padding)),
       chalk.cyan("→"),
-      chalk.green(Format.truncate(next, padding))
+      chalk.green(Format.truncateFile(next, padding))
     );
   };
 
   const failed = (previous: string, next: string) => {
     console.log(
       chalk.red("𐄂"),
-      chalk.dim(Format.truncate(previous, padding)),
+      chalk.dim(Format.truncateFile(previous, padding)),
       chalk.cyan("→"),
-      chalk.red(Format.truncate(next, padding))
+      chalk.red(Format.truncateFile(next, padding))
     );
   };
 
   const error = (previous: string, next: string) => {
     console.log(
       chalk.yellow("?"),
-      chalk.dim(Format.truncate(previous, padding)),
+      chalk.dim(Format.truncateFile(previous, padding)),
       chalk.cyan("→"),
-      chalk.yellow(Format.truncate(next, padding))
+      chalk.yellow(Format.truncateFile(next, padding))
     );
   };
 

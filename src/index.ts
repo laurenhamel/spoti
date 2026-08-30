@@ -1,12 +1,12 @@
 import pkg from "../package.json";
-import { gracefullyCleanupDownloads } from "./core/downloads";
 import { registerCommands } from "./utils/commands";
+import { gracefullyCleanupDownloads } from "./utils/downloads";
 import { loadEnv } from "./utils/environment";
 import {
   registerProcessExitHandlers,
   gracefullyStopProcess,
 } from "./utils/process";
-import { Progress } from "./utils/progress";
+import { Progress, ProgressV2 } from "./utils/progress";
 import chalk from "chalk";
 import { Command } from "commander";
 
@@ -24,6 +24,7 @@ await registerCommands(program);
 registerProcessExitHandlers(
   gracefullyStopProcess(),
   Progress.gracefullyStopProgress(),
+  ProgressV2.gracefullyStopProgress(),
   gracefullyCleanupDownloads()
 );
 

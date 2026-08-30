@@ -7,7 +7,7 @@ import {
   type YoutubeSearchResult,
 } from "../types/youtube";
 import { cache } from "./cache";
-import { Progress } from "./progress";
+import { ProgressV2 } from "./progress";
 import chalk from "chalk";
 import Fuse from "fuse.js";
 import { find, map, sum } from "lodash-es";
@@ -235,32 +235,16 @@ const searchTrack: YoutubeSearchOf<Spotify.Type.TRACK> = async (
   data,
   options
 ) => {
-  const progress = new Progress(
-    "Searching Youtube song…",
-    {
-      type: "percentage",
-      percentage: 0,
-      message: `0 / 1`,
-      nameTransformFn: chalk.yellow,
-    },
-    (() => {
-      let reports = 0;
-
-      return (amount: number = 1): void => {
-        reports += amount;
-        const percentage = reports / 1;
-        const message = `${reports} / 1`;
-        progress.update(percentage, message);
-      };
-    })()
-  );
-
-  const increment = () => progress.report(1);
+  const progress = new ProgressV2({
+    label: "Searching Youtube…",
+    total: 1,
+    color: chalk.yellow,
+  });
 
   const result = await searchYoutubeSong(
     { item: data } as Spotify.Item,
     options,
-    increment
+    () => progress.increment()
   );
 
   progress.done();
@@ -275,29 +259,15 @@ const searchPlaylist: YoutubeSearchOf<Spotify.Type.PLAYLIST> = async (
   const tracks = data.items.items;
   const total = tracks.length;
 
-  const progress = new Progress(
-    "Searching Youtube songs…",
-    {
-      type: "percentage",
-      percentage: 0,
-      message: `0 / ${total}`,
-      nameTransformFn: chalk.yellow,
-    },
-    (() => {
-      let reports = 0;
+  const progress = new ProgressV2({
+    label: "Searching Youtube…",
+    total,
+    color: chalk.yellow,
+  });
 
-      return (amount: number = 1): void => {
-        reports += amount;
-        const percentage = reports / total;
-        const message = `${reports} / ${total}`;
-        progress.update(percentage, message);
-      };
-    })()
+  const result = await searchYoutubeSongs(tracks, options, () =>
+    progress.increment()
   );
-
-  const increment = () => progress.report(1);
-
-  const result = await searchYoutubeSongs(tracks, options, increment);
 
   progress.done();
 
