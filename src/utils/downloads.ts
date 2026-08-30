@@ -1,7 +1,7 @@
 import { transformAudioFiles } from "../core/audio";
 import { Spotify, type Youtube } from "../models";
 import { YoutubeApi } from "../services";
-import { type AudioFormat } from "../types/audio";
+import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
 import { type ProcessExitRegister } from "../types/process";
 import {
@@ -9,6 +9,7 @@ import {
   type SpotifyDownloadResult,
   type SpotifySearchResult,
 } from "../types/spotify";
+import { VideoFormat } from "../types/video";
 import {
   type YoutubeSearchResult,
   type YoutubeDownloadResult,
@@ -22,6 +23,46 @@ import { pool } from "./promise";
 import { hydrateTrackTags } from "./tags";
 import chalk from "chalk";
 import { map } from "lodash-es";
+
+export function getDownloadData(
+  title: string,
+  bitrate: number
+): Record<AudioFormat | VideoFormat, Youtube.Download> {
+  const data: Record<AudioFormat | VideoFormat, Youtube.Download> = {
+    [AudioFormat.M4A]: {
+      file: Format.hide(Library.file(title, AudioFormat.M4A)),
+      path: Format.hide(Library.path(title, AudioFormat.M4A)),
+      format: AudioFormat.M4A,
+      bitrate,
+    },
+    [AudioFormat.MP3]: {
+      file: Library.file(title, AudioFormat.MP3),
+      path: Library.path(title, AudioFormat.MP3),
+      format: AudioFormat.MP3,
+      bitrate,
+    },
+    [AudioFormat.WAV]: {
+      file: Library.file(title, AudioFormat.WAV),
+      path: Library.path(title, AudioFormat.WAV),
+      format: AudioFormat.WAV,
+      bitrate,
+    },
+    [AudioFormat.AAC]: {
+      file: Library.file(title, AudioFormat.AAC),
+      path: Library.path(title, AudioFormat.AAC),
+      format: AudioFormat.AAC,
+      bitrate,
+    },
+    [VideoFormat.MP4]: {
+      file: Format.hide(Library.file(title, VideoFormat.MP4)),
+      path: Format.hide(Library.path(title, VideoFormat.MP4)),
+      format: VideoFormat.MP4,
+      bitrate,
+    },
+  };
+
+  return data;
+}
 
 export async function downloadYoutubeSong<TOptions extends SpotiOptions>(
   title: string,

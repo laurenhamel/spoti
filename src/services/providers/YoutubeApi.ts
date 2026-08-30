@@ -4,7 +4,7 @@ import { AudioFormat } from "../../types/audio";
 import { type SpotiOptions } from "../../types/config";
 import { type RetryHandlers } from "../../types/promise";
 import { Audio } from "../../utils/audio";
-import { getDownloadData } from "../../utils/download";
+import { getDownloadData } from "../../utils/downloads";
 import { Library } from "../../utils/library";
 import { Progress } from "../../utils/progress";
 import { retry } from "../../utils/promise";
