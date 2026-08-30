@@ -3,7 +3,7 @@ import { SpotifyApi } from "../services";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifySearchResult } from "../types/spotify";
 import { Progress } from "../utils/progress";
-import { searchYoutubeSongs } from "./search";
+import { searchYoutubeSongs } from "../utils/search";
 import chalk from "chalk";
 
 export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(

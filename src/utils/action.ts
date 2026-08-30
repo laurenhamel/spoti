@@ -1,17 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { type ActionHandler, type ActionParameters } from "../types/action";
 import { type SpotiOptions } from "../types/config";
 import { Library } from "./library";
 import { type Command } from "commander";
+import { merge } from "lodash-es";
 import yargs from "yargs";
-
-export type ActionParameters<
-  TArgs extends object[],
-  TOptions extends object,
-> = [...TArgs, TOptions, Command];
-
-export type ActionHandler<TArgs extends object[], TOptions extends object> = (
-  ...params: ActionParameters<TArgs, TOptions>
-) => void | Promise<void>;
 
 function cleanGlobals(args: any[], argv: any): any[] {
   for (const key in argv) {
@@ -27,7 +20,7 @@ function cleanGlobals(args: any[], argv: any): any[] {
   return args;
 }
 
-export function createActionHandler<
+export function createAction<
   TArgs extends any[],
   TOptions extends SpotiOptions,
 >(callback: ActionHandler<TArgs, TOptions>): Parameters<Command["action"]>[0] {
@@ -40,4 +33,11 @@ export function createActionHandler<
     await Library.mount(process.env.PWD!, options);
     return callback(...next);
   };
+}
+
+export function mergeOptions<TOptions extends SpotiOptions>(
+  defaults?: Partial<TOptions>,
+  overrides?: Partial<TOptions>
+): TOptions {
+  return merge({}, defaults, overrides) as TOptions;
 }

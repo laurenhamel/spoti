@@ -2,9 +2,9 @@ import { prepareDownloadResults } from "../core/downloads";
 import { Metadata } from "../core/metadata";
 import { Spoti } from "../core/spoti";
 import { generateTrackTag } from "../core/tags";
-import { type SpotiCliOptions } from "../types/config";
+import { type SpotiOptions } from "../types/config";
 import { type SpotifyMetadataResult } from "../types/spotify";
-import { createActionHandler } from "../utils/action";
+import { createAction } from "../utils/action";
 import { Duration } from "../utils/duration";
 import { Library } from "../utils/library";
 import { Progress } from "../utils/progress";
@@ -16,7 +16,7 @@ import { type Tags } from "node-id3";
 
 export type TagCliArgs = [string?];
 
-export interface TagCliOptions extends SpotiCliOptions {
+export interface TagCliOptions extends SpotiOptions {
   update: boolean;
 }
 
@@ -26,7 +26,7 @@ export default new Command()
   .argument("[file]", "An MP3 file or Spoti metadata file")
   .option("-u, --update", "Update the ID3 tag(s) of the MP3 file(s)", false)
   .action(
-    createActionHandler<TagCliArgs, TagCliOptions>(async (file, options) => {
+    createAction<TagCliArgs, TagCliOptions>(async (file, options) => {
       const files: { title: string; file: string; id?: string; tags?: Tags }[] =
         [];
 

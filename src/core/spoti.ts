@@ -1,9 +1,9 @@
 import { Spotify } from "../models";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifySearchResult } from "../types/spotify";
+import { getSpotifyType } from "../utils/spotify";
 import { downloadSpotifyTracks } from "./downloads";
 import { getSpotifyPlaylist } from "./playlists";
-import { getSpotifyType } from "./spotify";
 import { getSpotifyTrack } from "./tracks";
 import chalk from "chalk";
 import { get, castArray, padStart } from "lodash-es";

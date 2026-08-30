@@ -2,33 +2,31 @@ import { Spotify } from "../models";
 import { type ActionHandler } from "../types/action";
 import { type SpotiOptions } from "../types/config";
 import { mergeOptions } from "../utils/action";
-import { searchYoutubeType } from "../utils/search";
 import { parseSpotifyURL, getSpotifyType } from "../utils/spotify";
-import { stringifySearch } from "../utils/stringify";
+import { stringifyType } from "../utils/stringify";
 import chalk from "chalk";
 import { type Primitive } from "type-fest";
 
-export type SearchArguments = [string];
+export type InfoArguments = [string];
 
-export interface SearchOptions extends SpotiOptions {
-  cache: boolean;
-}
+export interface InfoOptions extends SpotiOptions {}
 
-const SEARCH_DEFAULTS: SearchOptions = {
-  cache: true,
+export const INFO_DEFAULTS: InfoOptions = {
   verbose: false,
 };
 
-export const search: ActionHandler<SearchArguments, SearchOptions> = async <
-  TOptions extends SearchOptions,
+export const info: ActionHandler<InfoArguments, InfoOptions> = async <
+  TOptions extends InfoOptions,
 >(
   url: string,
   config?: TOptions
 ) => {
-  const options = mergeOptions(SEARCH_DEFAULTS, config);
+  const options = mergeOptions(INFO_DEFAULTS, config);
   const { type, id } = parseSpotifyURL(url);
 
-  console.log(`Searching for ${chalk.magenta(type)} (${chalk.blue(id)})…`);
+  console.log(
+    `Retrieving information for ${chalk.magenta(type)} (${chalk.blue(id)})…`
+  );
 
   if (options.verbose) {
     console.log();
@@ -38,9 +36,8 @@ export const search: ActionHandler<SearchArguments, SearchOptions> = async <
   }
 
   const data = await getSpotifyType(id, type, options);
-  const results = await searchYoutubeType(type, data, options);
   const details: Record<string, Primitive> = {};
-  const info = stringifySearch(type, data, results, options, details);
+  const info = stringifyType(type, data, options, details);
 
   switch (type) {
     case Spotify.Type.PLAYLIST:

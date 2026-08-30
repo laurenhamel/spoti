@@ -5,7 +5,7 @@ import {
   type YoutubeSearchStringifier,
 } from "../types/stringify";
 import { type YoutubeSearchResult } from "../types/youtube";
-import { Format } from "../utils/format";
+import { Format } from "./format";
 import chalk from "chalk";
 import Table from "cli-table3";
 import { map, padStart } from "lodash-es";
