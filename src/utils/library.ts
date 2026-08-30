@@ -4,13 +4,21 @@ import {
   type LibraryItem,
   type LibraryOptions,
   type LibraryMetadata,
+  type LibraryManifest,
+  type LibraryFile,
 } from "../types/library";
+import { type SpotifyMetadataResult } from "../types/spotify";
 import { VideoFormat } from "../types/video";
+import { generateTrackTag } from "../utils/tags";
 import { mergeOptions } from "./action";
 import { Audio } from "./audio";
+import { prepareDownloadType } from "./downloads";
 import { Format } from "./format";
+import { Metadata } from "./metadata";
 import { Progress } from "./progress";
 import { pool, Deferred } from "./promise";
+import { searchYoutubeType } from "./search";
+import { getSpotifyType } from "./spotify";
 import chalk from "chalk";
 import { sync as glob } from "glob";
 import { find, get, isNil, merge, pick } from "lodash-es";
@@ -643,5 +651,50 @@ export class Library {
     }
 
     return true;
+  }
+
+  /**
+   * Generates a manifest of library information
+   * @param file - An optional MP3 file or Spoti metadata file to use as an entrypoint
+   * @returns
+   */
+  static async manifest<TOptions extends SpotiOptions>(
+    file?: string,
+    options?: TOptions
+  ): Promise<LibraryManifest> {
+    const files: LibraryFile[] = [];
+
+    // MP3 file
+    if (file && Library.exists(file)) {
+      files.push(Library.parse(file));
+    }
+
+    // Spoti metadata file (`*.spoti`)
+    else if (file && Metadata.has(file)) {
+      const { id, type } = Metadata.read<SpotifyMetadataResult>(file);
+      const data = await getSpotifyType(id, type, options);
+      const results = await searchYoutubeType(type, data, options);
+      const prepared = prepareDownloadType(type, data, results, options);
+
+      for (const item of prepared) {
+        const id = item.item.id;
+        const duration = item.item.duration_ms;
+        const tags = await generateTrackTag(item);
+
+        files.push({
+          ...Library.parse(item.download.file),
+          id,
+          tags,
+          duration,
+        });
+      }
+    }
+
+    // No file, defaults to using library as is
+    else {
+      files.push(...Library.library);
+    }
+
+    return { files };
   }
 }

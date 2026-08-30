@@ -1,8 +1,9 @@
 import { type Spotify } from "../models";
 import { type AudioFormat } from "../types/audio";
-import { Duration } from "./duration";
-import { compact, map, padStart, padEnd, trimStart } from "lodash-es";
+import { compact, map, padStart, padEnd, trimStart, isNaN } from "lodash-es";
 import { dirname, basename, join, extname } from "node:path";
+import size from "pretty-bytes";
+import duration from "pretty-ms";
 
 export class Format {
   /**
@@ -171,10 +172,25 @@ export class Format {
   }
 
   /**
+   * Formats some given milliseconds into a pretty duration timestamp like `m:ss`
+   * @param ms - The duration in milliseconds
+   * @returns
+   */
+  static duration(ms: number = 0): string {
+    const raw = isNaN(ms) ? 0 : ms;
+
+    return duration(raw, {
+      colonNotation: true,
+      secondsDecimalDigits: 0,
+      millisecondsDecimalDigits: 0,
+    });
+  }
+
+  /**
    * Get the duration of the Spotify track.
    */
   static getDuration(track: Spotify.Track): string {
-    return Duration.format(track.duration_ms);
+    return this.duration(track.duration_ms);
   }
 
   /**
@@ -358,5 +374,18 @@ export class Format {
     // Pad
     const sanitized = sanitize ? this.sanitize(text) : text;
     return padEnd(sanitized, length, " ");
+  }
+
+  /**
+   * Formats bytes to use a pretty extension
+   * @param bytes
+   * @returns
+   */
+  static bytes(bytes: number): string {
+    return size(bytes, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      space: false,
+    });
   }
 }

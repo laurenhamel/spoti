@@ -1,15 +1,16 @@
-import { Library } from "../utils/library";
 import { existsSync, writeFileSync, readFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 
 export class Metadata {
+  static dir: string = process.env.PWD ?? "";
+
   static file(name: string): string {
     const base = basename(name, extname(name));
     return base + ".spoti";
   }
 
   static path(name: string): string {
-    return join(Library.dir, this.file(name));
+    return join(this.dir, this.file(name));
   }
 
   static has(name: string): boolean {

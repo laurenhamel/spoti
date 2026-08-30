@@ -1,4 +1,3 @@
-import { Metadata } from "../core/metadata";
 import { Spoti } from "../core/spoti";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifyMetadataResult } from "../types/spotify";
@@ -6,6 +5,7 @@ import { createAction } from "../utils/action";
 import { prepareDownloadResults } from "../utils/downloads";
 import { Format } from "../utils/format";
 import { Library } from "../utils/library";
+import { Metadata } from "../utils/metadata";
 import { Progress } from "../utils/progress";
 import chalk from "chalk";
 import { Command } from "commander";

@@ -1,14 +1,23 @@
 import { Spotify } from "../models";
 import { type SpotiOptions } from "../types/config";
 import {
+  type LibraryFile,
+  type LibraryMetadata,
+  type LibraryManifest,
+} from "../types/library";
+import {
   type SpotifyTypeStringifier,
   type YoutubeSearchStringifier,
 } from "../types/stringify";
 import { type YoutubeSearchResult } from "../types/youtube";
 import { Format } from "./format";
+import { Library } from "./library";
+import { pool } from "./promise";
 import chalk from "chalk";
 import Table from "cli-table3";
-import { map, padStart } from "lodash-es";
+import stringify from "fast-safe-stringify";
+import { map, padStart, sortBy, zipObject } from "lodash-es";
+import { type Tags } from "node-id3";
 import { type Primitive } from "type-fest";
 import window from "window-size";
 
@@ -72,10 +81,10 @@ const stringifyTrackSearch: YoutubeSearchStringifier<Spotify.Type.TRACK> = (
       10,
     ],
     head: [
-      chalk.blue("ID"),
-      chalk.blue("Track"),
-      chalk.blue("Artist"),
-      chalk.blue("Duration"),
+      chalk.bold.blue("ID"),
+      chalk.bold.blue("Track"),
+      chalk.bold.blue("Artist"),
+      chalk.bold.blue("Duration"),
     ],
   });
 
@@ -128,11 +137,11 @@ const stringifyPlaylistInfo: SpotifyTypeStringifier<Spotify.Type.PLAYLIST> = (
       10,
     ],
     head: [
-      chalk.blue("#"),
-      chalk.blue("ID"),
-      chalk.blue("Track"),
-      chalk.blue("Artist"),
-      chalk.blue("Duration"),
+      chalk.bold.blue("#"),
+      chalk.bold.blue("ID"),
+      chalk.bold.blue("Track"),
+      chalk.bold.blue("Artist"),
+      chalk.bold.blue("Duration"),
     ],
   });
 
@@ -183,11 +192,11 @@ const stringifyPlaylistSearch: YoutubeSearchStringifier<
       10,
     ],
     head: [
-      chalk.blue("#"),
-      chalk.blue("ID"),
-      chalk.blue("Track"),
-      chalk.blue("Artist"),
-      chalk.blue("Duration"),
+      chalk.bold.blue("#"),
+      chalk.bold.blue("ID"),
+      chalk.bold.blue("Track"),
+      chalk.bold.blue("Artist"),
+      chalk.bold.blue("Duration"),
     ],
   });
 
@@ -263,4 +272,103 @@ export function stringifySearch<
   const callee = callees[type];
 
   return callee<TOptions>(data, results, options, details);
+}
+
+function stringifyTags<TOptions extends SpotiOptions>(
+  tags: Tags = {},
+  _options?: TOptions
+): string {
+  return stringify(
+    tags,
+    (key, value) => {
+      switch (key) {
+        case "image": {
+          return "[Image]";
+        }
+        case "userDefinedText": {
+          const keys = map(value, "description");
+          const values = map(value, "value");
+          return zipObject(keys, values);
+        }
+        case "raw": {
+          return;
+        }
+        default: {
+          return value;
+        }
+      }
+    },
+    2
+  );
+}
+
+export async function stringifyManifest<
+  TOptions extends SpotiOptions & { more?: boolean },
+>(
+  manifest: LibraryManifest,
+  options: TOptions,
+  details?: Record<string, Primitive>,
+  progress?: () => void
+): Promise<string> {
+  const Heading = {
+    Title: chalk.bold.blue("Title"),
+    File: chalk.bold.blue("File"),
+    Format: chalk.bold.blue("Format"),
+    Size: chalk.bold.blue("Size"),
+    Duration: chalk.bold.blue("Duration"),
+    Id: chalk.bold.blue("Id"),
+    Tags: chalk.bold.blue("Tags"),
+  };
+
+  async function readMetadata(file: LibraryFile): Promise<LibraryMetadata> {
+    if (options?.more) {
+      return file.tags
+        ? {
+            tags: file.tags,
+            duration: file.duration ?? Library.duration(file.file, file.tags),
+            id: file.id,
+          }
+        : file.metadata();
+    }
+
+    return {
+      tags: {},
+      duration: file.duration ?? 0,
+      id: file.id,
+    };
+  }
+
+  const tasks = sortBy(manifest.files, "title").map(
+    (file) => async (): Promise<string> => {
+      const metadata = await readMetadata(file);
+      const item = { ...file, ...metadata };
+
+      const table = new Table({
+        colWidths: [10, window.width - 10 - 6],
+      });
+
+      table.push(
+        [Heading.Title, item.title],
+        [Heading.File, item.file],
+        [Heading.Format, item.format],
+        [Heading.Size, Format.bytes(item.size)],
+        ...(options?.more
+          ? [
+              [Heading.Id, item.id],
+              [Heading.Duration, Format.duration(item.duration)],
+              [Heading.Tags, stringifyTags(item.tags)],
+            ]
+          : []),
+        ...stringifyDetails(details)
+      );
+
+      progress?.();
+
+      return table.toString() + "\n";
+    }
+  );
+
+  const dispatch = pool(25);
+  const results = await dispatch(tasks);
+  return results.join("\n");
 }

@@ -1,21 +1,25 @@
 import { transformAudioFiles } from "../core/audio";
-import { hydrateTrackTags } from "../core/tags";
-import { type Youtube } from "../models";
+import { Spotify, type Youtube } from "../models";
 import { YoutubeApi } from "../services";
 import { type AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
 import { type ProcessExitRegister } from "../types/process";
 import {
+  type SpotifyDownloadPreparer,
   type SpotifyDownloadResult,
   type SpotifySearchResult,
 } from "../types/spotify";
-import { type YoutubeDownloadResult } from "../types/youtube";
+import {
+  type YoutubeSearchResult,
+  type YoutubeDownloadResult,
+} from "../types/youtube";
 import { Audio } from "./audio";
 import { silenceWarnings } from "./console";
 import { Format } from "./format";
 import { Library } from "./library";
 import { Progress } from "./progress";
 import { pool } from "./promise";
+import { hydrateTrackTags } from "./tags";
 import chalk from "chalk";
 import { map } from "lodash-es";
 
@@ -35,24 +39,79 @@ export async function downloadYoutubeSong<TOptions extends SpotiOptions>(
 
 export function createDownloadResult<
   TOptions extends SpotiOptions & { format?: AudioFormat },
->(options?: TOptions): (item: SpotifySearchResult) => SpotifyDownloadResult {
-  return (item) => {
-    const format = options?.format ?? Audio.DEFAULT_FORMAT;
-    const file = Format.file(item.item, format);
-    const path = Library.path(file);
-    const title = Library.title(file);
-    const download = { file, path, format, title };
-    return { ...item, download };
-  };
+>(item: SpotifySearchResult, options?: TOptions): SpotifyDownloadResult {
+  const format = options?.format ?? Audio.DEFAULT_FORMAT;
+  const file = Format.file(item.item, format);
+  const path = Library.path(file);
+  const title = Library.title(file);
+  const download = { file, path, format, title };
+  return { ...item, download };
 }
 
+/** @deprecated */
 export function prepareDownloadResults<TOptions extends SpotiOptions>(
+  items: SpotifySearchResult[],
   options?: TOptions
-): (items: SpotifySearchResult[]) => SpotifyDownloadResult[] {
-  return (items) =>
-    map(items, createDownloadResult(options)).sort(
-      sortDownloadResults((item) => item.download.file)
-    );
+): SpotifyDownloadResult[] {
+  return map(items, (item) => createDownloadResult(item, options)).sort(
+    sortDownloadResults((item) => item.download.file)
+  );
+}
+
+const prepareNoop: SpotifyDownloadPreparer<Spotify.Type> = () => [];
+
+const prepareTrack: SpotifyDownloadPreparer<Spotify.Type.TRACK> = (
+  data,
+  results,
+  options
+) => {
+  const search = results[0];
+  const item = { item: data } as Spotify.Item;
+  const result: SpotifySearchResult = { ...item, search };
+  const prepared: SpotifyDownloadResult[] = [
+    createDownloadResult(result, options),
+  ];
+  return prepared.sort(sortDownloadResults((item) => item.download.file));
+};
+
+const preparePlaylist: SpotifyDownloadPreparer<Spotify.Type.PLAYLIST> = (
+  data,
+  results,
+  options
+) => {
+  const prepared: SpotifyDownloadResult[] = [];
+
+  for (let i = 0; i < data.items.items.length; i++) {
+    const item = data.items.items[i];
+    const search = results[i];
+    const result: SpotifySearchResult = { ...item, search };
+    prepared.push(createDownloadResult(result, options));
+  }
+
+  return prepared.sort(sortDownloadResults((item) => item.download.file));
+};
+
+export function prepareDownloadType<
+  TType extends Spotify.Type,
+  TOptions extends SpotiOptions,
+>(
+  type: TType,
+  data: Spotify.ModelOf<TType>,
+  results: YoutubeSearchResult[],
+  options?: TOptions
+): SpotifyDownloadResult[] {
+  const callees: Record<Spotify.Type, SpotifyDownloadPreparer<Spotify.Type>> = {
+    [Spotify.Type.ALBUM]: prepareNoop,
+    [Spotify.Type.ARTIST]: prepareNoop,
+    [Spotify.Type.FEATURES]: prepareNoop,
+    [Spotify.Type.PLAYLIST]: preparePlaylist,
+    [Spotify.Type.TRACK]: prepareTrack,
+    [Spotify.Type.USER]: prepareNoop,
+  };
+
+  const callee = callees[type];
+
+  return callee<TOptions>(data, results, options);
 }
 
 export function sortDownloadResults<TData = Record<string, unknown>>(
@@ -77,7 +136,7 @@ export async function downloadSpotifyTracks<
   passed: SpotifyDownloadResult[];
   failed: { error: Error; item: SpotifyDownloadResult }[];
 }> {
-  const prepared = prepareDownloadResults(options)(items);
+  const prepared = prepareDownloadResults(items, options);
   const existing: SpotifyDownloadResult[] = [];
   const missing: SpotifyDownloadResult[] = [];
 

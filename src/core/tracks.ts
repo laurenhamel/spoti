@@ -3,6 +3,7 @@ import { type SpotiOptions } from "../types/config";
 import { type SpotifySearchResult } from "../types/spotify";
 import { searchYoutubeSong } from "../utils/search";
 
+/** @deprecated */
 export async function getSpotifyTrack<TOptions extends SpotiOptions>(
   model: Spotify.Track,
   options?: TOptions

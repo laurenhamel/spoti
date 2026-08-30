@@ -1,5 +1,6 @@
 import duration from "pretty-ms";
 
+/** @deprecated */
 export class Duration {
   static format(ms: number): string {
     return duration(ms, {

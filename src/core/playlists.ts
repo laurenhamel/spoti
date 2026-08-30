@@ -6,6 +6,7 @@ import { Progress } from "../utils/progress";
 import { searchYoutubeSongs } from "../utils/search";
 import chalk from "chalk";
 
+/** @deprecated */
 export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   model: Spotify.Playlist,
   options?: TOptions

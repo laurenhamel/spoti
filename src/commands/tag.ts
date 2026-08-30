@@ -1,13 +1,13 @@
-import { Metadata } from "../core/metadata";
 import { Spoti } from "../core/spoti";
-import { generateTrackTag } from "../core/tags";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifyMetadataResult } from "../types/spotify";
 import { createAction } from "../utils/action";
 import { prepareDownloadResults } from "../utils/downloads";
 import { Duration } from "../utils/duration";
 import { Library } from "../utils/library";
+import { Metadata } from "../utils/metadata";
 import { Progress } from "../utils/progress";
+import { generateTrackTag } from "../utils/tags";
 import chalk from "chalk";
 import Table from "cli-table3";
 import { Command } from "commander";
@@ -36,7 +36,7 @@ export default new Command()
       } else if (file && Metadata.has(file)) {
         const { type, id } = Metadata.read<SpotifyMetadataResult>(file);
         const items = await Spoti.search(id, type, options);
-        const prepared = prepareDownloadResults(options)(items);
+        const prepared = prepareDownloadResults(items, options);
         const data: {
           file: string;
           path: string;

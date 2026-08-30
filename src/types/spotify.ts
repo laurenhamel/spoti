@@ -1,5 +1,6 @@
 import { type Spotify } from "../models";
 import { type AudioFormat } from "./audio";
+import { type SpotiOptions } from "./config";
 import {
   type YoutubeDownloadResult,
   type YoutubeSearchResult,
@@ -24,6 +25,14 @@ export type SpotifyDownloadResult = SpotifySearchResult & {
     result?: YoutubeDownloadResult;
   };
 };
+
+export type SpotifyDownloadPreparer<TType extends Spotify.Type> = <
+  TOptions extends SpotiOptions,
+>(
+  data: Spotify.ModelOf<TType>,
+  results: YoutubeSearchResult[],
+  options?: TOptions
+) => SpotifyDownloadResult[];
 
 export type SpotifyTagResult = SpotifyDownloadResult & {
   tags: Tags;

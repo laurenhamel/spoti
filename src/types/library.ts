@@ -35,3 +35,7 @@ export interface LibraryItem extends LibrarySource {
 }
 
 export type LibraryFile = LibraryItem & Partial<LibraryMetadata>;
+
+export interface LibraryManifest {
+  files: LibraryFile[];
+}
