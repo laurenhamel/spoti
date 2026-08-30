@@ -6,7 +6,7 @@ import { createAction } from "../utils/action";
 import { prepareDownloadResults } from "../utils/downloads";
 import { Format } from "../utils/format";
 import { Library } from "../utils/library";
-import { Progress } from "../utils/progress";
+import { ProgressV2 } from "../utils/progress";
 import chalk from "chalk";
 import { Command } from "commander";
 import { castArray, map, trimStart } from "lodash-es";
@@ -40,24 +40,11 @@ export default new Command()
         files.push(...sorted);
       }
 
-      const progress$ = new Progress(
-        "Sanitizing…",
-        {
-          type: "percentage",
-          percentage: 0,
-          message: `0 / ${files.length}`,
-          nameTransformFn: chalk.blue,
-        },
-        (() => {
-          let reports = 0;
-          return () => {
-            reports++;
-            const percentage = reports / files.length;
-            const message = `${reports} / ${files.length}`;
-            progress$.update(percentage, message);
-          };
-        })()
-      );
+      const progress = new ProgressV2({
+        label: "Sanitizing…",
+        total: files.length,
+        color: chalk.blue,
+      });
 
       const skip: string[] = [];
       const rename: string[] = [];
@@ -101,10 +88,10 @@ export default new Command()
           miss.push(file);
         }
 
-        progress$.report();
+        progress.increment();
       }
 
-      progress$.done();
+      progress.done();
 
       console.log("");
       console.log(chalk.bold("Results:"));

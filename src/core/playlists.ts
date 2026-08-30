@@ -2,7 +2,7 @@ import { type Spotify } from "../models";
 import { SpotifyApi } from "../services";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifySearchResult } from "../types/spotify";
-import { Progress } from "../utils/progress";
+import { ProgressV2 } from "../utils/progress";
 import { searchYoutubeSongs } from "../utils/search";
 import chalk from "chalk";
 
@@ -19,49 +19,23 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   console.log(`Found ${chalk.cyan(total)} total tracks.`);
   console.log();
 
-  const progress$ = new Progress(
-    "Processing…",
-    {
-      type: "percentage",
-      percentage: 0,
-      nameTransformFn: chalk.blue,
-    },
-    (() => {
-      let reports = 0;
-
-      return (amount: number = limit): void => {
-        reports += amount;
-        const percentage = reports / (total * 3);
-        progress$.update(percentage);
-      };
-    })()
-  );
+  const progress = new ProgressV2({
+    label: "Processing…",
+    total: total * 3,
+    color: chalk.blue,
+  });
 
   /* #region Fetches */
   const fetches: Promise<void>[] = [];
 
-  const fetches$ = new Progress(
-    "Fetching Spotify tracks…",
-    {
-      type: "percentage",
-      percentage: 0,
-      message: `0 / ${total}`,
-      nameTransformFn: chalk.yellow,
-    },
-    (() => {
-      let reports = 0;
+  const fetching = new ProgressV2({
+    label: "Fetching Spotify tracks…",
+    total,
+    color: chalk.yellow,
+    subscribers: [(payload) => progress.subscribe(payload)],
+  });
 
-      return (amount = limit): void => {
-        reports += amount;
-        const percentage = reports / total;
-        const message = `${reports} / ${total}`;
-        fetches$.update(percentage, message);
-        progress$.report(amount);
-      };
-    })()
-  );
-
-  fetches$.report();
+  fetching.increment();
 
   for (let i = 1; i <= iterations; i++) {
     const offset = i * limit;
@@ -75,14 +49,14 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
         );
 
         results.push(tracks.items as SpotifySearchResult[]);
-        fetches$.report();
+        fetching.increment();
       })()
     );
   }
 
   await Promise.all(fetches);
 
-  fetches$.done();
+  fetching.done();
   /* #endregion */
 
   // @TODO Look for existing metadata file for playlist ID
@@ -92,46 +66,30 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   /* #region Searches */
   const searches: Promise<void>[] = [];
 
-  const searches$ = new Progress(
-    "Searching Youtube songs…",
-    {
-      type: "percentage",
-      percentage: 0,
-      message: `0 / ${total}`,
-      nameTransformFn: chalk.yellow,
-    },
-    (() => {
-      let reports = 0;
-
-      return (amount = limit): void => {
-        reports += amount;
-        const percentage = reports / total;
-        const message = `${reports} / ${total}`;
-        searches$.update(percentage, message);
-        progress$.report(amount);
-      };
-    })()
-  );
-
-  const increment = () => searches$.report(1);
+  const searching = new ProgressV2({
+    label: "Searching Youtube songs…",
+    total,
+    color: chalk.yellow,
+    subscribers: [(payload) => progress.subscribe(payload)],
+  });
 
   for (const group of results) {
     searches.push(
       (async () => {
-        await searchYoutubeSongs(group, options, increment);
+        await searchYoutubeSongs(group, options, () => searching.increment());
       })()
     );
   }
 
   await Promise.all(searches);
 
-  searches$.done();
+  searching.done();
   /* #endregion */
 
   // @TODO Find third-party service for collection audio feature data
   // @TODO Save new metadata file for the playlist ID
 
-  progress$.done();
+  progress.done();
 
   console.log();
 

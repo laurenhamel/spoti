@@ -163,6 +163,10 @@ export class ProgressV2 {
     Progress.progress?.close();
   }
 
+  subscribe(payload: ProgressPayload): void {
+    this.update(payload.value);
+  }
+
   static gracefullyStopProgress: ProcessExitRegister = () => ({
     SIGINT: () => {
       Progress.progress?.close();

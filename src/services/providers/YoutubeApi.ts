@@ -6,12 +6,12 @@ import { type RetryHandlers } from "../../types/promise";
 import { Audio } from "../../utils/audio";
 import { getDownloadData } from "../../utils/download";
 import { Library } from "../../utils/library";
-import { Progress } from "../../utils/progress";
+import { ProgressV2 } from "../../utils/progress";
 import { retry } from "../../utils/promise";
 import { PolicyAdapter } from "../adapters";
 import chalk from "chalk";
 import { sync as glob } from "glob";
-import { filter, flatMap, get, isNaN } from "lodash-es";
+import { filter, flatMap, get } from "lodash-es";
 import { statSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -279,27 +279,11 @@ class YoutubeApi {
       output: options?.format ?? Audio.DEFAULT_FORMAT,
     };
 
-    const progress$ = new Progress(
-      Progress.label(title),
-      {
-        type: "percentage",
-        percentage: 0,
-        nameTransformFn: chalk.yellow,
-        message: chalk.dim(title),
-      },
-      (() => {
-        let reports = 0;
-
-        return (length: number, total?: number): void => {
-          reports += length;
-
-          if (total) {
-            const downloaded = reports / total;
-            !isNaN(download) && progress$?.update(downloaded, chalk.dim(title));
-          }
-        };
-      })()
-    );
+    const progress = new ProgressV2({
+      label: title,
+      total: 0,
+      color: chalk.yellow.dim,
+    });
 
     const download = async (id: string): Promise<TResponse> => {
       if (options?.verbose) {
@@ -335,7 +319,8 @@ class YoutubeApi {
 
       for await (const chunk of Utils.streamToIterable(stream)) {
         file.write(chunk);
-        progress$.report(chunk.length, format.content_length);
+        progress.total = format.content_length ?? chunk.length;
+        progress.update(chunk.length);
       }
 
       await file.save();
@@ -359,7 +344,7 @@ class YoutubeApi {
       error = e as Error;
     }
 
-    progress$.done();
+    progress.done();
 
     if (error) throw error;
 

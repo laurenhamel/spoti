@@ -11,14 +11,18 @@ import { find, merge, template, flatMap, trimStart } from "lodash-es";
 import fetch from "node-fetch";
 import { chromium, type Request, type Page, type Browser } from "playwright";
 
+// prettier-ignore
 const SPOTIFY_PLAYLIST_URL = "https://open.spotify.com/playlist/<%= id %>";
-const SPOTIFY_PLAYLIST_API =
-  "https://api-partner.spotify.com/pathfinder/v2/query";
+// prettier-ignore
+const SPOTIFY_PLAYLIST_API = "https://api-partner.spotify.com/pathfinder/v2/query";
+// prettier-ignore
 const SPOTIFY_ACCESS_TOKEN_METHOD = "GET";
+// prettier-ignore
 const SPOTIFY_ACCESS_TOKEN_URL = "https://open.spotify.com/api/token";
+// prettier-ignore
 const SPOTIFY_CLIENT_TOKEN_METHOD = "POST";
-const SPOTIFY_CLIENT_TOKEN_URL =
-  "https://clienttoken.spotify.com/v1/clienttoken";
+// prettier-ignore
+const SPOTIFY_CLIENT_TOKEN_URL = "https://clienttoken.spotify.com/v1/clienttoken";
 
 export function isSpotifyURL(url: string): boolean {
   try {

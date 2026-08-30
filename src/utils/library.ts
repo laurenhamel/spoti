@@ -1,9 +1,15 @@
 import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
+import {
+  type LibraryItem,
+  type LibraryOptions,
+  type LibraryMetadata,
+} from "../types/library";
 import { VideoFormat } from "../types/video";
+import { mergeOptions } from "./action";
 import { Audio } from "./audio";
 import { Format } from "./format";
-import { Progress } from "./progress";
+import { ProgressV2 } from "./progress";
 import { pool, Deferred } from "./promise";
 import chalk from "chalk";
 import { sync as glob } from "glob";
@@ -21,65 +27,29 @@ import { basename, extname, join } from "node:path";
 
 const { Promise: ID3 } = id3;
 
-export interface LibraryMetadata {
-  tags: Tags;
-  duration: number;
-  id?: string;
-}
-
-export interface LibraryOptions extends SpotiOptions {
-  /**
-   * Whether to support prefixes in file names
-   */
-  prefixes: boolean;
-
-  /**
-   * Whether to support suffixes in file names
-   */
-  suffixes: boolean;
-}
-
-export interface LibrarySource {
-  title: string;
-  path: string;
-  file: string;
-  format: AudioFormat | VideoFormat;
-  size: number;
-}
-
-export interface LibraryItem extends LibrarySource {
-  raw: LibrarySource;
-  metadata: () => Promise<LibraryMetadata>;
-}
+const LIBRARY_DEFAULTS: LibraryOptions = {
+  verbose: false,
+  prefixes: true,
+  suffixes: true,
+};
 
 export class Library {
   static dir: string = process.env.PWD ?? "";
   static library: LibraryItem[] = [];
   static files: string[] = [];
 
-  private static mounted$ = new Deferred<boolean>();
+  private static __mounted = new Deferred<boolean>();
 
-  static mounted: Promise<boolean> = this.mounted$.promise;
+  static mounted: Promise<boolean> = this.__mounted.promise;
 
-  static options$: LibraryOptions = {
-    verbose: false,
-    prefixes: true,
-    suffixes: true,
-  };
+  private static __options: LibraryOptions = { ...LIBRARY_DEFAULTS };
 
   static get options(): LibraryOptions {
-    return this.options$;
+    return this.__options;
   }
 
   static set options(options: LibraryOptions) {
-    this.options$ = merge(
-      {
-        verbose: false,
-        prefixes: true,
-        suffixes: true,
-      },
-      options
-    );
+    this.__options = mergeOptions(this.__options, options);
   }
 
   /**
@@ -94,8 +64,8 @@ export class Library {
     this.files = this.scan(this.dir);
     this.options = options as unknown as LibraryOptions;
     this.options.verbose && this.files.forEach((file) => console.log(file));
-    this.library = await this.hydrate(this.files);
-    this.mounted$.resolve(true);
+    this.library = await this.process(this.files);
+    this.__mounted.resolve(true);
     return this.mounted;
   }
 
@@ -140,42 +110,29 @@ export class Library {
   }
 
   /**
-   * Hydrate the metadata for the given list of files
+   * Process the metadata for the given list of files
    * @param files - The files to scan
    * @param increment - A progress increment function
    * @returns
    */
-  static async hydrate(files: string[]): Promise<LibraryItem[]> {
-    const progress$ = new Progress(
-      "Mounting…",
-      {
-        type: "percentage",
-        percentage: 0,
-        message: `0 / ${files.length}`,
-        nameTransformFn: chalk.blue,
-      },
-      (() => {
-        let reports = 0;
-        return () => {
-          reports++;
-          const percentage = reports / files.length;
-          const message = `${reports} / ${files.length}`;
-          progress$.update(percentage, message);
-        };
-      })()
-    );
+  static async process(files: string[]): Promise<LibraryItem[]> {
+    const progress = new ProgressV2({
+      label: "Mounting…",
+      total: files.length,
+      color: chalk.blue,
+    });
 
     const dispatch = pool(25);
 
     const tasks = files.map((file) => async () => {
       const result = this.parse(file);
-      progress$.report();
+      progress.increment();
       return result;
     });
 
     const metadata = await dispatch(tasks);
 
-    progress$.done();
+    progress.done();
 
     return metadata;
   }

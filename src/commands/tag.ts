@@ -7,7 +7,7 @@ import { createAction } from "../utils/action";
 import { prepareDownloadResults } from "../utils/downloads";
 import { Duration } from "../utils/duration";
 import { Library } from "../utils/library";
-import { Progress } from "../utils/progress";
+import { ProgressV2 } from "../utils/progress";
 import chalk from "chalk";
 import Table from "cli-table3";
 import { Command } from "commander";
@@ -22,9 +22,9 @@ export interface TagCliOptions extends SpotiOptions {
 
 export default new Command()
   .name("tag")
-  .description("Read ID3 tag(s) from MP3 file(s)")
+  .description("Read ID3 tags of your music library")
   .argument("[file]", "An MP3 file or Spoti metadata file")
-  .option("-u, --update", "Update the ID3 tag(s) of the MP3 file(s)", false)
+  .option("-u, --update", "Update the ID3 tag(s) in your music library", false)
   .action(
     createAction<TagCliArgs, TagCliOptions>(async (file, options) => {
       const files: { title: string; file: string; id?: string; tags?: Tags }[] =
@@ -72,24 +72,11 @@ export default new Command()
         meta: Library.get(file),
       }));
 
-      const progress$ = new Progress(
-        "Scanning…",
-        {
-          type: "percentage",
-          percentage: 0,
-          message: `0 / ${files.length}`,
-          nameTransformFn: chalk.blue,
-        },
-        (() => {
-          let reports = 0;
-          return () => {
-            reports++;
-            const percentage = reports / files.length;
-            const message = `${reports} / ${files.length}`;
-            progress$.update(percentage, message);
-          };
-        })()
-      );
+      const progress = new ProgressV2({
+        label: "Scanning…",
+        total: files.length,
+        color: chalk.blue,
+      });
 
       const head = ["Title", "Format", "ID", "Size", "Duration"];
       const table$ = new Table({ head });
@@ -97,7 +84,7 @@ export default new Command()
       const missing: string[] = [];
 
       for (const item of data) {
-        const label = Progress.label(item.title, 100);
+        const label = ProgressV2.label(item.title, 100);
 
         if (item.meta) {
           const { format, size, metadata } = item.meta;
@@ -113,10 +100,10 @@ export default new Command()
           table$.push([chalk.dim(label), "-", "-", "-", "-"]);
         }
 
-        progress$.report();
+        progress.increment();
       }
 
-      progress$.done();
+      progress.done();
 
       console.log("");
       console.log(table$.toString());
