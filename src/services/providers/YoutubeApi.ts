@@ -6,7 +6,7 @@ import { type RetryHandlers } from "../../types/promise";
 import { Audio } from "../../utils/audio";
 import { getDownloadData } from "../../utils/download";
 import { Library } from "../../utils/library";
-import { ProgressV2 } from "../../utils/progress";
+import { Progress } from "../../utils/progress";
 import { retry } from "../../utils/promise";
 import { PolicyAdapter } from "../adapters";
 import chalk from "chalk";
@@ -279,7 +279,7 @@ class YoutubeApi {
       output: options?.format ?? Audio.DEFAULT_FORMAT,
     };
 
-    const progress = new ProgressV2({
+    const progress = new Progress({
       label: title,
       total: 0,
       color: chalk.yellow.dim,

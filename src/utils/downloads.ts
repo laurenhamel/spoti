@@ -14,7 +14,7 @@ import { Audio } from "./audio";
 import { silenceWarnings } from "./console";
 import { Format } from "./format";
 import { Library } from "./library";
-import { ProgressV2 } from "./progress";
+import { Progress } from "./progress";
 import { pool } from "./promise";
 import chalk from "chalk";
 import { map } from "lodash-es";
@@ -97,7 +97,7 @@ export async function downloadSpotifyTracks<
   const passed: SpotifyDownloadResult[] = [...existing];
   const failed: { error: Error; item: SpotifyDownloadResult }[] = [];
 
-  const downloading = new ProgressV2({
+  const downloading = new Progress({
     label: "Downloading…",
     total: prepared.length,
     color: chalk.blue,
@@ -157,7 +157,7 @@ export async function downloadSpotifyTracks<
   /* #endregion */
 
   /* #region Convert */
-  const converting = new ProgressV2({
+  const converting = new Progress({
     label: "Converting…",
     total: passed.length,
     color: chalk.blue,
@@ -169,7 +169,7 @@ export async function downloadSpotifyTracks<
   /* #endregion */
 
   /* #region Tag */
-  const tagging = new ProgressV2({
+  const tagging = new Progress({
     label: "Tagging…",
     total: passed.length,
     color: chalk.blue,

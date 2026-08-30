@@ -2,7 +2,7 @@ import { type Spotify } from "../models";
 import { SpotifyApi } from "../services";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifySearchResult } from "../types/spotify";
-import { ProgressV2 } from "../utils/progress";
+import { Progress } from "../utils/progress";
 import { searchYoutubeSongs } from "../utils/search";
 import chalk from "chalk";
 
@@ -19,7 +19,7 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   console.log(`Found ${chalk.cyan(total)} total tracks.`);
   console.log();
 
-  const progress = new ProgressV2({
+  const progress = new Progress({
     label: "Processing…",
     total: total * 3,
     color: chalk.blue,
@@ -28,7 +28,7 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   /* #region Fetches */
   const fetches: Promise<void>[] = [];
 
-  const fetching = new ProgressV2({
+  const fetching = new Progress({
     label: "Fetching Spotify tracks…",
     total,
     color: chalk.yellow,
@@ -66,7 +66,7 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   /* #region Searches */
   const searches: Promise<void>[] = [];
 
-  const searching = new ProgressV2({
+  const searching = new Progress({
     label: "Searching Youtube songs…",
     total,
     color: chalk.yellow,

@@ -6,7 +6,7 @@ import { createAction } from "../utils/action";
 import { prepareDownloadResults } from "../utils/downloads";
 import { Format } from "../utils/format";
 import { Library } from "../utils/library";
-import { ProgressV2 } from "../utils/progress";
+import { Progress } from "../utils/progress";
 import chalk from "chalk";
 import { Command } from "commander";
 import { castArray, map, trimStart } from "lodash-es";
@@ -40,7 +40,7 @@ export default new Command()
         files.push(...sorted);
       }
 
-      const progress = new ProgressV2({
+      const progress = new Progress({
         label: "Sanitizing…",
         total: files.length,
         color: chalk.blue,

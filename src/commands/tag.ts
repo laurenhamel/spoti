@@ -7,7 +7,7 @@ import { createAction } from "../utils/action";
 import { prepareDownloadResults } from "../utils/downloads";
 import { Duration } from "../utils/duration";
 import { Library } from "../utils/library";
-import { ProgressV2 } from "../utils/progress";
+import { Progress } from "../utils/progress";
 import chalk from "chalk";
 import Table from "cli-table3";
 import { Command } from "commander";
@@ -72,7 +72,7 @@ export default new Command()
         meta: Library.get(file),
       }));
 
-      const progress = new ProgressV2({
+      const progress = new Progress({
         label: "Scanning…",
         total: files.length,
         color: chalk.blue,
@@ -84,7 +84,7 @@ export default new Command()
       const missing: string[] = [];
 
       for (const item of data) {
-        const label = ProgressV2.label(item.title, 100);
+        const label = Progress.label(item.title, 100);
 
         if (item.meta) {
           const { format, size, metadata } = item.meta;

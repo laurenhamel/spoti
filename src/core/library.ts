@@ -9,7 +9,7 @@ import { mergeOptions } from "../utils/action";
 import { prepareDownloadResults } from "../utils/downloads";
 import { Duration } from "../utils/duration";
 import { Library } from "../utils/library";
-import { ProgressV2 } from "../utils/progress";
+import { Progress } from "../utils/progress";
 import { pool } from "../utils/promise";
 import { Size } from "../utils/size";
 import chalk from "chalk";
@@ -63,7 +63,7 @@ export const library: ActionHandler<LibraryArguments, LibraryOptions> = async <
     files.push(...Library.library);
   }
 
-  const progress = new ProgressV2({
+  const progress = new Progress({
     label: "Scanning…",
     total: files.length,
     color: chalk.blue,
@@ -109,7 +109,7 @@ export const library: ActionHandler<LibraryArguments, LibraryOptions> = async <
     const table = new Table();
 
     const rows: HorizontalTableRow[] = [
-      [HEADING.Title, ProgressV2.label(item.title, CLAMP)],
+      [HEADING.Title, Progress.label(item.title, CLAMP)],
       [HEADING.File, item.file],
       [HEADING.Format, item.format],
       [HEADING.Size, Size.format(item.size)],

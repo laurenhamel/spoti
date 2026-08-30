@@ -6,7 +6,7 @@ import {
   registerProcessExitHandlers,
   gracefullyStopProcess,
 } from "./utils/process";
-import { Progress, ProgressV2 } from "./utils/progress";
+import { Progress } from "./utils/progress";
 import chalk from "chalk";
 import { Command } from "commander";
 
@@ -24,7 +24,6 @@ await registerCommands(program);
 registerProcessExitHandlers(
   gracefullyStopProcess(),
   Progress.gracefullyStopProgress(),
-  ProgressV2.gracefullyStopProgress(),
   gracefullyCleanupDownloads()
 );
 

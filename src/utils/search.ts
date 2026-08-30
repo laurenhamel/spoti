@@ -7,7 +7,7 @@ import {
   type YoutubeSearchResult,
 } from "../types/youtube";
 import { cache } from "./cache";
-import { ProgressV2 } from "./progress";
+import { Progress } from "./progress";
 import chalk from "chalk";
 import Fuse from "fuse.js";
 import { find, map, sum } from "lodash-es";
@@ -235,7 +235,7 @@ const searchTrack: YoutubeSearchOf<Spotify.Type.TRACK> = async (
   data,
   options
 ) => {
-  const progress = new ProgressV2({
+  const progress = new Progress({
     label: "Searching Youtube…",
     total: 1,
     color: chalk.yellow,
@@ -259,7 +259,7 @@ const searchPlaylist: YoutubeSearchOf<Spotify.Type.PLAYLIST> = async (
   const tracks = data.items.items;
   const total = tracks.length;
 
-  const progress = new ProgressV2({
+  const progress = new Progress({
     label: "Searching Youtube…",
     total,
     color: chalk.yellow,

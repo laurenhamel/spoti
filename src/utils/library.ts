@@ -9,7 +9,7 @@ import { VideoFormat } from "../types/video";
 import { mergeOptions } from "./action";
 import { Audio } from "./audio";
 import { Format } from "./format";
-import { ProgressV2 } from "./progress";
+import { Progress } from "./progress";
 import { pool, Deferred } from "./promise";
 import chalk from "chalk";
 import { sync as glob } from "glob";
@@ -116,7 +116,7 @@ export class Library {
    * @returns
    */
   static async process(files: string[]): Promise<LibraryItem[]> {
-    const progress = new ProgressV2({
+    const progress = new Progress({
       label: "Mounting…",
       total: files.length,
       color: chalk.blue,
