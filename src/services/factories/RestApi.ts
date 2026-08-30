@@ -280,11 +280,14 @@ export default class RestApi<
         }
       } catch (error) {
         throw new Error(
-          `Request failed: ${status} ${message}. ${error as Error}`
+          [`Request failed: ${status} ${message}.`, error as Error].join("\n"),
+          { cause: { status, message, headers } }
         );
       }
     } else {
-      throw new Error(message);
+      throw new Error(message, {
+        cause: { status, message, headers },
+      });
     }
   }
 

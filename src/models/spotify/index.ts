@@ -7,5 +7,6 @@ export type * from "./Playlist";
 export type * from "./Track";
 export type * from "./Tracks";
 export type * from "./User";
+export type * as Scraped from "./scraped";
 export * from "./shared";
 export type * from "./utils";

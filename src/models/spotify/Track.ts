@@ -20,7 +20,7 @@ export type Track = {
   external_urls: ExternalUrls;
   href: string;
   id: string;
-  is_playable: false;
+  is_playable: boolean;
   linked_from: Record<string, unknown>;
   restrictions?: Record<"reason", string>;
   name: string;
