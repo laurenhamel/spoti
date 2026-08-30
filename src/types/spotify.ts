@@ -1,12 +1,10 @@
 import { type Spotify } from "../models";
 import { type AudioFormat } from "./audio";
-import { type SpotiOptions } from "./config";
 import {
   type YoutubeDownloadResult,
   type YoutubeSearchResult,
 } from "./youtube";
 import { type Tags } from "node-id3";
-import { type Primitive } from "type-fest";
 
 export type SpotifyMetadataResult = {
   type: Spotify.Type;
@@ -30,11 +28,3 @@ export type SpotifyDownloadResult = SpotifySearchResult & {
 export type SpotifyTagResult = SpotifyDownloadResult & {
   tags: Tags;
 };
-
-export type SpotifyTypeStringifier<TType extends Spotify.Type> = <
-  TOptions extends SpotiOptions,
->(
-  data: Spotify.ModelOf<TType>,
-  options?: TOptions,
-  details?: Record<string, Primitive>
-) => string;

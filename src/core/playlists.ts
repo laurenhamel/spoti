@@ -3,7 +3,7 @@ import { SpotifyApi } from "../services";
 import { type SpotiOptions } from "../types/config";
 import { type SpotifySearchResult } from "../types/spotify";
 import { Progress } from "../utils/progress";
-import { hydrateYoutubeSearch } from "./search";
+import { searchYoutubeSongs } from "./search";
 import chalk from "chalk";
 
 export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
@@ -118,7 +118,7 @@ export async function getSpotifyPlaylist<TOptions extends SpotiOptions>(
   for (const group of results) {
     searches.push(
       (async () => {
-        await hydrateYoutubeSearch(group, options, increment);
+        await searchYoutubeSongs(group, options, increment);
       })()
     );
   }

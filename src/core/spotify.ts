@@ -1,19 +1,14 @@
 import { Spotify } from "../models";
 import { SpotifyApi, type SpotifyApiRequestMethod } from "../services";
 import { type SpotiOptions } from "../types/config";
-import { type SpotifyTypeStringifier } from "../types/spotify";
 import {
   checkPlaywrightVersion,
   ensureChromiumInstalled,
 } from "../utils/dependencies";
-import { Format } from "../utils/format";
 import { retry } from "../utils/promise";
-import chalk from "chalk";
-import Table from "cli-table3";
-import { find, map, padStart, merge, template, flatMap } from "lodash-es";
+import { find, merge, template, flatMap } from "lodash-es";
 import fetch from "node-fetch";
 import { chromium, type Request, type Page, type Browser } from "playwright";
-import { type Primitive } from "type-fest";
 
 const noopSpotifyApiRequest: SpotifyApiRequestMethod = async <
   TResponse extends Record<string, unknown>,
@@ -22,13 +17,10 @@ const noopSpotifyApiRequest: SpotifyApiRequestMethod = async <
 async function getSpotifyPlaylist<
   TData extends Record<string, unknown>,
   TOptions extends SpotiOptions,
->(
-  data?: TData,
-  options?: TOptions
-): Promise<Spotify.ModelOf<Spotify.Type.PLAYLIST>> {
+>(data?: TData, options?: TOptions): Promise<Spotify.Playlist> {
   try {
     const playlist = await SpotifyApi.getPlaylist(data, options);
-    return playlist as Spotify.ModelOf<Spotify.Type.PLAYLIST>;
+    return playlist as Spotify.Playlist;
   } catch (error) {
     const { cause } = error as Error;
 
@@ -41,19 +33,19 @@ async function getSpotifyPlaylist<
   }
 }
 
-const SPOTIFY_PLAYLIST_URL = "https://open.spotify.com/playlist/<%= id %>";
-const SPOTIFY_PLAYLIST_API =
-  "https://api-partner.spotify.com/pathfinder/v2/query";
-const SPOTIFY_ACCESS_TOKEN_METHOD = "GET";
-const SPOTIFY_ACCESS_TOKEN_URL = "https://open.spotify.com/api/token";
-const SPOTIFY_CLIENT_TOKEN_METHOD = "POST";
-const SPOTIFY_CLIENT_TOKEN_URL =
-  "https://clienttoken.spotify.com/v1/clienttoken";
-
 async function scrapeSpotifyPlaylist<
   TData extends Record<string, unknown>,
   TOptions extends SpotiOptions,
 >(data: TData = {} as TData, _options?: TOptions): Promise<Spotify.Playlist> {
+  const SPOTIFY_PLAYLIST_URL = "https://open.spotify.com/playlist/<%= id %>";
+  const SPOTIFY_PLAYLIST_API =
+    "https://api-partner.spotify.com/pathfinder/v2/query";
+  const SPOTIFY_ACCESS_TOKEN_METHOD = "GET";
+  const SPOTIFY_ACCESS_TOKEN_URL = "https://open.spotify.com/api/token";
+  const SPOTIFY_CLIENT_TOKEN_METHOD = "POST";
+  const SPOTIFY_CLIENT_TOKEN_URL =
+    "https://clienttoken.spotify.com/v1/clienttoken";
+
   const id = data.id as string;
 
   checkPlaywrightVersion();
@@ -368,6 +360,14 @@ async function scrapeSpotifyPlaylist<
   return toPlaylist(playlist);
 }
 
+async function getSpotifyTrack<
+  TData extends Record<string, unknown>,
+  TOptions extends SpotiOptions,
+>(data?: TData, options?: TOptions): Promise<Spotify.Track> {
+  const track = await SpotifyApi.getTrack(data, options);
+  return track as Spotify.Track;
+}
+
 export async function getSpotifyType<
   TType extends Spotify.Type,
   TOptions extends SpotiOptions,
@@ -381,111 +381,11 @@ export async function getSpotifyType<
     [Spotify.Type.ARTIST]: noopSpotifyApiRequest,
     [Spotify.Type.FEATURES]: noopSpotifyApiRequest,
     [Spotify.Type.PLAYLIST]: getSpotifyPlaylist as SpotifyApiRequestMethod,
-    [Spotify.Type.TRACK]: SpotifyApi.getTrack,
+    [Spotify.Type.TRACK]: getSpotifyTrack as SpotifyApiRequestMethod,
     [Spotify.Type.USER]: noopSpotifyApiRequest,
   };
 
   const callee = callees[type];
 
   return callee<Spotify.ModelOf<TType>>({ id }, options);
-}
-
-function stringifyDetails(details?: Record<string, Primitive>): string[][] {
-  return details
-    ? map(details, (value, key) => {
-        return [chalk.bold(key), String(value)];
-      })
-    : [];
-}
-
-const stringifyNoop: SpotifyTypeStringifier<Spotify.Type> = () => "";
-
-const stringifyTrack: SpotifyTypeStringifier<Spotify.Type.TRACK> = (
-  data,
-  options,
-  details
-) => {
-  const { id, name, artists } = data;
-
-  const table = new Table();
-
-  table.push(
-    [chalk.bold("ID"), id],
-    [chalk.bold("Track"), name],
-    [chalk.bold("Artist"), map(artists, "name").join(", ")],
-    [chalk.bold("Duration"), Format.getDuration(data)],
-    ...stringifyDetails(details)
-  );
-
-  return table.toString();
-};
-
-const stringifyPlaylist: SpotifyTypeStringifier<Spotify.Type.PLAYLIST> = (
-  data,
-  options,
-  details
-) => {
-  const { id, description, name, items: tracks } = data;
-  const owner = data.owner.display_name;
-  const length = tracks.items.length;
-  const padding = `${length}`.length;
-
-  const head = new Table();
-
-  head.push(
-    [chalk.bold("ID"), id],
-    [chalk.bold("Playlist"), name],
-    [chalk.bold("Description"), description],
-    [chalk.bold("Songs"), length],
-    [chalk.bold("Owner"), owner],
-    ...stringifyDetails(details)
-  );
-
-  const body = new Table({
-    head: [
-      chalk.blue("#"),
-      chalk.blue("ID"),
-      chalk.blue("Track"),
-      chalk.blue("Artist"),
-      chalk.blue("Duration"),
-    ],
-  });
-
-  for (let i = 0; i < length; i++) {
-    const track = tracks.items[i];
-    const count = padStart(`${i + 1}`, padding, "0");
-
-    body.push([
-      count,
-      track.item.id,
-      track.item.name,
-      map(track.item.artists, "name").join(", "),
-      Format.getDuration(track.item),
-    ]);
-  }
-
-  return [head.toString() + "\n", body.toString()].join("\n");
-};
-
-export function stringifyType<
-  TType extends Spotify.Type,
-  TOptions extends SpotiOptions,
->(
-  type: TType,
-  data: Spotify.ModelOf<TType>,
-  options: TOptions,
-  details?: Record<string, Primitive>
-): string {
-  const callees: { [TType in Spotify.Type]: SpotifyTypeStringifier<TType> } = {
-    [Spotify.Type.ALBUM]: stringifyNoop,
-    [Spotify.Type.ARTIST]: stringifyNoop,
-    [Spotify.Type.FEATURES]: stringifyNoop,
-    [Spotify.Type.PLAYLIST]: stringifyPlaylist,
-    [Spotify.Type.TRACK]: stringifyTrack,
-    [Spotify.Type.USER]: stringifyNoop,
-  };
-
-  const callee = callees[type];
-
-  return callee<TOptions>(data, options, details);
 }

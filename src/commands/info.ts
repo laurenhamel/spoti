@@ -1,4 +1,5 @@
-import { getSpotifyType, stringifyType } from "../core/spotify";
+import { getSpotifyType } from "../core/spotify";
+import { stringifyType } from "../core/stringify";
 import { Spotify } from "../models";
 import { type SpotiCliOptions } from "../types/config";
 import { createActionHandler } from "../utils/action";
