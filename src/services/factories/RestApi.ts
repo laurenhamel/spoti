@@ -267,10 +267,11 @@ export default class RestApi<
       return paginated;
     } else if (retries) {
       try {
-        const result = await this.retry<TResponse>(
+        const result = await this.retry<TResponse, TOptions>(
           status,
           headers,
-          signature(attempt + 1)
+          signature(attempt + 1),
+          options
         );
 
         if (result) {
@@ -315,16 +316,19 @@ export default class RestApi<
 
   private async retry<
     TResponse extends Record<string, unknown>,
+    TOptions extends SpotiOptions,
     TRequest extends () => Promise<TResponse> = () => Promise<TResponse>,
   >(
     status: number,
     headers: Headers,
-    request: TRequest
+    request: TRequest,
+    options?: TOptions
   ): Promise<TResponse | undefined> {
-    return this.config.adapters?.retry?.retry<TResponse>(
+    return this.config.adapters?.retry?.retry<TResponse, TOptions>(
       status,
       headers,
-      request
+      request,
+      options
     );
   }
 

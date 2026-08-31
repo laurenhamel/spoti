@@ -1,3 +1,4 @@
+import { type SpotiOptions } from "../../types/config";
 import { sleep } from "../../utils/promise";
 import { type RetryAdapterInstance } from "./types";
 import { merge } from "lodash-es";
@@ -60,17 +61,19 @@ export default class RetryAdapter implements RetryAdapterInstance {
 
   async retry<
     TResponse extends Record<string, unknown>,
+    TOptions extends SpotiOptions,
     TRequest extends () => Promise<TResponse> = () => Promise<TResponse>,
   >(
     status: number,
     headers: Headers,
     request: TRequest,
+    options?: TOptions,
     attempt = 1
   ): Promise<TResponse> {
     const wait = this.sleep(status, headers);
 
     if (wait !== undefined && attempt <= this.config.max) {
-      console.log(`Retrying in ${wait / 1000}s...`);
+      options?.verbose && console.log(`Retrying in ${wait / 1000}s...`);
       await sleep(wait);
       return request();
     } else {

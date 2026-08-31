@@ -1,3 +1,4 @@
+import { type SpotiOptions } from "../../types/config";
 import { type Headers } from "node-fetch";
 
 export interface AuthorizationAdapterInstance {
@@ -13,11 +14,13 @@ export interface RetryAdapterInstance {
   sleep: (status: number, headers: Headers) => number | undefined;
   retry: <
     TResponse extends Record<string, unknown>,
+    TOptions extends SpotiOptions,
     TRequest extends () => Promise<TResponse> = () => Promise<TResponse>,
   >(
     status: number,
     headers: Headers,
-    request: TRequest
+    request: TRequest,
+    options?: TOptions
   ) => Promise<TResponse>;
 }
 
