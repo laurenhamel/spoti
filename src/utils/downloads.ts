@@ -1,4 +1,3 @@
-import { transformAudioFiles } from "../core/audio";
 import { Spotify, type Youtube } from "../models";
 import { YoutubeApi } from "../services";
 import { AudioFormat } from "../types/audio";
@@ -14,7 +13,7 @@ import {
   type YoutubeSearchResult,
   type YoutubeDownloadResult,
 } from "../types/youtube";
-import { Audio } from "./audio";
+import { transformAudioFiles, Audio } from "../utils/audio";
 import { silenceWarnings } from "./console";
 import { Format } from "./format";
 import { Library } from "./library";
@@ -101,7 +100,7 @@ export function prepareDownloadResults<TOptions extends SpotiOptions>(
 
 const prepareNoop: SpotifyDownloadPreparer<Spotify.Type> = () => [];
 
-const prepareTrack: SpotifyDownloadPreparer<Spotify.Type.TRACK> = (
+export const prepareTrack: SpotifyDownloadPreparer<Spotify.Type.TRACK> = (
   data,
   results,
   options
@@ -109,13 +108,22 @@ const prepareTrack: SpotifyDownloadPreparer<Spotify.Type.TRACK> = (
   const search = results[0];
   const item = { item: data } as Spotify.Item;
   const result: SpotifySearchResult = { ...item, search };
-  const prepared: SpotifyDownloadResult[] = [
-    createDownloadResult(result, options),
-  ];
+  const prepared = [createDownloadResult(result, options)];
   return prepared.sort(sortDownloadResults((item) => item.download.file));
 };
 
-const preparePlaylist: SpotifyDownloadPreparer<Spotify.Type.PLAYLIST> = (
+export function prepareTracks<TOptions extends SpotiOptions>(
+  data: Spotify.Track[],
+  results: YoutubeSearchResult[],
+  options?: TOptions
+): SpotifyDownloadResult[] {
+  return data.flatMap((track, i) => {
+    const search = [results[i]];
+    return prepareTrack(track, search, options);
+  });
+}
+
+export const preparePlaylist: SpotifyDownloadPreparer<Spotify.Type.PLAYLIST> = (
   data,
   results,
   options

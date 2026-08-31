@@ -114,7 +114,9 @@ export class Library {
       })
     );
 
-    return files.map((file) => file.normalize());
+    return files
+      .filter((file) => !file.startsWith(".") || Format.isHidden(file))
+      .map((file) => file.normalize());
   }
 
   /**
@@ -210,14 +212,13 @@ export class Library {
 
     if (item) {
       const path = item.raw.path;
-
       const previous = await ID3.read(readFileSync(path));
       const next = merge({}, previous, tags, pick(previous, ...preserve));
 
       this.assignId(next, id);
       this.assignDuration(next, duration);
 
-      await ID3.write(next, path);
+      await ID3.update(next, path);
 
       this.set(file, this.parse(file));
     }
@@ -356,7 +357,7 @@ export class Library {
    * @param tags - The tags to assign to
    * @param id - The Spotify ID to assign
    */
-  private static assignId(tags: Tags, id?: string): void {
+  static assignId(tags: Tags, id?: string): void {
     if (id) {
       if (tags.userDefinedText) {
         const meta = find(tags.userDefinedText, { description: this.ID });
@@ -683,6 +684,7 @@ export class Library {
 
         files.push({
           ...Library.parse(item.download.file),
+          item,
           id,
           tags,
           duration,

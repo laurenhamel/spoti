@@ -1,3 +1,4 @@
+import { type Spotify } from "../models";
 import { type AudioFormat } from "./audio";
 import { type SpotiOptions } from "./config";
 import { type VideoFormat } from "./video";
@@ -34,7 +35,10 @@ export interface LibraryItem extends LibrarySource {
   metadata: () => Promise<LibraryMetadata>;
 }
 
-export type LibraryFile = LibraryItem & Partial<LibraryMetadata>;
+export type LibraryFile = LibraryItem &
+  Partial<LibraryMetadata> & {
+    item?: Spotify.Item;
+  };
 
 export interface LibraryManifest {
   files: LibraryFile[];

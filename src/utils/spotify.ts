@@ -1,12 +1,15 @@
 import { Spotify } from "../models";
 import { SpotifyApi, type SpotifyApiRequestMethod } from "../services";
 import { type SpotiOptions } from "../types/config";
+import { type LibraryFile } from "../types/library";
 import { type SpotifyMetadataResult } from "../types/spotify";
 import {
   checkPlaywrightVersion,
   ensureChromiumInstalled,
 } from "./dependencies";
+import { Progress } from "./progress";
 import { retry } from "./promise";
+import chalk from "chalk";
 import { find, merge, template, flatMap, trimStart } from "lodash-es";
 import fetch from "node-fetch";
 import { chromium, type Request, type Page, type Browser } from "playwright";
@@ -54,7 +57,7 @@ const noopSpotifyApiRequest: SpotifyApiRequestMethod = async <
   TResponse extends Record<string, unknown>,
 >() => ({}) as TResponse;
 
-async function getSpotifyPlaylist<
+export async function getSpotifyPlaylist<
   TData extends Record<string, unknown>,
   TOptions extends SpotiOptions,
 >(data?: TData, options?: TOptions): Promise<Spotify.Playlist> {
@@ -391,12 +394,76 @@ async function scrapeSpotifyPlaylist<
   return toPlaylist(playlist);
 }
 
-async function getSpotifyTrack<
+export async function getSpotifyTrack<
   TData extends Record<string, unknown>,
   TOptions extends SpotiOptions,
->(data?: TData, options?: TOptions): Promise<Spotify.Track> {
+>(
+  data?: TData,
+  options?: TOptions,
+  progress?: () => void
+): Promise<Spotify.Track> {
   const track = await SpotifyApi.getTrack(data, options);
+  progress?.();
   return track as Spotify.Track;
+}
+
+export async function getSpotifyTracks<TOptions extends SpotiOptions>(
+  ids: string[],
+  options?: TOptions
+): Promise<Spotify.Track[]> {
+  const progress = new Progress({
+    label: "Fetching tracks…",
+    total: ids.length,
+    color: chalk.yellow,
+  });
+
+  const results = await Promise.all(
+    ids.map((id) =>
+      getSpotifyTrack({ id }, options, () => progress.increment())
+    )
+  );
+
+  progress.done();
+
+  return results;
+}
+
+export async function searchSpotifyTrack<TOptions extends SpotiOptions>(
+  file: LibraryFile,
+  options?: TOptions,
+  progress?: () => void
+): Promise<Spotify.Track> {
+  const query = file.title;
+
+  const { tracks } = await SpotifyApi.searchItems<Spotify.Search.Tracks>(
+    { query, type: "track" },
+    options
+  );
+
+  progress?.();
+
+  return tracks.items[0];
+}
+
+export async function searchSpotifyTracks<TOptions extends SpotiOptions>(
+  files: LibraryFile[],
+  options?: TOptions
+): Promise<Spotify.Track[]> {
+  const progress = new Progress({
+    label: "Searching Spotify…",
+    total: files.length,
+    color: chalk.yellow,
+  });
+
+  const results = await Promise.all(
+    files.map((file) =>
+      searchSpotifyTrack(file, options, () => progress.increment())
+    )
+  );
+
+  progress.done();
+
+  return results;
 }
 
 export async function getSpotifyType<

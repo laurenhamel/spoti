@@ -60,6 +60,10 @@ const SpotifyApi = new RestApi({
       method: RestApiMethod.GET,
       path: "/tracks/{id}",
     },
+    searchItems: {
+      method: RestApiMethod.GET,
+      path: "/search",
+    },
   },
   adapters: {
     authorization: new AccessTokenAdapter<{
