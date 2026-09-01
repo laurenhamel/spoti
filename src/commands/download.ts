@@ -1,20 +1,11 @@
-import { type AudioFormat } from "../types/audio";
-import { type SpotiOptions } from "../types/config";
+import {
+  type DownloadArguments,
+  type DownloadOptions,
+  download,
+} from "../core";
 import { createAction } from "../utils/action";
 import { Audio } from "../utils/audio";
-import { Spoti } from "../utils/spoti";
-import { parseSpotifyURL, validateSpotifyURL } from "../utils/spotify";
-import chalk from "chalk";
 import { Command } from "commander";
-
-export type DownloadCliArgs = [string];
-
-export interface DownloadCliOptions extends SpotiOptions {
-  cache: boolean;
-  format: AudioFormat;
-  prefixes: boolean;
-  suffixes: boolean;
-}
 
 export default new Command()
   .name("download")
@@ -25,21 +16,4 @@ export default new Command()
   .option("--no-cache", "Disables using cached search results")
   .option("--no-prefixes", "Disallow prefixes in file names")
   .option("--no-suffixes", "Disallow suffixes in file names")
-  .action(
-    createAction<DownloadCliArgs, DownloadCliOptions>(async (url, options) => {
-      validateSpotifyURL(url);
-
-      const { type, id } = parseSpotifyURL(url);
-
-      console.log(`Downloading ${chalk.magenta(type)} (${chalk.blue(id)})…`);
-      console.log("");
-
-      if (options.verbose) {
-        console.log(chalk.bold.dim("Data"));
-        console.log({ type, id });
-        console.log("");
-      }
-
-      await Spoti.download(id, type, options);
-    })
-  );
+  .action(createAction<DownloadArguments, DownloadOptions>(download));

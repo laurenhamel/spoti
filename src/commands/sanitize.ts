@@ -6,8 +6,6 @@ import {
 import { createAction } from "../utils/action";
 import { Command } from "commander";
 
-export interface SanitizeCliOptions extends SanitizeOptions {}
-
 export default new Command()
   .name("sanitize")
   .description("Sanitizes files in your library")
@@ -15,8 +13,4 @@ export default new Command()
   .option("--clean", "Clean temporary files instead of sanitizing them")
   .option("--dry", "Perform a dry run without making changes")
   .option("--no-cache", "Disables using cached search results")
-  .action(
-    createAction<SanitizeArguments, SanitizeCliOptions>(
-      sanitize<SanitizeCliOptions>
-    )
-  );
+  .action(createAction<SanitizeArguments, SanitizeOptions>(sanitize));
