@@ -282,8 +282,8 @@ function stringifyTags<TOptions extends SpotiOptions>(
     tags,
     (key, value) => {
       switch (key) {
-        case "image": {
-          return "[Image]";
+        case "imageBuffer": {
+          return "<Buffer>";
         }
         case "userDefinedText": {
           const keys = map(value, "description");
