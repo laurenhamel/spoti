@@ -1,5 +1,5 @@
-import { type InnertubeApiInstance } from "./shared";
+import { type Types } from "youtubei.js";
 
 export type Search = Awaited<
-  ReturnType<InnertubeApiInstance["music"]["search"]>
+  ReturnType<Types.InnerTubeInstance["music"]["search"]>
 >;

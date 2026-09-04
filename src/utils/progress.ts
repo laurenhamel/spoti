@@ -62,7 +62,7 @@ export class Progress {
   }
 
   get percentage() {
-    return this.value / this.total;
+    return this.total === 0 ? 0 : this.value / this.total;
   }
 
   private emit(): void {

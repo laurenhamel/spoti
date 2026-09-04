@@ -5,5 +5,7 @@ export type Download = {
   file: string;
   path: string;
   format: AudioFormat | VideoFormat;
-  bitrate?: number;
+  bitrate: number;
+  length: number;
+  duration: number;
 };

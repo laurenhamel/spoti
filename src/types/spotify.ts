@@ -6,6 +6,7 @@ import {
   type YoutubeSearchResult,
 } from "./youtube";
 import { type Tags } from "node-id3";
+import { type SetRequiredDeep } from "type-fest";
 
 export type SpotifyMetadataResult = {
   type: Spotify.Type;
@@ -16,7 +17,7 @@ export type SpotifySearchResult = Spotify.Item & {
   search: YoutubeSearchResult;
 };
 
-export type SpotifyDownloadResult = SpotifySearchResult & {
+export type SpotifyDownloadTarget = SpotifySearchResult & {
   download: {
     title: string;
     file: string;
@@ -26,14 +27,29 @@ export type SpotifyDownloadResult = SpotifySearchResult & {
   };
 };
 
+export type SpotifyDownloadResult =
+  | {
+      item: SetRequiredDeep<SpotifyDownloadTarget, "download.result">;
+      status: "passed";
+    }
+  | {
+      item: SetRequiredDeep<SpotifyDownloadTarget, "download.result">;
+      status: "skipped";
+    }
+  | {
+      item: SetRequiredDeep<SpotifyDownloadTarget, "download.result">;
+      status: "failed";
+      error: Error;
+    };
+
 export type SpotifyDownloadPreparer<TType extends Spotify.Type> = <
   TOptions extends SpotiOptions,
 >(
   data: Spotify.ModelOf<TType>,
   results: YoutubeSearchResult[],
   options?: TOptions
-) => SpotifyDownloadResult[];
+) => SpotifyDownloadTarget[];
 
-export type SpotifyTagResult = SpotifyDownloadResult & {
+export type SpotifyTagResult = SpotifyDownloadTarget & {
   tags: Tags;
 };

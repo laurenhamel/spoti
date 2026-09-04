@@ -4,8 +4,9 @@ import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
 import { type ProcessExitRegister } from "../types/process";
 import {
-  type SpotifyDownloadPreparer,
   type SpotifyDownloadResult,
+  type SpotifyDownloadPreparer,
+  type SpotifyDownloadTarget,
   type SpotifySearchResult,
 } from "../types/spotify";
 import { VideoFormat } from "../types/video";
@@ -13,54 +14,94 @@ import {
   type YoutubeSearchResult,
   type YoutubeDownloadResult,
 } from "../types/youtube";
-import { transformAudioFiles, Audio } from "../utils/audio";
+import { Audio } from "../utils/audio";
 import { silenceWarnings } from "./console";
 import { Format } from "./format";
 import { Library } from "./library";
 import { Progress } from "./progress";
 import { pool } from "./promise";
-import { hydrateTrackTags } from "./tags";
 import chalk from "chalk";
-import { map } from "lodash-es";
+import { map, merge } from "lodash-es";
 
-export function getDownloadData(
+export function detectDownloadFormat(
+  format: string | AudioFormat | VideoFormat
+): AudioFormat | VideoFormat {
+  const mime = format.split(";")[0].trim();
+
+  const mimes: Record<string, AudioFormat | VideoFormat> = {
+    "video/mp4": VideoFormat.MP4,
+    "audio/mp4": AudioFormat.M4A,
+    "audio/mp3": AudioFormat.MP3,
+    "audio/aac": AudioFormat.AAC,
+    "audio/wav": AudioFormat.WAV,
+  };
+
+  return mimes[mime] ?? format;
+}
+
+export function getDownloadPath(
   title: string,
-  bitrate: number
-): Record<AudioFormat | VideoFormat, Youtube.Download> {
-  const data: Record<AudioFormat | VideoFormat, Youtube.Download> = {
+  source: Pick<Youtube.Download, "bitrate" | "duration" | "length"> & {
+    mime: string;
+  },
+  target?: AudioFormat | VideoFormat,
+  hidden: boolean = false
+): Youtube.Download {
+  const { bitrate, duration, length } = source;
+  const mime = target ?? source.mime;
+  const format = detectDownloadFormat(mime);
+
+  const paths: Record<AudioFormat | VideoFormat, Youtube.Download> = {
     [AudioFormat.M4A]: {
-      file: Format.hide(Library.file(title, AudioFormat.M4A)),
-      path: Format.hide(Library.path(title, AudioFormat.M4A)),
+      file: Library.file(title, AudioFormat.M4A),
+      path: Library.path(title, AudioFormat.M4A),
       format: AudioFormat.M4A,
       bitrate,
+      length,
+      duration,
     },
     [AudioFormat.MP3]: {
       file: Library.file(title, AudioFormat.MP3),
       path: Library.path(title, AudioFormat.MP3),
       format: AudioFormat.MP3,
       bitrate,
+      length,
+      duration,
     },
     [AudioFormat.WAV]: {
       file: Library.file(title, AudioFormat.WAV),
       path: Library.path(title, AudioFormat.WAV),
       format: AudioFormat.WAV,
       bitrate,
+      length,
+      duration,
     },
     [AudioFormat.AAC]: {
       file: Library.file(title, AudioFormat.AAC),
       path: Library.path(title, AudioFormat.AAC),
       format: AudioFormat.AAC,
       bitrate,
+      length,
+      duration,
     },
     [VideoFormat.MP4]: {
-      file: Format.hide(Library.file(title, VideoFormat.MP4)),
-      path: Format.hide(Library.path(title, VideoFormat.MP4)),
+      file: Library.file(title, VideoFormat.MP4),
+      path: Library.path(title, VideoFormat.MP4),
       format: VideoFormat.MP4,
       bitrate,
+      length,
+      duration,
     },
   };
 
-  return data;
+  const path = paths[format];
+
+  if (hidden) {
+    path.file = Format.hide(path.file);
+    path.path = Format.hide(path.path);
+  }
+
+  return path;
 }
 
 export async function downloadYoutubeSong<TOptions extends SpotiOptions>(
@@ -68,18 +109,12 @@ export async function downloadYoutubeSong<TOptions extends SpotiOptions>(
   song: Youtube.Song,
   options?: TOptions
 ): Promise<YoutubeDownloadResult> {
-  return YoutubeApi.downloadSong(
-    {
-      title,
-      song,
-    },
-    options
-  );
+  return YoutubeApi.downloadSong({ title, song }, options);
 }
 
-export function createDownloadResult<
+export function createDownloadTarget<
   TOptions extends SpotiOptions & { format?: AudioFormat },
->(item: SpotifySearchResult, options?: TOptions): SpotifyDownloadResult {
+>(item: SpotifySearchResult, options?: TOptions): SpotifyDownloadTarget {
   const format = options?.format ?? Audio.DEFAULT_FORMAT;
   const file = Format.file(item.item, format);
   const path = Library.path(file);
@@ -92,8 +127,8 @@ export function createDownloadResult<
 export function prepareDownloadResults<TOptions extends SpotiOptions>(
   items: SpotifySearchResult[],
   options?: TOptions
-): SpotifyDownloadResult[] {
-  return map(items, (item) => createDownloadResult(item, options)).sort(
+): SpotifyDownloadTarget[] {
+  return map(items, (item) => createDownloadTarget(item, options)).sort(
     sortDownloadResults((item) => item.download.file)
   );
 }
@@ -108,7 +143,7 @@ export const prepareTrack: SpotifyDownloadPreparer<Spotify.Type.TRACK> = (
   const search = results[0];
   const item = { item: data } as Spotify.Item;
   const result: SpotifySearchResult = { ...item, search };
-  const prepared = [createDownloadResult(result, options)];
+  const prepared = [createDownloadTarget(result, options)];
   return prepared.sort(sortDownloadResults((item) => item.download.file));
 };
 
@@ -116,7 +151,7 @@ export function prepareTracks<TOptions extends SpotiOptions>(
   data: Spotify.Track[],
   results: YoutubeSearchResult[],
   options?: TOptions
-): SpotifyDownloadResult[] {
+): SpotifyDownloadTarget[] {
   return data.flatMap((track, i) => {
     const search = [results[i]];
     return prepareTrack(track, search, options);
@@ -128,19 +163,19 @@ export const preparePlaylist: SpotifyDownloadPreparer<Spotify.Type.PLAYLIST> = (
   results,
   options
 ) => {
-  const prepared: SpotifyDownloadResult[] = [];
+  const prepared: SpotifyDownloadTarget[] = [];
 
   for (let i = 0; i < data.items.items.length; i++) {
     const item = data.items.items[i];
     const search = results[i];
     const result: SpotifySearchResult = { ...item, search };
-    prepared.push(createDownloadResult(result, options));
+    prepared.push(createDownloadTarget(result, options));
   }
 
   return prepared.sort(sortDownloadResults((item) => item.download.file));
 };
 
-export function prepareDownloadType<
+export function prepareDownloadTargets<
   TType extends Spotify.Type,
   TOptions extends SpotiOptions,
 >(
@@ -148,7 +183,7 @@ export function prepareDownloadType<
   data: Spotify.ModelOf<TType>,
   results: YoutubeSearchResult[],
   options?: TOptions
-): SpotifyDownloadResult[] {
+): SpotifyDownloadTarget[] {
   const callees: Record<Spotify.Type, SpotifyDownloadPreparer<Spotify.Type>> = {
     [Spotify.Type.ALBUM]: prepareNoop,
     [Spotify.Type.ARTIST]: prepareNoop,
@@ -176,121 +211,89 @@ export function sortDownloadResults<TData = Record<string, unknown>>(
   };
 }
 
+export async function downloadSpotifyTrack<
+  TOptions extends SpotiOptions & { force?: boolean },
+>(
+  target: SpotifyDownloadTarget,
+  options?: TOptions,
+  progress?: () => void
+): Promise<SpotifyDownloadResult> {
+  const { title, file, path, format } = target.download;
+
+  const item = merge({}, target, {
+    download: {
+      result: {
+        file,
+        path,
+        format,
+      },
+    },
+  }) as SpotifyDownloadResult["item"];
+
+  // Final audio file already exists
+  if (options?.force ? false : Library.exists(file)) {
+    console.log(chalk.gray("◦"), title);
+    progress?.();
+    return { item, status: "skipped" };
+  }
+
+  const source = Library.source(file);
+
+  // Temporary source file already exists
+  if (Library.exists(source)) {
+    console.log(chalk.green("✓"), title);
+    progress?.();
+    return { item, status: "passed" };
+  }
+
+  const search = target.search.result;
+
+  // Search result available
+  if (search) {
+    const restoreWarnings = silenceWarnings();
+
+    try {
+      const result = await downloadYoutubeSong(title, search, options);
+      console.log(chalk.green("✓"), title);
+      return { item: merge(item, { download: { result } }), status: "passed" };
+    } catch (e) {
+      const error = e as Error;
+      console.log(chalk.red("𐄂"), title);
+      return { item, status: "failed", error };
+    } finally {
+      progress?.();
+      restoreWarnings();
+    }
+  }
+
+  // Search result unavailable
+  const error = new Error(`Missing YouTube search result for '${title}'.`);
+  console.log(chalk.red("𐄂"), title);
+  progress?.();
+  return { item, status: "failed", error };
+}
+
 export async function downloadSpotifyTracks<
   TOptions extends SpotiOptions & { force?: boolean },
 >(
-  items: SpotifySearchResult[],
+  targets: SpotifyDownloadTarget[],
   options?: TOptions
-): Promise<{
-  passed: SpotifyDownloadResult[];
-  failed: { error: Error; item: SpotifyDownloadResult }[];
-}> {
-  const prepared = prepareDownloadResults(items, options);
-  const existing: SpotifyDownloadResult[] = [];
-  const missing: SpotifyDownloadResult[] = [];
-
-  for (const item of prepared) {
-    const { file, path, format } = item.download;
-    const exists = options?.force ? false : Library.exists(file);
-    item.download.result = exists ? { file, path, format } : undefined;
-    const stack = exists ? existing : missing;
-    stack.push(item);
-  }
-
-  const restoreWarnings = silenceWarnings();
-
-  /* #region Download */
-  const download = pool(25);
-  const downloads: (() => Promise<void>)[] = [];
-  const passed: SpotifyDownloadResult[] = [...existing];
-  const failed: { error: Error; item: SpotifyDownloadResult }[] = [];
-
-  const downloading = new Progress({
+): Promise<SpotifyDownloadResult[]> {
+  const progress = new Progress({
     label: "Downloading…",
-    total: prepared.length,
+    total: targets.length,
     color: chalk.blue,
   });
 
-  downloads.push(
-    ...existing.map(
-      (item) => () =>
-        new Promise<void>((resolve) => {
-          console.log(chalk.green("✓"), item.download.title);
-          downloading.increment();
-          resolve();
-        })
-    )
+  const tasks = targets.map(
+    (target) => () =>
+      downloadSpotifyTrack(target, options, () => progress.increment())
   );
 
-  downloads.push(
-    ...missing.map((item) => async () => {
-      const { download, search } = item;
-      const { title, file } = download;
-      const { result } = search;
-      const source = Library.source(file);
-
-      if (Library.exists(source)) {
-        downloading.increment();
-        passed.push(item);
-        return;
-      } else if (result) {
-        try {
-          download.result = await downloadYoutubeSong(title, result, options);
-          console.log(chalk.green("✓"), title);
-          downloading.increment();
-          passed.push(item);
-          return;
-        } catch (e) {
-          const error = e as Error;
-          console.log(chalk.red("𐄂"), title);
-          downloading.increment();
-          failed.push({ error, item });
-          return;
-        }
-      } else {
-        const error = new Error(
-          `No Youtube search result available to download for '${title}'.`
-        );
-        console.log(chalk.red("𐄂"), title);
-        downloading.increment();
-        failed.push({ error, item });
-        return;
-      }
-    })
-  );
-
-  await download(downloads);
-
-  downloading.done();
-  /* #endregion */
-
-  /* #region Convert */
-  const converting = new Progress({
-    label: "Converting…",
-    total: passed.length,
-    color: chalk.blue,
-  });
-
-  await transformAudioFiles(passed, options, () => converting.increment());
-
-  converting.done();
-  /* #endregion */
-
-  /* #region Tag */
-  const tagging = new Progress({
-    label: "Tagging…",
-    total: passed.length,
-    color: chalk.blue,
-  });
-
-  await hydrateTrackTags(passed, options, () => tagging.increment());
-
-  tagging.done();
-  /* #endregion */
-
-  restoreWarnings();
-
-  return { passed, failed };
+  const dispatch = pool(25);
+  const downloads = await dispatch(tasks);
+  progress.done();
+  return downloads;
 }
 
 export function cleanDownloadRemnants<TOptions extends SpotiOptions>(

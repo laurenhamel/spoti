@@ -6,6 +6,7 @@ import { type VideoFormat } from "../types/video";
 import { Format } from "../utils/format";
 import { pool } from "../utils/promise";
 import { Library } from "./library";
+import { Progress } from "./progress";
 import chalk from "chalk";
 import { spawnSync } from "child_process";
 import { trimStart } from "lodash-es";
@@ -14,76 +15,79 @@ import { extname } from "path";
 export async function convertAudioFile<
   TOptions extends SpotiOptions & { format?: AudioFormat },
 >(
-  item: SpotifyDownloadResult,
+  result: SpotifyDownloadResult,
   options?: TOptions,
   progress?: () => void
-): Promise<void> {
-  const { file } = item.download;
+): Promise<boolean> {
+  // Ignore failed and/or skipped downloads
+  if (["failed", "skipped"].includes(result.status)) {
+    progress?.();
+    return false;
+  }
+
+  const { item } = result;
+  const { file } = result.item.download;
   const existing = Library.find(file);
   const dest = existing?.raw.file ?? file;
   const src = Library.source(file);
   const bitrate = item.download.result?.bitrate;
+  const length = 75;
 
-  const padding = 75;
-
-  const passed = (previous: string, next: string) => {
-    console.log(
-      chalk.green("✓"),
-      chalk.dim(Format.truncateFile(previous, padding)),
-      chalk.cyan("→"),
-      chalk.green(Format.truncateFile(next, padding))
-    );
+  const diff = (previous: string, next: string): string => {
+    const from = chalk.dim(Format.truncateFile(previous, length));
+    const to = chalk.green(Format.truncateFile(next, length));
+    return [from, "→", to].join(" ");
   };
 
-  const failed = (previous: string, next: string) => {
-    console.log(
-      chalk.red("𐄂"),
-      chalk.dim(Format.truncateFile(previous, padding)),
-      chalk.cyan("→"),
-      chalk.red(Format.truncateFile(next, padding))
-    );
-  };
-
-  const error = (previous: string, next: string) => {
-    console.log(
-      chalk.yellow("?"),
-      chalk.dim(Format.truncateFile(previous, padding)),
-      chalk.cyan("→"),
-      chalk.yellow(Format.truncateFile(next, padding))
-    );
-  };
-
+  // Final audio file exists
   if (Library.exists(dest)) {
+    // Removes source file if it exists
     src && Library.exists(src) && Library.remove(src);
-    passed(src, dest);
-  } else if (Library.exists(src)) {
-    try {
-      await Audio.convert(Library.path(src), Library.path(dest), bitrate);
-      passed(src, dest);
-    } catch (_) {
-      failed(src, dest);
-    }
-  } else {
-    error(src, dest);
+    console.log(chalk.green("✓"), diff(src, dest));
+    progress?.();
+    return true;
   }
 
+  // Source file exists
+  if (Library.exists(src)) {
+    try {
+      await Audio.convert(Library.path(src), Library.path(dest), bitrate);
+      console.log(chalk.green("✓"), diff(src, dest));
+      return true;
+    } catch (_) {
+      console.log(chalk.red("𐄂"), diff(src, dest));
+      return false;
+    } finally {
+      progress?.();
+    }
+  }
+
+  // No source file and no final audio –– we should never end up here!
+  console.log(chalk.yellow("?"), diff(src, dest));
   progress?.();
+  return false;
 }
 
-export async function transformAudioFiles<TOptions extends SpotiOptions>(
-  items: SpotifyDownloadResult[],
-  options?: TOptions,
-  progress?: () => void
-): Promise<void[]> {
-  const dispatch = pool(25);
+export async function convertAudioFiles<TOptions extends SpotiOptions>(
+  results: SpotifyDownloadResult[],
+  options?: TOptions
+): Promise<boolean[]> {
+  const progress = new Progress({
+    label: "Converting…",
+    total: results.length,
+    color: chalk.blue,
+  });
 
-  const tasks: (() => Promise<void>)[] = items.map(
-    (item) => () => convertAudioFile(item, options, progress)
+  const tasks = results.map(
+    (target) => () =>
+      convertAudioFile(target, options, () => progress.increment())
   );
 
-  console.log("");
+  const dispatch = pool(25);
+  const statuses = await dispatch(tasks);
+  progress.done();
 
-  return dispatch(tasks);
+  return statuses;
 }
 
 export class Audio {

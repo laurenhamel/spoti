@@ -12,7 +12,7 @@ import { VideoFormat } from "../types/video";
 import { generateTrackTag } from "../utils/tags";
 import { mergeOptions } from "./action";
 import { Audio } from "./audio";
-import { prepareDownloadType } from "./downloads";
+import { prepareDownloadTargets } from "./downloads";
 import { Format } from "./format";
 import { Metadata } from "./metadata";
 import { Progress } from "./progress";
@@ -432,66 +432,68 @@ export class Library {
   }
 
   /**
-   * Create a new writable file audio stream using the given filename
+   * Create a new writable file audio/video stream using the given filename
    * @param file - The filename to use for the write stream
+   * @param size - The expected content size if known
    * @param format - The expected format of the file
    * @returns
    */
   static new(
     dest: string,
-    format = Audio.format(dest)
-  ): {
+    size?: number,
+    format: AudioFormat | VideoFormat = Audio.format(dest)
+  ): Promise<{
     path: string;
     file: string;
     title: string;
     format: AudioFormat | VideoFormat;
     write: (chunk: unknown) => void;
-    save: () => Promise<void>;
-  } {
-    const file = this.file(dest, format);
-    const path = this.path(dest, format);
-    const chunks: unknown[] = [];
-    const stream = createWriteStream(path);
-    const deferred = new Deferred();
+    clean: (force?: boolean) => void;
+    save: () => void;
+  }> {
+    return new Promise((resolve) => {
+      const file = this.file(dest, format);
+      const path = this.path(dest, format);
+      const length = size ?? 1;
 
-    const write = (chunk: unknown): void => {
-      chunks.push(chunk);
-    };
+      const stream = createWriteStream(path, {
+        flags: "w",
+        encoding: "binary",
+      });
 
-    const clean = (): void => {
-      if (Library.exists(file) && Library.size(file) === 0) {
-        Library.remove(file);
-      }
-    };
+      const write = (chunk: unknown): void => {
+        stream.write(chunk);
+      };
 
-    const save = async (): Promise<void> => {
-      await deferred.promise;
+      const clean = (force: boolean = false): void => {
+        const eligible = force ? true : Library.size(file) < length;
 
-      for (const chunk of chunks) {
-        const done = new Deferred();
-        stream.write(chunk, () => done.resolve());
-        await done.promise;
-      }
+        if (Library.exists(file) && eligible) {
+          Library.remove(file);
+        }
+      };
 
-      stream.end();
-    };
+      const save = (): void => {
+        stream.end();
+      };
 
-    stream.on("open", deferred.resolve);
-    stream.on("error", clean);
+      stream.on("open", resolve);
+      stream.on("error", clean);
 
-    // @FIXME Why does this not work?
-    process.on("SIGINT", clean);
-    process.on("SIGQUIT", clean);
-    process.on("SIGTERM", clean);
+      // @FIXME Why does this not work?
+      process.on("SIGINT", clean);
+      process.on("SIGQUIT", clean);
+      process.on("SIGTERM", clean);
 
-    return {
-      file,
-      path,
-      title: this.title(file),
-      format,
-      write,
-      save,
-    };
+      return {
+        file,
+        path,
+        title: this.title(file),
+        format,
+        write,
+        save,
+      };
+    });
   }
 
   /**
@@ -620,14 +622,15 @@ export class Library {
    */
   static async ready(
     file: string,
-    criteria?: { size?: number; duration?: number }
+    criteria?: { size?: number; duration?: number; comparator?: "AND" | "OR" }
   ): Promise<boolean> {
     const item = this.get(file);
 
     if (item) {
+      const comparator = criteria?.comparator ?? "OR";
       const size = await this.assertSize(item, criteria?.size);
       const duration = await this.assertDuration(item, criteria?.duration);
-      return size && duration;
+      return comparator === "AND" ? size && duration : size || duration;
     }
 
     return false;
@@ -675,16 +678,16 @@ export class Library {
       const { id, type } = Metadata.read<SpotifyMetadataResult>(file);
       const data = await getSpotifyType(id, type, options);
       const results = await searchYoutubeType(type, data, options);
-      const prepared = prepareDownloadType(type, data, results, options);
+      const targets = prepareDownloadTargets(type, data, results, options);
 
-      for (const item of prepared) {
-        const id = item.item.id;
-        const duration = item.item.duration_ms;
-        const tags = await generateTrackTag(item);
+      for (const target of targets) {
+        const id = target.item.id;
+        const duration = target.item.duration_ms;
+        const tags = await generateTrackTag(target);
 
         files.push({
-          ...Library.parse(item.download.file),
-          item,
+          ...Library.parse(target.download.file),
+          item: target,
           id,
           tags,
           duration,
