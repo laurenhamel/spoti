@@ -1,19 +1,18 @@
 import { type Spotify } from "../models";
 import { type ActionHandler } from "../types/action";
 import { type SpotiOptions } from "../types/config";
-import { type LibraryManifest, type LibraryFile } from "../types/library";
+import { type LibraryFile } from "../types/library";
 import { mergeOptions } from "../utils/action";
+import { reportDry } from "../utils/console";
 import { prepareTracks } from "../utils/downloads";
 import { Library } from "../utils/library";
 import { Progress } from "../utils/progress";
-import { pool } from "../utils/promise";
 import { searchYoutubeSongs } from "../utils/search";
 import { getSpotifyTracks, searchSpotifyTracks } from "../utils/spotify";
 import { stringifyManifest } from "../utils/stringify";
-import { getTrackTags } from "../utils/tags";
+import { addTrackTags } from "../utils/tags";
 import chalk from "chalk";
-import { find, map, sortBy } from "lodash-es";
-import { type Primitive } from "type-fest";
+import { map } from "lodash-es";
 
 export type TagArguments = [string];
 
@@ -87,41 +86,16 @@ export const tag: ActionHandler<TagArguments, TagOptions> = async <
   // prettier-ignore
   const items = map(tracks, 'track').map((item) => ({ item })) as Spotify.Item[];
   const results = await searchYoutubeSongs(items, options);
-  const prepared = prepareTracks(map(tracks, "track"), results, options);
-  const tagged = await getTrackTags(prepared, options);
+  const targets = prepareTracks(map(tracks, "track"), results, options);
 
-  const tagging = new Progress({
-    label: "Tagging…",
-    total: tagged.length,
-    color: chalk.blue,
+  await addTrackTags(targets, options);
+
+  const info = await stringifyManifest(manifest, {
+    ...options,
+    more: true,
   });
-
-  const tasks = sortBy(tracks, "track.title").map(
-    ({ file, track }) =>
-      async (): Promise<void> => {
-        const { id } = track;
-        const { src, tags } = find(tagged, { id })!;
-        file.id = id;
-        file.tags = tags;
-        if (src && !options.dry) await Library.tag(src, tags, id);
-        tagging.increment();
-      }
-  );
-
-  const dispatch = pool(25);
-  await dispatch(tasks);
-  tagging.done();
-
-  const patched: LibraryManifest = { files: map(tracks, "file") };
-  const settings = { ...options, more: true };
-  const details: Record<string, Primitive> = {};
-  const info = await stringifyManifest(patched, settings, details);
 
   console.log();
   console.log(info);
-
-  if (options.dry) {
-    console.log();
-    console.log(chalk.blue("This was a dry run. No changes have been saved!"));
-  }
+  reportDry(options);
 };

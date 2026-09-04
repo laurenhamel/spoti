@@ -1,6 +1,7 @@
 import { type ActionHandler } from "../types/action";
 import { type SpotiOptions } from "../types/config";
 import { mergeOptions } from "../utils/action";
+import { reportDry } from "../utils/console";
 import { Format } from "../utils/format";
 import { Library } from "../utils/library";
 import { Progress } from "../utils/progress";
@@ -144,8 +145,5 @@ export const sanitize: ActionHandler<
   // prettier-ignore
   console.log(chalk.gray("◦"), `Missing ${chalk.gray(missing.files.length)} file(s).`);
 
-  if (options.dry) {
-    console.log();
-    console.log(chalk.blue("This was a dry run. No changes have been saved!"));
-  }
+  reportDry(options);
 };

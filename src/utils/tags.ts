@@ -2,6 +2,7 @@ import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
 import {
   type SpotifyTagResult,
+  type SpotifyDownloadTarget,
   type SpotifyDownloadResult,
 } from "../types/spotify";
 import { type YoutubeDownloadResult } from "../types/youtube";
@@ -34,7 +35,7 @@ async function generateImageTag(
 }
 
 export async function generateTrackTag(
-  item: SpotifyDownloadResult
+  item: SpotifyDownloadTarget
 ): Promise<Tags> {
   const result = item as SpotifyTagResult;
 
@@ -76,10 +77,15 @@ export async function generateTrackTag(
 }
 
 export async function getTrackTag<TOptions extends SpotiOptions>(
-  item: SpotifyDownloadResult,
+  input: SpotifyDownloadTarget | SpotifyDownloadResult,
   options?: TOptions,
   progress?: () => void
 ): Promise<{ id: string; src?: string; tags: Tags }> {
+  const item =
+    "search" in input || "download" in input
+      ? (input as SpotifyDownloadTarget)
+      : input.item;
+
   const id = item.item.id;
   const file = item.download.result?.file ?? item.download.file;
   const existing = file ? Library.find(file) : undefined;
@@ -89,51 +95,56 @@ export async function getTrackTag<TOptions extends SpotiOptions>(
   return { id, src, tags };
 }
 
-export async function getTrackTags<TOptions extends SpotiOptions>(
-  items: SpotifyDownloadResult[],
-  options?: TOptions
-): Promise<{ id: string; src?: string; tags: Tags }[]> {
-  const progress = new Progress({
-    label: "Generating tags…",
-    total: items.length,
-    color: chalk.yellow,
-  });
-
-  const results = await Promise.all(
-    items.map((item) => getTrackTag(item, options, () => progress.increment()))
-  );
-
-  progress.done();
-
-  return results;
-}
-
 export async function addTrackTag<
   TOptions extends SpotiOptions & { dry?: boolean },
 >(
-  item: SpotifyDownloadResult,
+  item: SpotifyDownloadTarget | SpotifyDownloadResult,
   options?: TOptions,
   progress?: () => void
-): Promise<void> {
+): Promise<boolean> {
   const { id, src, tags } = await getTrackTag(item);
 
   if (src && !options?.dry) {
     await Library.tag(src, tags, id);
+    progress?.();
+    return true;
   }
 
   progress?.();
+  return false;
 }
 
+export async function addTrackTags<
+  TOptions extends SpotiOptions & { dry?: boolean },
+>(
+  items: (SpotifyDownloadTarget | SpotifyDownloadResult)[],
+  options?: TOptions
+): Promise<boolean[]> {
+  const progress = new Progress({
+    label: "Tagging…",
+    total: items.length,
+    color: chalk.blue,
+  });
+
+  const tasks = items.map(
+    (item) => () => addTrackTag(item, options, () => progress.increment())
+  );
+
+  const dispatch = pool(25);
+  const statuses = await dispatch(tasks);
+  progress.done();
+  return statuses;
+}
+
+/** @deprecated */
 export async function hydrateTrackTags<TOptions extends SpotiOptions>(
-  items: SpotifyDownloadResult[],
+  items: SpotifyDownloadTarget[],
   options?: TOptions,
   progress?: () => void
-): Promise<void[]> {
+): Promise<boolean[]> {
   const dispatch = pool(25);
 
-  const tasks: (() => Promise<void>)[] = items.map(
-    (item) => () => addTrackTag(item, options, progress)
-  );
+  const tasks = items.map((item) => () => addTrackTag(item, options, progress));
 
   return dispatch(tasks);
 }
