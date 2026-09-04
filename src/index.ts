@@ -1,7 +1,7 @@
 import pkg from "../package.json";
 import { registerCommands } from "./utils/commands";
 import { gracefullyCleanupDownloads } from "./utils/downloads";
-import { loadEnv } from "./utils/environment";
+import { loadEnvs } from "./utils/environment";
 import {
   registerProcessExitHandlers,
   gracefullyStopProcess,
@@ -10,7 +10,7 @@ import { Progress } from "./utils/progress";
 import chalk from "chalk";
 import { Command } from "commander";
 
-loadEnv();
+loadEnvs();
 
 const program = new Command()
   .name(pkg.name)

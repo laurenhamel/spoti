@@ -1,16 +1,31 @@
+import { resolveRoot, resolveCwd, resolveHome } from "./path";
 import dotenv from "dotenv";
 import { uniq } from "lodash-es";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+/**
+ * Locates `.env` files in supported locations
+ */
+export function locateEnvs(): string[] {
+  return locateConfigs(".env");
+}
 
-export function loadEnv(): void {
-  const path = uniq([
-    resolve(__dirname, "../../.env"),
-    resolve(process.cwd(), ".env"),
-  ]);
-
+/**
+ * Auto-loads `.env` files from supported locations
+ */
+export function loadEnvs(): void {
+  const path = locateEnvs();
   dotenv.config({ path, quiet: true });
+}
+
+/**
+ * Locates the given configuration files in supported locations
+ *
+ * @remarks
+ * Searches the project root directory, user home directory, and
+ * directory where the CLI is running from, in that order.
+ */
+export function locateConfigs(file: string): string[] {
+  const paths = uniq([resolveRoot(file), resolveHome(file), resolveCwd(file)]);
+  return paths.filter(existsSync);
 }
