@@ -2,6 +2,13 @@
 
 > Yet another Spotify music downloader
 
+## Prerequisites
+
+- `node` (>=26)
+- `ffmpeg`
+- `ffprobe`
+- `yt-dlp`
+
 ## Usage
 
 1. Install the `npm` package globally:
