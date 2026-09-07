@@ -191,10 +191,10 @@ class YoutubeApi {
     TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions,
   >(song: Youtube.Song, _options?: TOptions): Promise<Types.TrackInfo> {
     if (isDebuggingEnabled("youtube")) {
-      console.debug();
-      console.debug(chalk.bold.dim("Request"));
-      console.debug(chalk.magenta("GET"), chalk.cyan("<youtube>/getInfo"));
-      console.debug({ parameters: song });
+      console.log();
+      console.log(chalk.bold.dim("Request"));
+      console.log(chalk.magenta("GET"), chalk.cyan("<youtube>/getInfo"));
+      console.log({ parameters: song });
     }
 
     return this.api.music.getInfo(song);
@@ -360,21 +360,21 @@ class YoutubeApi {
     return {
       before: () => {
         if (isDebuggingEnabled("youtube")) {
-          console.debug("");
-          console.debug(chalk.bold.dim("Request"));
-          console.debug(chalk.magenta("GET"), chalk.cyan(request));
-          console.debug(data);
+          console.log("");
+          console.log(chalk.bold.dim("Request"));
+          console.log(chalk.magenta("GET"), chalk.cyan(request));
+          console.log(data);
         }
       },
       after: ({ error }) => {
         const { message, retryable } = status(error);
 
         if (isDebuggingEnabled("youtube")) {
-          console.debug("");
-          console.debug(chalk.bold.dim("Response"));
-          console.debug(chalk.magenta.dim("GET"), chalk.cyan.dim(request));
-          console.debug(data);
-          console.debug(message);
+          console.log("");
+          console.log(chalk.bold.dim("Response"));
+          console.log(chalk.magenta.dim("GET"), chalk.cyan.dim(request));
+          console.log(data);
+          console.log(message);
         }
 
         return retryable;

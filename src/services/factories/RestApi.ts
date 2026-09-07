@@ -170,10 +170,10 @@ export default class RestApi<
     };
 
     if (isDebuggingEnabled(...castArray(this.config.debug))) {
-      console.debug();
-      console.debug(chalk.bold.dim("Request"));
-      console.debug(chalk.magenta(request.method), chalk.cyan(base));
-      console.debug({
+      console.log();
+      console.log(chalk.bold.dim("Request"));
+      console.log(chalk.magenta(request.method), chalk.cyan(base));
+      console.log({
         ...request,
         parameters:
           request.method === RestApiMethod.GET
@@ -258,9 +258,9 @@ export default class RestApi<
 
     if (isDebuggingEnabled(...castArray(this.config.debug))) {
       const color = getStatusColor(status);
-      console.debug();
-      console.debug(chalk.bold.dim("Response"));
-      console.debug(chalk[color](`${status} ${message}`));
+      console.log();
+      console.log(chalk.bold.dim("Response"));
+      console.log(chalk[color](`${status} ${message}`));
     }
 
     if (status === 429) this.pause(this.sleep(status, headers));
