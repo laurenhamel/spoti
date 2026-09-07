@@ -167,10 +167,10 @@ export default class RestApi<
     };
 
     if (isDebuggingEnabled()) {
-      console.log();
-      console.log(chalk.bold.dim("Request"));
-      console.log(chalk.magenta(request.method), chalk.cyan(base));
-      console.log({
+      console.debug();
+      console.debug(chalk.bold.dim("Request"));
+      console.debug(chalk.magenta(request.method), chalk.cyan(base));
+      console.debug({
         ...request,
         parameters:
           request.method === RestApiMethod.GET
