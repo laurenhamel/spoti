@@ -10,7 +10,7 @@ Spoti is a CLI tool that allows you to download Spotify tracks and playlists and
 2. Searching for the matching track(s) on YouTube Music
 3. Downloading the track(s) from YouTube via `yt-dlp`
 4. Converting the track(s) to `*.mp3` file(s) (or your preferred audio format) via `ffmpeg`
-5. Adding ID3v2 tags to all track(s) to include the Spotify information
+5. Adding ID3v2 tags to all track(s) using the Spotify information
 
 ## Prerequisites
 
