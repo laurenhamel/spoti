@@ -170,20 +170,6 @@ class YoutubeApi {
 
     return result.songs?.contents ?? [];
   }
-
-  async getInfo<
-    TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions,
-  >(song: Youtube.Song, options?: TOptions): Promise<Types.TrackInfo> {
-    const result = await retry(
-      () => this.api.music.getInfo(song),
-      YOUTUBE_RETRIES,
-      this.wait,
-      this.retry("<youtube>/getInfo", { parameters: song }, options)
-    );
-
-    return result;
-  }
-
   async getMetadata<
     TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions,
   >(
@@ -191,10 +177,9 @@ class YoutubeApi {
     song: Youtube.Song,
     options?: TOptions
   ): Promise<YoutubeDownloadMetadata> {
-    const track = await this.getInfo(song);
-    const url = track.basic_info.url_canonical!;
-    const metadata = await getYoutubeMetadata(url, options);
+    const metadata = await getYoutubeMetadata(song.id!, options);
     const formats = extractYoutubeFormats(metadata);
+    const url = metadata.original_url;
     const target = options?.format ?? Audio.DEFAULT_FORMAT;
 
     const inputs: Record<"audio" | "video", Youtube.Download> = {
@@ -207,7 +192,7 @@ class YoutubeApi {
       video: getDownloadPath(title, metadata, formats.video),
     };
 
-    return { title, song, url, track, metadata, formats, inputs, outputs };
+    return { title, song, url, metadata, formats, inputs, outputs };
   }
 
   async downloadSong<

@@ -1,6 +1,5 @@
 import { type Youtube, type Spotify } from "../models";
 import { type SpotiOptions } from "./config";
-import { type Types } from "youtubei.js";
 
 export type YoutubeSearchResult = {
   track: Spotify.Track;
@@ -26,5 +25,4 @@ export interface YoutubeDownloadMetadata extends YoutubeDownloadResult {
   url: string;
   metadata: Youtube.Metadata;
   formats: Record<"audio" | "video", Youtube.Format>;
-  track: Types.TrackInfo;
 }

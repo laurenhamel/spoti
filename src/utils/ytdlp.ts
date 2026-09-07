@@ -9,7 +9,7 @@ import { merge } from "lodash-es";
 import { type Readable } from "node:stream";
 
 export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
-  url: string,
+  id: string,
   options?: TOptions,
   overrides: YtdlpOptions = {}
 ): Promise<Youtube.Metadata> {
@@ -29,7 +29,7 @@ export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
     )
   );
 
-  const { stdout } = await execa(ytdlp, [...args, url]);
+  const { stdout } = await execa(ytdlp, [...args, `"ytsearch:${id}"`]);
 
   return JSON.parse(stdout.trim());
 }
