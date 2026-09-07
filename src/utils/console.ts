@@ -41,7 +41,7 @@ export const createLabel = (() => {
   const cache: Record<string, string> = {};
 
   return (text: string, length: number = 12): string => {
-    if (text in cache) {
+    if (!(text in cache)) {
       const label = pad(text, length, " ");
       const hex = chooseColor();
       cache[text] = chalk.bgHex(hex).black(label);
