@@ -4,6 +4,7 @@ import { type AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
 import { mergeOptions } from "../utils/action";
 import { Audio, convertAudioFiles } from "../utils/audio";
+import { reportStatuses, reportErrors } from "../utils/console";
 import {
   downloadSpotifyTracks,
   prepareDownloadTargets,
@@ -40,13 +41,10 @@ export const download: ActionHandler<
   config?: TOptions
 ) => {
   const options = mergeOptions(DOWNLOAD_DEFAULTS, config);
-
   const { type, id } = parseSpotifyURL(url);
 
   if (![Spotify.Type.PLAYLIST, Spotify.Type.TRACK].includes(type)) {
-    throw new Error(
-      `Sorry, retrieving information for ${type}s not yet supported.`
-    );
+    throw new Error(`Sorry, downloading for ${type}s not yet supported.`);
   }
 
   console.log(`Downloading ${chalk.magenta(type)} (${chalk.blue(id)})…`);
@@ -62,6 +60,19 @@ export const download: ActionHandler<
   const results = await searchYoutubeType(type, data, options);
   const targets = prepareDownloadTargets(type, data, results, options);
   const downloads = await downloadSpotifyTracks(targets, options);
-  await convertAudioFiles(downloads, options);
-  await addTrackTags(downloads, options);
+  const conversions = await convertAudioFiles(downloads, options);
+  const tags = await addTrackTags(downloads, options);
+
+  reportStatuses("Downloaded", downloads);
+  reportStatuses("Converted", conversions);
+  reportStatuses("Tagged", tags);
+
+  if (options?.verbose) {
+    reportErrors(downloads as { error?: Error }[]);
+    reportErrors(conversions as { error?: Error }[]);
+    reportErrors(tags as { error?: Error }[]);
+  }
+
+  console.log("");
+  console.log(chalk.blue("See above for details!"));
 };

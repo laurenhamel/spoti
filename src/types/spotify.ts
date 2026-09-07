@@ -4,7 +4,6 @@ import {
   type YoutubeDownloadResult,
   type YoutubeSearchResult,
 } from "./youtube";
-import { type Tags } from "node-id3";
 import { type SetRequiredDeep } from "type-fest";
 
 export type SpotifyMetadataResult = {
@@ -25,32 +24,6 @@ export type SpotifyDownloadTarget = SpotifySearchResult & {
   };
 };
 
-export type SpotifyDownloadStatus = "passed" | "skipped" | "failed";
-
-export type SpotifyDownloadResult =
-  | {
-      item: SetRequiredDeep<
-        SpotifyDownloadTarget,
-        "download.inputs" | "download.outputs"
-      >;
-      status: Extract<SpotifyDownloadStatus, "passed">;
-    }
-  | {
-      item: SetRequiredDeep<
-        SpotifyDownloadTarget,
-        "download.inputs" | "download.outputs"
-      >;
-      status: Extract<SpotifyDownloadStatus, "skipped">;
-    }
-  | {
-      item: SetRequiredDeep<
-        SpotifyDownloadTarget,
-        "download.inputs" | "download.outputs"
-      >;
-      status: Extract<SpotifyDownloadStatus, "failed">;
-      error: Error;
-    };
-
 export type SpotifyDownloadPreparer<TType extends Spotify.Type> = <
   TOptions extends SpotiOptions,
 >(
@@ -59,6 +32,60 @@ export type SpotifyDownloadPreparer<TType extends Spotify.Type> = <
   options?: TOptions
 ) => SpotifyDownloadTarget[];
 
-export type SpotifyTagResult = SpotifyDownloadTarget & {
-  tags: Tags;
-};
+export type SpotifyStatus = "passed" | "skipped" | "failed";
+
+export type SpotifyDownloadResult =
+  | {
+      item: SetRequiredDeep<
+        SpotifyDownloadTarget,
+        "download.inputs" | "download.outputs"
+      >;
+      status: Extract<SpotifyStatus, "passed">;
+    }
+  | {
+      item: SetRequiredDeep<
+        SpotifyDownloadTarget,
+        "download.inputs" | "download.outputs"
+      >;
+      status: Extract<SpotifyStatus, "skipped">;
+    }
+  | {
+      item: SetRequiredDeep<
+        SpotifyDownloadTarget,
+        "download.inputs" | "download.outputs"
+      >;
+      status: Extract<SpotifyStatus, "failed">;
+      error: Error;
+    };
+
+export type SpotifyConversionResult =
+  | {
+      source: SpotifyDownloadResult;
+      status: Extract<SpotifyStatus, "passed">;
+    }
+  | {
+      source: SpotifyDownloadResult;
+      status: Extract<SpotifyStatus, "skipped">;
+    }
+  | {
+      source: SpotifyDownloadResult;
+      status: Extract<SpotifyStatus, "failed">;
+      error: Error;
+    };
+
+export type SpotifyTaggingResult<
+  TSource extends SpotifyDownloadTarget | SpotifyDownloadResult,
+> =
+  | {
+      source: TSource;
+      status: Extract<SpotifyStatus, "passed">;
+    }
+  | {
+      source: TSource;
+      status: Extract<SpotifyStatus, "skipped">;
+    }
+  | {
+      source: TSource;
+      status: Extract<SpotifyStatus, "failed">;
+      error: Error;
+    };

@@ -1,10 +1,11 @@
 import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
 import {
-  type SpotifyDownloadStatus,
   type SpotifyDownloadResult,
+  type SpotifyConversionResult,
 } from "../types/spotify";
 import { type VideoFormat } from "../types/video";
+import { createLabel } from "../utils/console";
 import { Format } from "../utils/format";
 import { pool } from "../utils/promise";
 import { Library } from "./library";
@@ -17,17 +18,21 @@ import { extname } from "path";
 export async function convertAudioFile<
   TOptions extends SpotiOptions & { format?: AudioFormat },
 >(
-  target: SpotifyDownloadResult,
+  source: SpotifyDownloadResult,
   options?: TOptions,
   progress?: () => void
-): Promise<SpotifyDownloadStatus> {
+): Promise<SpotifyConversionResult> {
+  const scope = createLabel("convert");
+  const { title } = source.item.download;
+
   // Ignore failed and/or skipped downloads
-  if (["failed", "skipped"].includes(target.status)) {
+  if (["failed", "skipped"].includes(source.status)) {
+    console.log(scope, chalk.gray("✓"), title);
     progress?.();
-    return "skipped";
+    return { source, status: "skipped" };
   }
 
-  const { item } = target;
+  const { item } = source;
   const { download } = item;
   const { inputs, outputs, result } = download;
   const length = 75;
@@ -58,36 +63,41 @@ export async function convertAudioFile<
     if (Library.exists(audio.src)) await Library.remove(audio.src);
     // Refresh library state
     await Library.sync();
-    console.log(chalk.green("✓"), diff(audio));
+    console.log(scope, chalk.green("✓"), title);
+    options?.verbose && console.log(scope, chalk.green("✓"), diff(audio));
     progress?.();
-    return "passed";
+    return { source, status: "passed" };
   }
 
   // Audio input exists
   if (Library.exists(audio.src)) {
     try {
       await Audio.convert(audio.src, audio.dest, result?.outputs.audio.bitrate);
-      console.log(chalk.green("✓"), diff(audio));
-      return "passed";
-    } catch (_) {
-      console.log(chalk.red("𐄂"), diff(audio));
-      return "failed";
+      console.log(scope, chalk.green("✓"), title);
+      options?.verbose && console.log(scope, chalk.green("✓"), diff(audio));
+      return { source, status: "passed" };
+    } catch (e) {
+      const error = e as Error;
+      console.log(scope, chalk.red("𐄂"), title);
+      options?.verbose && console.log(scope, chalk.red("𐄂"), diff(audio));
+      return { source, status: "failed", error };
     } finally {
       progress?.();
     }
   }
 
   // No audio input or output exists –– we should never end up here!
-  console.log(chalk.yellow("?"), diff(audio));
-
+  console.log(scope, chalk.yellow("?"), title);
+  options?.verbose && console.log(chalk.yellow("?"), diff(audio));
+  const error = new Error("Audio conversion failed.");
   progress?.();
-  return "failed";
+  return { source, status: "failed", error };
 }
 
 export async function convertAudioFiles<TOptions extends SpotiOptions>(
   results: SpotifyDownloadResult[],
   options?: TOptions
-): Promise<SpotifyDownloadStatus[]> {
+): Promise<SpotifyConversionResult[]> {
   const progress = new Progress({
     label: "Converting…",
     total: results.length,
@@ -100,10 +110,10 @@ export async function convertAudioFiles<TOptions extends SpotiOptions>(
   );
 
   const dispatch = pool(25);
-  const statuses = await dispatch(tasks);
+  const conversions = await dispatch(tasks);
   progress.done();
 
-  return statuses;
+  return conversions;
 }
 
 export class Audio {

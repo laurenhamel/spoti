@@ -15,7 +15,7 @@ import {
   type YoutubeDownloadResult,
 } from "../types/youtube";
 import { Audio } from "../utils/audio";
-import { silenceWarnings } from "./console";
+import { createLabel, silenceWarnings } from "./console";
 import { Format } from "./format";
 import { Library } from "./library";
 import { Progress } from "./progress";
@@ -163,16 +163,6 @@ export function createDownloadTarget<
   return { ...item, download };
 }
 
-/** @deprecated */
-export function prepareDownloadResults<TOptions extends SpotiOptions>(
-  items: SpotifySearchResult[],
-  options?: TOptions
-): SpotifyDownloadTarget[] {
-  return map(items, (item) => createDownloadTarget(item, options)).sort(
-    sortDownloadResults((item) => item.download.file)
-  );
-}
-
 const prepareNoop: SpotifyDownloadPreparer<Spotify.Type> = () => [];
 
 export const prepareTrack: SpotifyDownloadPreparer<Spotify.Type.TRACK> = (
@@ -258,6 +248,7 @@ export async function downloadSpotifyTrack<
   options?: TOptions,
   progress?: () => void
 ): Promise<SpotifyDownloadResult> {
+  const scope = createLabel("download");
   const { title } = target.download;
 
   const inputs = getDownloadPaths(title, true);
@@ -273,14 +264,14 @@ export async function downloadSpotifyTrack<
 
   // Output file exists
   if (options?.force ? false : Library.contains(map(outputs, "path"))) {
-    console.log(chalk.gray("✓"), title);
+    console.log(scope, chalk.gray("✓"), title);
     progress?.();
     return { item, status: "skipped" };
   }
 
   // Input file exists
   if (options?.force ? false : Library.contains(map(inputs, "path"))) {
-    console.log(chalk.green("✓"), title);
+    console.log(scope, chalk.green("✓"), title);
     progress?.();
     return { item, status: "passed" };
   }
@@ -293,7 +284,7 @@ export async function downloadSpotifyTrack<
 
     try {
       const result = await downloadYoutubeSong(title, song, options);
-      console.log(chalk.green("✓"), title);
+      console.log(scope, chalk.green("✓"), title);
 
       return {
         item: merge(item, {
@@ -307,7 +298,7 @@ export async function downloadSpotifyTrack<
       };
     } catch (e) {
       const error = e as Error;
-      console.log(chalk.red("𐄂"), title);
+      console.log(scope, chalk.red("𐄂"), title);
       return { item, status: "failed", error };
     } finally {
       progress?.();
@@ -317,7 +308,7 @@ export async function downloadSpotifyTrack<
 
   // Search result unavailable
   const error = new Error(`Missing YouTube search result for '${title}'.`);
-  console.log(chalk.red("𐄂"), title);
+  console.log(scope, chalk.red("𐄂"), title);
   progress?.();
   return { item, status: "failed", error };
 }
