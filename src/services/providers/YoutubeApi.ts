@@ -194,7 +194,7 @@ class YoutubeApi {
       console.debug();
       console.debug(chalk.bold.dim("Request"));
       console.debug(chalk.magenta("GET"), chalk.cyan("<youtube>/getInfo"));
-      console.debug({ parameters: { id: song.id } });
+      console.debug({ parameters: song });
     }
 
     return this.api.music.getInfo(song);
