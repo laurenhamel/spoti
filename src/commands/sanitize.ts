@@ -8,8 +8,8 @@ import { Command } from "commander";
 
 export default new Command()
   .name("sanitize")
-  .description("Sanitizes files in your library")
-  .argument("[file]", "An MP3 file or Spoti metadata file")
+  .description("Sanitizes files in your music library")
+  .argument("[file]", "An audio file or Spoti metadata file")
   .option("--clean", "Clean temporary files instead of sanitizing them")
   .option("--dry", "Perform a dry run without making changes")
   .option("--no-cache", "Disables using cached search results")
