@@ -12,6 +12,7 @@ import { VideoFormat } from "../types/video";
 import { generateTrackTag } from "../utils/tags";
 import { mergeOptions } from "./action";
 import { Audio } from "./audio";
+import { createLabel } from "./console";
 import { prepareDownloadTargets } from "./downloads";
 import { Format } from "./format";
 import { Metadata } from "./metadata";
@@ -72,9 +73,13 @@ export class Library {
     this.dir = dir;
     this.files = this.scan();
     this.options = options as unknown as LibraryOptions;
-    this.options.verbose && this.files.forEach((file) => console.log(file));
     this.library = await this.process(this.files);
     this.__mounted.resolve(true);
+
+    if (this.options.verbose) {
+      const scope = createLabel("library");
+      this.files.forEach((file) => console.log(scope, file));
+    }
     return this.mounted;
   }
 
