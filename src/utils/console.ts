@@ -37,11 +37,19 @@ const chooseColor = (() => {
   };
 })();
 
-export function createLabel(text: string, length: number = 12): string {
-  const label = pad(text, length, " ");
-  const hex = chooseColor();
-  return chalk.bgHex(hex).black(label);
-}
+export const createLabel = (() => {
+  const cache: Record<string, string> = {};
+
+  return (text: string, length: number = 12): string => {
+    if (text in cache) {
+      const label = pad(text, length, " ");
+      const hex = chooseColor();
+      cache[text] = chalk.bgHex(hex).black(label);
+    }
+
+    return cache[text];
+  };
+})();
 
 export function reportDry<TOptions extends SpotiOptions & { dry?: boolean }>(
   options?: TOptions
