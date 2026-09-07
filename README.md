@@ -4,7 +4,7 @@
 
 ## Overview
 
-Spoti is a CLI tool that allows you to download Spotify tracks and playlists and manage your music library. Use Spoti to [download](#download) or [sync](#sync) music, get [info](#info) about a Spotify URL, [search](#search) YouTube for a set of tracks, [tag](#tag) or [sanitize](#sanitize) your music library, and [more](#usage). Downloading works by:
+Spoti is a CLI tool that allows you to download Spotify tracks and playlists and manage your music library. Use Spoti to download or sync music, get information about a Spotify URL, search YouTube for one or more Spotify tracks, tag or sanitize your music library, and more. See the [usage](#usage) guide for more details. Downloading works by:
 
 1. Retrieving information from Spotify for the desired track(s)
 2. Searching for the matching track(s) on YouTube Music
