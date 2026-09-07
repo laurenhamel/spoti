@@ -190,7 +190,7 @@ class YoutubeApi {
   async getInfo<
     TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions,
   >(song: Youtube.Song, _options?: TOptions): Promise<Types.TrackInfo> {
-    if (isDebuggingEnabled()) {
+    if (isDebuggingEnabled("youtube")) {
       console.debug();
       console.debug(chalk.bold.dim("Request"));
       console.debug(chalk.magenta("GET"), chalk.cyan("<youtube>/getInfo"));
@@ -359,7 +359,7 @@ class YoutubeApi {
 
     return {
       before: () => {
-        if (isDebuggingEnabled()) {
+        if (isDebuggingEnabled("youtube")) {
           console.debug("");
           console.debug(chalk.bold.dim("Request"));
           console.debug(chalk.magenta("GET"), chalk.cyan(request));
@@ -369,7 +369,7 @@ class YoutubeApi {
       after: ({ error }) => {
         const { message, retryable } = status(error);
 
-        if (isDebuggingEnabled()) {
+        if (isDebuggingEnabled("youtube")) {
           console.debug("");
           console.debug(chalk.bold.dim("Response"));
           console.debug(chalk.magenta.dim("GET"), chalk.cyan.dim(request));

@@ -16,6 +16,7 @@ export type SpotifyApiRequestMethod = RestApiRequestMethod;
 
 const SpotifyApi = new RestApi({
   api: "https://api.spotify.com/v1",
+  debug: "spotify",
   endpoints: {
     getPlaylist: {
       method: RestApiMethod.GET,

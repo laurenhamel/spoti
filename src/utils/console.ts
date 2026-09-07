@@ -22,8 +22,9 @@ const LABEL_COLORS = [
   // "#9936AC",
 ];
 
-export function isDebuggingEnabled(): boolean {
-  return ["*", "true", "spoti"].includes(process.env.DEBUG!);
+export function isDebuggingEnabled(...scopes: string[]): boolean {
+  const scoped = scopes.map((scope) => `spoti:${scope}`);
+  return ["*", "true", "spoti", ...scoped].includes(process.env.DEBUG!);
 }
 
 export function silenceWarnings(): () => void {

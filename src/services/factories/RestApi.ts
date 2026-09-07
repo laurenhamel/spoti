@@ -16,6 +16,7 @@ import {
   trimStart,
   isNil,
   escapeRegExp,
+  castArray,
 } from "lodash-es";
 import fetch, { type Headers, type Response } from "node-fetch";
 import qs from "qs";
@@ -44,6 +45,7 @@ export interface RestApiOptions<
   TEndpoints extends Record<string, RestApiEndpointOptions>,
 > {
   api: string;
+  debug?: string | string[];
   endpoints: TEndpoints;
   adapters?: RestApiAdapters;
 }
@@ -91,6 +93,7 @@ interface RestApiConfig<
   TEndpoints extends Record<string, RestApiEndpointOptions>,
 > {
   api: string;
+  debug?: string | string[];
   endpoints: {
     [TEndpoint in keyof TEndpoints]: RestApiEndpointConfig<
       TEndpoints[TEndpoint]
@@ -166,7 +169,7 @@ export default class RestApi<
       headers: { "Content-Type": "application/json", ...authorization },
     };
 
-    if (isDebuggingEnabled()) {
+    if (isDebuggingEnabled(...castArray(this.config.debug))) {
       console.debug();
       console.debug(chalk.bold.dim("Request"));
       console.debug(chalk.magenta(request.method), chalk.cyan(base));
@@ -253,7 +256,7 @@ export default class RestApi<
   ): Promise<TResponse> {
     const { ok, status, statusText: message, headers } = response;
 
-    if (isDebuggingEnabled()) {
+    if (isDebuggingEnabled(...castArray(this.config.debug))) {
       const color = getStatusColor(status);
       console.debug();
       console.debug(chalk.bold.dim("Response"));
