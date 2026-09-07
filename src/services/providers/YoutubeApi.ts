@@ -7,6 +7,7 @@ import {
   type YoutubeDownloadResult,
 } from "../../types/youtube";
 import { Audio } from "../../utils/audio";
+import { isDebuggingEnabled } from "../../utils/console";
 import {
   detectDownloadFormat,
   detectDownloadType,
@@ -188,12 +189,12 @@ class YoutubeApi {
 
   async getInfo<
     TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions,
-  >(song: Youtube.Song, options?: TOptions): Promise<Types.TrackInfo> {
-    if (options?.verbose) {
-      console.log();
-      console.log(chalk.bold.dim("Request"));
-      console.log(chalk.magenta("GET"), chalk.cyan("<youtube>/getInfo"));
-      console.log({ parameters: { id: song.id } });
+  >(song: Youtube.Song, _options?: TOptions): Promise<Types.TrackInfo> {
+    if (isDebuggingEnabled()) {
+      console.debug();
+      console.debug(chalk.bold.dim("Request"));
+      console.debug(chalk.magenta("GET"), chalk.cyan("<youtube>/getInfo"));
+      console.debug({ parameters: { id: song.id } });
     }
 
     return this.api.music.getInfo(song);
@@ -316,7 +317,7 @@ class YoutubeApi {
   private retry<TOptions extends SpotiOptions>(
     request: string,
     data?: unknown,
-    options?: TOptions
+    _options?: TOptions
   ): RetryHandlers {
     const status = (
       error?: Error
@@ -358,22 +359,22 @@ class YoutubeApi {
 
     return {
       before: () => {
-        if (options?.verbose) {
-          console.log("");
-          console.log(chalk.bold.dim("Request"));
-          console.log(chalk.magenta("GET"), chalk.cyan(request));
-          console.log(data);
+        if (isDebuggingEnabled()) {
+          console.debug("");
+          console.debug(chalk.bold.dim("Request"));
+          console.debug(chalk.magenta("GET"), chalk.cyan(request));
+          console.debug(data);
         }
       },
       after: ({ error }) => {
         const { message, retryable } = status(error);
 
-        if (options?.verbose) {
-          console.log("");
-          console.log(chalk.bold.dim("Response"));
-          console.log(chalk.magenta.dim("GET"), chalk.cyan.dim(request));
-          console.log(data);
-          console.log(message);
+        if (isDebuggingEnabled()) {
+          console.debug("");
+          console.debug(chalk.bold.dim("Response"));
+          console.debug(chalk.magenta.dim("GET"), chalk.cyan.dim(request));
+          console.debug(data);
+          console.debug(message);
         }
 
         return retryable;

@@ -1,4 +1,5 @@
 import { type SpotiOptions } from "../../types/config";
+import { isDebuggingEnabled } from "../../utils/console";
 import {
   type RetryAdapterInstance,
   type AuthorizationAdapterInstance,
@@ -165,7 +166,7 @@ export default class RestApi<
       headers: { "Content-Type": "application/json", ...authorization },
     };
 
-    if (options?.verbose) {
+    if (isDebuggingEnabled()) {
       console.log();
       console.log(chalk.bold.dim("Request"));
       console.log(chalk.magenta(request.method), chalk.cyan(base));
@@ -252,11 +253,11 @@ export default class RestApi<
   ): Promise<TResponse> {
     const { ok, status, statusText: message, headers } = response;
 
-    if (options?.verbose) {
+    if (isDebuggingEnabled()) {
       const color = getStatusColor(status);
-      console.log();
-      console.log(chalk.bold.dim("Response"));
-      console.log(chalk[color](`${status} ${message}`));
+      console.debug();
+      console.debug(chalk.bold.dim("Response"));
+      console.debug(chalk[color](`${status} ${message}`));
     }
 
     if (status === 429) this.pause(this.sleep(status, headers));

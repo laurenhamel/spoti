@@ -22,6 +22,10 @@ const LABEL_COLORS = [
   // "#9936AC",
 ];
 
+export function isDebuggingEnabled(): boolean {
+  return ["*", "true", "spoti"].includes(process.env.DEBUG!);
+}
+
 export function silenceWarnings(): () => void {
   const initial = console.warn;
   console.warn = () => {};
