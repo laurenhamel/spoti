@@ -1,11 +1,13 @@
+import { Spotify } from "../models";
 import { type ActionHandler } from "../types/action";
 import { type AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
+import { type SpotiMetadata } from "../types/metadata";
 import { mergeOptions } from "../utils/action";
 import { Audio } from "../utils/audio";
 import { Metadata } from "../utils/metadata";
-import { Spoti } from "../utils/spoti";
 import { isSpotifyURL, parseSpotifyURL } from "../utils/spotify";
+import { download } from "./download";
 
 export type SyncArguments = [string, string?];
 
@@ -37,8 +39,14 @@ export const sync: ActionHandler<SyncArguments, SyncOptions> = async <
 ) => {
   const options = mergeOptions(SYNC_DEFAULTS, config);
 
+  // URL provided
   if (isSpotifyURL(query)) {
     const { type, id } = parseSpotifyURL(query);
+
+    if (![Spotify.Type.PLAYLIST, Spotify.Type.TRACK].includes(type)) {
+      throw new Error(`Sorry, syncing for ${type}s not yet supported.`);
+    }
+
     const name = file ?? id;
 
     if (Metadata.has(name)) {
@@ -52,12 +60,15 @@ export const sync: ActionHandler<SyncArguments, SyncOptions> = async <
       );
     }
 
-    const data = { type, id, url: query };
+    const metadata: SpotiMetadata = { type, id, url: query };
 
-    Metadata.save(name, data);
+    Metadata.save(name, metadata);
 
-    !options.init && (await Spoti.download(id, type, options));
-  } else {
+    !options.init && (await download(query, options));
+  }
+
+  // URL missing
+  else {
     if (!Metadata.has(query)) {
       const metadata = Metadata.file(query);
 
@@ -69,12 +80,10 @@ export const sync: ActionHandler<SyncArguments, SyncOptions> = async <
       );
     }
 
-    const data = Metadata.read(query);
+    const metadata = Metadata.read(query);
 
-    const { type, id } = data as ReturnType<typeof parseSpotifyURL>;
+    await download(metadata.url, options);
 
-    await Spoti.download(id, type, options);
-
-    Metadata.save(query, data);
+    Metadata.save(query, metadata);
   }
 };

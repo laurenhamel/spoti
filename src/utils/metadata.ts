@@ -1,3 +1,4 @@
+import { type SpotiMetadata } from "../types/metadata";
 import { existsSync, writeFileSync, readFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 
@@ -17,13 +18,13 @@ export class Metadata {
     return existsSync(this.path(name));
   }
 
-  static save<TData = Record<string, unknown>>(name: string, data: TData) {
+  static save<TMetadata extends SpotiMetadata>(name: string, data: TMetadata) {
     const json = JSON.stringify(data, null, 2);
     writeFileSync(this.path(name), json);
   }
 
-  static read<TData = Record<string, unknown>>(name: string): TData {
-    const data = readFileSync(this.path(name), { encoding: "utf-8" });
-    return JSON.parse(data) as TData;
+  static read<TMetadata extends SpotiMetadata>(name: string): TMetadata {
+    const metadata = readFileSync(this.path(name), { encoding: "utf-8" });
+    return JSON.parse(metadata) as TMetadata;
   }
 }

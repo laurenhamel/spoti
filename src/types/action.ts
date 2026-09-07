@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { type SpotiOptions } from "./config";
-import { type Command } from "commander";
 
 export type ActionParameters<
   TArguments extends any[],
   TOptions extends SpotiOptions,
-> = [...TArguments, TOptions, Command];
+> = [...TArguments, TOptions];
 
 export type ActionHandler<
   TArguments extends any[],
