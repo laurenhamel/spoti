@@ -50,6 +50,7 @@ spoti download [options] <url>
 | --------------- | ------------------------------------------- |
 | `--force`       | Force download and overwrite existing files |
 | `--format`/`-f` | The output audio file format (default: mp3) |
+| `--verbose`     | Output more information to the console      |
 | `--no-cache`    | Disables using cached search results        |
 | `--no-prefixes` | Disallow prefixes in file names             |
 | `--no-suffixes` | Disallow suffixes in file names             |
@@ -67,6 +68,10 @@ spoti info <url>
 | -------- | ------------------------------------------------- |
 | `<url>`  | A spotify URL to download tracks from (required). |
 
+| Option      | Description                            |
+| ----------- | -------------------------------------- |
+| `--verbose` | Output more information to the console |
+
 ### `library`
 
 Retrieve information about your music library.
@@ -82,6 +87,7 @@ spoti library [options] [file]
 | Option       | Description                                          |
 | ------------ | ---------------------------------------------------- |
 | `--more`     | Output ID3 tags and calculate real duration (slower) |
+| `--verbose`  | Output more information to the console               |
 | `--no-cache` | Disables using cached search results                 |
 
 ### `sanitize`
@@ -100,6 +106,7 @@ spoti sanitize [options] [file]
 | ------------ | ------------------------------------------------ |
 | `--clean`    | Clean temporary files instead of sanitizing them |
 | `--dry`      | Perform a dry run without making changes         |
+| `--verbose`  | Output more information to the console           |
 | `--no-cache` | Disables using cached search results             |
 
 ### `search`
@@ -114,9 +121,10 @@ spoti search [options] <url>
 | -------- | --------------------------------------------------------------- |
 | `<url>`  | An Spotify URL with tracks to search for on YouTube (required). |
 
-| Option       | Description                          |
-| ------------ | ------------------------------------ |
-| `--no-cache` | Disables using cached search results |
+| Option       | Description                            |
+| ------------ | -------------------------------------- |
+| `--verbose`  | Output more information to the console |
+| `--no-cache` | Disables using cached search results   |
 
 ### `sync`
 
@@ -136,6 +144,7 @@ spoti sync [options] <query> [file]
 | `--force`       | Force download and overwrite existing files |
 | `--format`/`-f` | The output audio file format (default: mp3) |
 | `--init`        | Initialize the Spoti metadata file only     |
+| `--verbose`     | Output more information to the console      |
 | `--no-cache`    | Disables using cached search results        |
 | `--no-prefixes` | Disallow prefixes in file names             |
 | `--no-suffixes` | Disallow suffixes in file names             |
@@ -155,6 +164,7 @@ spoti tag [options] [file]
 | Option       | Description                              |
 | ------------ | ---------------------------------------- |
 | `--dry`      | Perform a dry run without making changes |
+| `--verbose`  | Output more information to the console   |
 | `--no-cache` | Disables using cached search results     |
 
 ## Contributing
