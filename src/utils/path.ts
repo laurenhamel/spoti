@@ -41,7 +41,7 @@ export function resolveModules(): string[] {
 
 export function resolveBin(
   name: string,
-  node: boolean = true
+  node: boolean = false
 ): string | undefined {
   if (node) {
     return resolveModules().find((modules) => {

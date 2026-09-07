@@ -21,7 +21,7 @@ import { searchYoutubeType } from "./search";
 import { getSpotifyType } from "./spotify";
 import chalk from "chalk";
 import { sync as glob } from "glob";
-import { find, get, isNil, merge, pick } from "lodash-es";
+import { find, get, isNil, merge, pick, noop } from "lodash-es";
 import id3, { type Tags } from "node-id3";
 import { spawnSync } from "node:child_process";
 import {
@@ -32,6 +32,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, extname, join } from "node:path";
+import { type Readable } from "node:stream";
 
 const { Promise: ID3 } = id3;
 
@@ -69,7 +70,7 @@ export class Library {
     options: TOptions = {} as TOptions
   ): Promise<boolean> {
     this.dir = dir;
-    this.files = this.scan(this.dir);
+    this.files = this.scan();
     this.options = options as unknown as LibraryOptions;
     this.options.verbose && this.files.forEach((file) => console.log(file));
     this.library = await this.process(this.files);
@@ -78,45 +79,42 @@ export class Library {
   }
 
   /**
+   * Syncs the mounted library state after file changes
+   */
+  static async sync(): Promise<void> {
+    this.files = this.scan();
+    this.library = await this.process(this.files, true);
+  }
+
+  /**
    * Scan the given directory for its list of files
    * @param dir - The directory to scan
    * @param format - Filter by audio or video file format
    * @returns
    */
-  static scan(dir: string, format?: AudioFormat | VideoFormat): string[] {
+  static scan(format?: AudioFormat | VideoFormat): string[] {
     const patterns: string[] = [];
 
-    if (!format || format === AudioFormat.MP3) {
-      patterns.push(basename(this.path("*", AudioFormat.MP3)));
-    }
+    const formats = [
+      ...Object.values(AudioFormat),
+      ...Object.values(VideoFormat),
+    ];
 
-    if (!format || format === VideoFormat.MP4) {
-      patterns.push(basename(this.path("*", VideoFormat.MP4)));
-    }
-
-    if (!format || format === AudioFormat.M4A) {
-      patterns.push(basename(this.path("*", AudioFormat.M4A)));
-    }
-
-    if (!format || format === AudioFormat.WAV) {
-      patterns.push(basename(this.path("*", AudioFormat.WAV)));
-    }
-
-    if (!format || format === AudioFormat.AAC) {
-      patterns.push(basename(this.path("*", AudioFormat.AAC)));
+    for (const target of formats) {
+      if (!format || format === target) {
+        patterns.push(basename(this.path("*", target)));
+      }
     }
 
     const files = patterns.flatMap((pattern) =>
       glob(pattern, {
         nodir: true,
         dot: true,
-        cwd: dir,
+        cwd: this.dir,
       })
     );
 
-    return files
-      .filter((file) => !file.startsWith(".") || Format.isHidden(file))
-      .map((file) => file.normalize());
+    return files.map((file) => file.normalize());
   }
 
   /**
@@ -125,12 +123,20 @@ export class Library {
    * @param increment - A progress increment function
    * @returns
    */
-  static async process(files: string[]): Promise<LibraryItem[]> {
-    const progress = new Progress({
-      label: "Mounting…",
-      total: files.length,
-      color: chalk.blue,
-    });
+  static async process(
+    files: string[],
+    quiet: boolean = false
+  ): Promise<LibraryItem[]> {
+    const progress = quiet
+      ? {
+          increment: noop,
+          done: noop,
+        }
+      : new Progress({
+          label: "Mounting…",
+          total: files.length,
+          color: chalk.blue,
+        });
 
     const dispatch = pool(25);
 
@@ -159,8 +165,9 @@ export class Library {
     const path = this.path(file, format);
     const size = this.size(file);
     const raw = { title, file, path, format, size };
+    const hidden = Format.isHidden(file);
     const metadata = this.metadata(file);
-    return { title, file, path, format, size, raw, metadata };
+    return { title, file, path, format, size, raw, hidden, metadata };
   }
 
   /**
@@ -208,6 +215,8 @@ export class Library {
     duration?: number,
     preserve: (keyof Tags)[] = ["genre", "bpm", "initialKey"]
   ): Promise<void> {
+    await Library.sync();
+
     const item = this.find(file);
 
     if (item) {
@@ -233,20 +242,13 @@ export class Library {
     let result: LibraryItem | undefined;
 
     for (const item of this.library) {
-      const { file, path, format, raw } = item;
+      const { file, path } = item;
 
-      if (file === target || path === target) {
+      if ([file, path].includes(target)) {
         result = item;
-      } else if (raw.file === target || raw.path === target) {
-        result = item;
-      } else if (format === Audio.format(target)) {
-        const { prefix, suffix } = this.normalize(item, target);
-        result = prefix || suffix ? item : undefined;
       }
 
-      if (result) {
-        break;
-      }
+      if (result) break;
     }
 
     return result;
@@ -326,7 +328,7 @@ export class Library {
 
   /**
    * Set metadata in the library
-   * @param file - The file to set metdata for
+   * @param file - The file to set metadata for
    * @param value - The metadata to set
    */
   static set(file: string, metadata: LibraryItem): number {
@@ -447,9 +449,12 @@ export class Library {
     file: string;
     title: string;
     format: AudioFormat | VideoFormat;
-    write: (chunk: unknown) => void;
-    clean: (force?: boolean) => void;
-    save: () => void;
+    write: (
+      source: Readable,
+      progress?: (amount?: number) => void
+    ) => Promise<void>;
+    clean: (force?: boolean) => Promise<void>;
+    save: () => Promise<void>;
   }> {
     return new Promise((resolve) => {
       const file = this.file(dest, format);
@@ -461,38 +466,60 @@ export class Library {
         encoding: "binary",
       });
 
-      const write = (chunk: unknown): void => {
-        stream.write(chunk);
+      const write = async (
+        source: Readable,
+        progress?: (amount?: number) => void
+      ): Promise<void> => {
+        return new Promise<void>((resolve, reject) => {
+          source.pipe(stream);
+
+          source.on("data", (chunk) => {
+            progress?.(chunk.length);
+          });
+
+          source.on("error", (error) => {
+            void clean().then(() => reject(error));
+          });
+
+          source.on("close", () => {
+            resolve();
+          });
+        });
       };
 
-      const clean = (force: boolean = false): void => {
+      const clean = async (force: boolean = false): Promise<void> => {
+        await Library.sync();
+
         const eligible = force ? true : Library.size(file) < length;
 
         if (Library.exists(file) && eligible) {
-          Library.remove(file);
+          await Library.remove(file);
         }
       };
 
-      const save = (): void => {
+      const save = async (): Promise<void> => {
         stream.end();
+        await Library.sync();
       };
 
-      stream.on("open", resolve);
-      stream.on("error", clean);
+      stream.on("open", () => {
+        resolve({
+          file,
+          path,
+          title: this.title(file),
+          format,
+          write,
+          clean,
+          save,
+        });
+      });
+
+      stream.on("error", () => void clean());
 
       // @FIXME Why does this not work?
-      process.on("SIGINT", clean);
-      process.on("SIGQUIT", clean);
-      process.on("SIGTERM", clean);
-
-      return {
-        file,
-        path,
-        title: this.title(file),
-        format,
-        write,
-        save,
-      };
+      process.on("SIGINT", () => void clean());
+      process.on("SIGQUIT", () => void clean());
+      process.on("SIGTERM", () => void clean());
     });
   }
 
@@ -510,16 +537,18 @@ export class Library {
    * @param file - The file to write to
    * @param data - The contents to save to the file
    */
-  static save(file: string, data: Buffer | string): void {
+  static async save(file: string, data: Buffer | string): Promise<void> {
     writeFileSync(this.path(file), data);
+    await Library.sync();
   }
 
   /**
    * Delete a file
    * @param file - The file to delete
    */
-  static remove(file: string): void {
+  static async remove(file: string): Promise<void> {
     rmSync(this.path(file));
+    await Library.sync();
   }
 
   /**
@@ -532,12 +561,23 @@ export class Library {
   }
 
   /**
+   * Determine if the given collection of files exists
+   * @param files - The files to search for
+   * @returns
+   */
+  static contains(files: string[], condition: "OR" | "AND" = "OR"): boolean {
+    const exists = files.map((file) => this.exists(file));
+    return condition === "OR" ? exists.some(Boolean) : exists.every(Boolean);
+  }
+
+  /**
    * Get the size of a file in bytes
    * @param file - The file to retrieve the size of
    * @returns
    */
   static size(file: string): number {
-    return this.exists(file) ? statSync(this.path(file)).size : 0;
+    const path = this.path(file);
+    return this.exists(file) ? statSync(path).size : 0;
   }
 
   /**
@@ -666,6 +706,8 @@ export class Library {
     file?: string,
     options?: TOptions
   ): Promise<LibraryManifest> {
+    await Library.sync();
+
     const files: LibraryFile[] = [];
 
     // MP3 file

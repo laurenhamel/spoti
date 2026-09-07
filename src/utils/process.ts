@@ -3,7 +3,7 @@ import {
   type ProcessExitConfig,
   type ProcessExitRegister,
 } from "../types/process";
-import { merge, isNil, isString } from "lodash-es";
+import { kebabCase, merge, isNil, isString } from "lodash-es";
 import { spawnSync, type SpawnSyncOptions } from "node:child_process";
 import { type Primitive } from "type-fest";
 
@@ -26,25 +26,44 @@ export const registerProcessExitHandlers: ProcessExitRegistrar = (
   }
 };
 
-export function convertArgs(options: Record<string, Primitive>): string[] {
+export function convertArgs(
+  options: Record<string, Primitive | Exclude<Primitive, boolean>[]>,
+  delimited: boolean = false
+): string[] {
   const args: string[] = [];
 
-  for (const key in options) {
-    const value = options[key];
+  const stringify = (
+    flag: string,
+    value: Primitive | Exclude<Primitive, boolean>[],
+    delimited: boolean = false
+  ): string | undefined => {
+    if (isNil(value)) return;
 
-    if (isNil(value)) continue;
+    if (Array.isArray(value)) {
+      const list: string[] = [];
 
-    switch (typeof value) {
-      case "boolean": {
-        args.push(`--${key}`);
-        break;
+      for (const input of value) {
+        if (isNil(input)) continue;
+        const output = stringify(flag, input, delimited)!;
+        const normalized = delimited ? output.split(" ")[1] : output;
+        list.push(normalized);
       }
-      default: {
-        const string = value.toString().replaceAll(/[" ]/g, "\\$1");
-        args.push(`--${key}`, string);
-        break;
-      }
+
+      return delimited ? list.join(",") : list.join(" ");
     }
+
+    if (typeof value === "boolean") {
+      return value ? `--${flag}` : `--no-${flag}`;
+    }
+
+    const string = value.toString().replaceAll(/[" ]/g, "\\$1");
+    return [`--${flag}`, string].join(" ");
+  };
+
+  for (const key in options) {
+    const flag = kebabCase(key);
+    const value = stringify(flag, options[key], delimited);
+    value && args.push(...value.split(" "));
   }
 
   return args;
@@ -65,7 +84,7 @@ export function runSync(command: string, options?: SpawnSyncOptions): string {
     )
   );
 
-  const error = isString(stderr) ? stderr.trim() : `Error: ${command}`;
+  const error = isString(stderr) ? stderr.trim() : command;
   const result = isString(stdout) ? stdout.trim() : "";
 
   if (status !== 0) throw new Error(error);

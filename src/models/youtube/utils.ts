@@ -11,6 +11,8 @@ export type DownloadOf<TFormat extends AudioFormat | VideoFormat> =
         ? Omit<Download, "format"> & { format: typeof AudioFormat.WAV }
         : TFormat extends typeof AudioFormat.AAC
           ? Omit<Download, "format"> & { format: typeof AudioFormat.AAC }
-          : TFormat extends typeof VideoFormat.MP4
-            ? Omit<Download, "format"> & { format: typeof VideoFormat.MP4 }
-            : never;
+          : TFormat extends typeof AudioFormat.WEBM
+            ? Omit<Download, "format"> & { format: typeof AudioFormat.WEBM }
+            : TFormat extends typeof VideoFormat.MP4
+              ? Omit<Download, "format"> & { format: typeof VideoFormat.MP4 }
+              : never;

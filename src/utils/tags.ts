@@ -44,7 +44,7 @@ export async function generateTrackTag(
   const { file } = download;
 
   const format =
-    (download.result as YoutubeDownloadResult)?.format ??
+    (download.result as YoutubeDownloadResult)?.outputs.audio.format ??
     trimStart(extname(file), ".");
 
   if (includes(Object.values(AudioFormat), format)) {
@@ -80,19 +80,19 @@ export async function getTrackTag<TOptions extends SpotiOptions>(
   input: SpotifyDownloadTarget | SpotifyDownloadResult,
   options?: TOptions,
   progress?: () => void
-): Promise<{ id: string; src?: string; tags: Tags }> {
+): Promise<{ id: string; path: string; tags?: Tags }> {
   const item =
     "search" in input || "download" in input
       ? (input as SpotifyDownloadTarget)
       : input.item;
 
+  // prettier-ignore
+  const path = item.download.result?.outputs.audio.path ?? item.download.outputs?.audio.path ?? item.download.path;
   const id = item.item.id;
-  const file = item.download.result?.file ?? item.download.file;
-  const existing = file ? Library.find(file) : undefined;
-  const src = existing?.raw?.file ?? file;
-  const tags = src ? await generateTrackTag(item) : {};
+  const tags = Library.exists(path) ? await generateTrackTag(item) : undefined;
+
   progress?.();
-  return { id, src, tags };
+  return { id, path, tags };
 }
 
 export async function addTrackTag<
@@ -102,10 +102,10 @@ export async function addTrackTag<
   options?: TOptions,
   progress?: () => void
 ): Promise<boolean> {
-  const { id, src, tags } = await getTrackTag(item);
+  const { id, path, tags } = await getTrackTag(item);
 
-  if (src && !options?.dry) {
-    await Library.tag(src, tags, id);
+  if (tags && !options?.dry) {
+    await Library.tag(path, tags, id);
     progress?.();
     return true;
   }

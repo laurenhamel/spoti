@@ -3,4 +3,5 @@ export enum AudioFormat {
   MP3 = "mp3",
   WAV = "wav",
   AAC = "aac",
+  WEBM = "webm",
 }

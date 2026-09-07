@@ -1,7 +1,9 @@
-import { type Youtube } from "../models";
 import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
-import { type SpotifyDownloadResult } from "../types/spotify";
+import {
+  type SpotifyDownloadStatus,
+  type SpotifyDownloadResult,
+} from "../types/spotify";
 import { type VideoFormat } from "../types/video";
 import { Format } from "../utils/format";
 import { pool } from "../utils/promise";
@@ -15,63 +17,77 @@ import { extname } from "path";
 export async function convertAudioFile<
   TOptions extends SpotiOptions & { format?: AudioFormat },
 >(
-  result: SpotifyDownloadResult,
+  target: SpotifyDownloadResult,
   options?: TOptions,
   progress?: () => void
-): Promise<boolean> {
+): Promise<SpotifyDownloadStatus> {
   // Ignore failed and/or skipped downloads
-  if (["failed", "skipped"].includes(result.status)) {
+  if (["failed", "skipped"].includes(target.status)) {
     progress?.();
-    return false;
+    return "skipped";
   }
 
-  const { item } = result;
-  const { file } = result.item.download;
-  const existing = Library.find(file);
-  const dest = existing?.raw.file ?? file;
-  const src = Library.source(file);
-  const bitrate = item.download.result?.bitrate;
+  const { item } = target;
+  const { download } = item;
+  const { inputs, outputs, result } = download;
   const length = 75;
 
-  const diff = (previous: string, next: string): string => {
-    const from = chalk.dim(Format.truncateFile(previous, length));
-    const to = chalk.green(Format.truncateFile(next, length));
+  const diff = ({ src, dest }: { src: string; dest: string }): string => {
+    const from = chalk.dim(Format.truncateFile(src, length));
+    const to = chalk.green(Format.truncateFile(dest, length));
     return [from, "→", to].join(" ");
   };
 
-  // Final audio file exists
-  if (Library.exists(dest)) {
-    // Removes source file if it exists
-    src && Library.exists(src) && Library.remove(src);
-    console.log(chalk.green("✓"), diff(src, dest));
+  const audio = {
+    src: inputs.audio.path,
+    dest: outputs.audio.path,
+  };
+
+  const video = {
+    src: inputs.video.path,
+    dest: outputs.video.path,
+  };
+
+  // Delete video files
+  if (Library.exists(video.src)) await Library.remove(video.src);
+  if (Library.exists(video.dest)) await Library.remove(video.dest);
+
+  // Audio output exists
+  if (Library.exists(audio.dest)) {
+    // Delete audio input
+    if (Library.exists(audio.src)) await Library.remove(audio.src);
+    // Refresh library state
+    await Library.sync();
+    console.log(chalk.green("✓"), diff(audio));
     progress?.();
-    return true;
+    return "passed";
   }
 
-  // Source file exists
-  if (Library.exists(src)) {
+  // Audio input exists
+  if (Library.exists(audio.src)) {
     try {
-      await Audio.convert(Library.path(src), Library.path(dest), bitrate);
-      console.log(chalk.green("✓"), diff(src, dest));
-      return true;
+      await Audio.convert(audio.src, audio.dest, result?.outputs.audio.bitrate);
+      console.log(chalk.green("✓"), diff(audio));
+      return "passed";
     } catch (_) {
-      console.log(chalk.red("𐄂"), diff(src, dest));
-      return false;
+      console.log(chalk.red("𐄂"), diff(audio));
+      return "failed";
     } finally {
       progress?.();
     }
   }
 
-  // No source file and no final audio –– we should never end up here!
-  console.log(chalk.yellow("?"), diff(src, dest));
+  // No audio input or output exists –– we should never end up here!
+  console.log(chalk.yellow("?"), diff(audio));
+
   progress?.();
-  return false;
+  return "failed";
 }
 
 export async function convertAudioFiles<TOptions extends SpotiOptions>(
   results: SpotifyDownloadResult[],
   options?: TOptions
-): Promise<boolean[]> {
+): Promise<SpotifyDownloadStatus[]> {
   const progress = new Progress({
     label: "Converting…",
     total: results.length,
@@ -114,27 +130,21 @@ export class Audio {
     src: string,
     dest: string,
     bitrate?: number
-  ): Promise<Youtube.DownloadOf<AudioFormat>> {
+  ): Promise<void> {
     const input = '"' + Library.file(src).replace(/"/g, '\\"') + '"';
     const output = '"' + Library.file(dest).replace(/"/g, '\\"') + '"';
-    const format = this.format<AudioFormat>(dest);
 
-    const flags: Record<AudioFormat, string[]> = {
-      [AudioFormat.MP3]: [
-        "-c:a",
-        "libmp3lame",
-        "-q:a",
-        "2",
-        ...(bitrate ? ["-b:a", `${(bitrate / 1000).toFixed(0)}k`] : []),
-      ],
-      [AudioFormat.M4A]: [],
-      [AudioFormat.AAC]: ["-c:a", "aac_at"],
-      [AudioFormat.WAV]: [],
-    };
+    const flags: string[] = [
+      "-c:a",
+      "libmp3lame",
+      ...(bitrate
+        ? ["-b:a", `${(bitrate / 1000).toFixed(0)}k`] // constant bitrate
+        : ["-q:a", "2"]), // variable bitrate
+    ];
 
     const { status, stderr } = spawnSync(
       "ffmpeg",
-      ["-i", input, "-y", ...flags[format], output],
+      ["-i", input, "-y", ...flags, output],
       {
         shell: true,
         encoding: "utf-8",
@@ -144,15 +154,9 @@ export class Audio {
 
     if (status === 0) {
       Library.set(src, Library.parse(dest));
-      Library.remove(src);
+      await Library.remove(src);
     }
 
     if (status === -1) throw new Error(stderr);
-
-    return {
-      file: Library.file(dest),
-      path: Library.path(dest),
-      format,
-    };
   }
 }

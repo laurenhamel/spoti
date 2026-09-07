@@ -1,29 +1,33 @@
 import { type Youtube } from "../../models";
-import { type InnertubeApiInstance } from "../../models/youtube";
-import { AudioFormat } from "../../types/audio";
+import { type AudioFormat } from "../../types/audio";
 import { type SpotiOptions } from "../../types/config";
 import { type RetryHandlers } from "../../types/promise";
+import {
+  type YoutubeDownloadMetadata,
+  type YoutubeDownloadResult,
+} from "../../types/youtube";
 import { Audio } from "../../utils/audio";
-import { getDownloadData } from "../../utils/downloads";
+import {
+  detectDownloadFormat,
+  detectDownloadType,
+  getDownloadPath,
+} from "../../utils/downloads";
 import { Library } from "../../utils/library";
 import { Progress } from "../../utils/progress";
 import { retry } from "../../utils/promise";
+import {
+  extractYoutubeFormats,
+  getYoutubeMetadata,
+  getYoutubeStream,
+} from "../../utils/ytdlp";
 import { PolicyAdapter } from "../adapters";
 import chalk from "chalk";
 import { sync as glob } from "glob";
-import { filter, flatMap, get } from "lodash-es";
+import { get, merge } from "lodash-es";
 import { statSync, rmSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import {
-  Innertube,
-  ClientType,
-  Utils,
-  UniversalCache,
-  type SessionOptions,
-  Platform,
-  type Types,
-} from "youtubei.js";
+import Innertube, { ClientType, UniversalCache, type Types } from "youtubei.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -31,6 +35,7 @@ const __dirname = dirname(__filename);
 const CACHE_ROOT = resolve(__dirname, "../../../.youtube/cache");
 const CACHE_API = join(CACHE_ROOT, "api");
 const CACHE_BACKUP = join(CACHE_ROOT, "backup");
+const CACHE_AGE = 1000 * 60 * 60 * 24; // 24h
 
 const YOUTUBE_RATE_LIMIT = {
   limit: 5,
@@ -39,9 +44,6 @@ const YOUTUBE_RATE_LIMIT = {
 };
 
 const YOUTUBE_RETRIES = 5;
-
-const youtubeRetryDelay = (attempt: number): number =>
-  Math.min(1000 * 2 ** (attempt - 1), 30000);
 
 const RETRYABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504];
 
@@ -66,121 +68,98 @@ export type YoutubeApiRequestMethod = <
   options?: TOptions
 ) => TResponse;
 
+export interface YoutubeApiOptions {
+  innertube?: Types.SessionOptions;
+}
+
 class YoutubeApi {
-  constructor() {
-    this.construct();
+  options?: YoutubeApiOptions;
+
+  // @ts-expect-error async initialization
+  private api: Types.InnerTubeInstance;
+
+  constructor(options?: YoutubeApiOptions) {
+    this.options = options;
+    void this.setup(options?.innertube);
   }
 
+  /**
+   * Sets up the Innertube handler with caching enabled
+   */
+  private async setup(options?: Types.SessionOptions) {
+    const cache = this.cache();
+
+    this.api = await Innertube.create(
+      merge(
+        {
+          client_type: ClientType.WEB,
+        },
+        options,
+        {
+          fetch: this.fetch,
+          cache,
+          generate_session_locally: true,
+        }
+      )
+    );
+  }
+
+  /**
+   * Replaces the fetch method used by the Innertube handler
+   */
+  private fetch: typeof fetch = (input, init) => {
+    return this.policy.police(() => fetch(input, init));
+  };
+
+  /**
+   * Cleans up stale cache items and initializes the cache handler
+   *
+   * @remarks
+   * If the cache is too far out of date, we may see requests start to fail.
+   * For that reason, we invalidate the cache every so often, and start over.
+   */
+  private cache(age = CACHE_AGE): UniversalCache {
+    const now = Date.now();
+    const deadline = now - age;
+
+    const clean = (path: string): void => {
+      const files = glob(join(path, "*"), { nodir: true });
+      const modified = files.map((file) => statSync(file).mtime.getTime());
+      const oldest = Math.min(...modified);
+      if (oldest <= deadline) files.forEach((file) => rmSync(file));
+    };
+
+    clean(CACHE_API);
+    clean(CACHE_BACKUP);
+
+    return new UniversalCache(true, CACHE_API);
+  }
+
+  /**
+   * Creates an `fetch` request policy adapter
+   */
   private readonly policy = new PolicyAdapter({
     rateLimit: YOUTUBE_RATE_LIMIT,
   });
 
-  private readonly fetch: typeof fetch = (input, init) =>
-    this.policy.police(() => fetch(input, init));
-
-  private constructed: boolean = false;
-
-  private construct() {
-    this.validateCache();
-
-    // Provide a JavaScript evaluator for Innertube
-    Platform.shim.eval = async (
-      data: Types.BuildScriptResult,
-      env: Record<string, Types.VMPrimative>
-    ) => {
-      const properties = [];
-      if (env.n) properties.push(`n: exportedVars.nFunction("${env.n}")`);
-      if (env.sig)
-        properties.push(`sig: exportedVars.sigFunction("${env.sig}")`);
-      const code = `${data.output}\nreturn { ${properties.join(", ")} }`;
-      return new Function(code)();
-    };
-
-    this.constructed = true;
-  }
-
-  private api$: Youtube.InnertubeApiInstance | undefined;
-
-  private async api(
-    options?: SessionOptions
-  ): Promise<Youtube.InnertubeApiInstance> {
-    if (!this.api$) {
-      this.api$ = await Innertube.create({
-        client_type: ClientType.WEB,
-        cache: new UniversalCache(true, CACHE_API),
-        generate_session_locally: true,
-        ...options,
-        fetch: this.fetch,
-      });
-    }
-
-    return this.api$;
-  }
-
-  private backup$: Youtube.InnertubeApiInstance | undefined;
-
-  private async backup(
-    options?: SessionOptions
-  ): Promise<Youtube.InnertubeApiInstance> {
-    if (!this.backup$) {
-      this.backup$ = await Innertube.create({
-        client_type: ClientType.TV_EMBEDDED,
-        cache: new UniversalCache(true, CACHE_BACKUP),
-        generate_session_locally: true,
-        ...options,
-        fetch: this.fetch,
-      });
-    }
-
-    return this.backup$;
-  }
-
-  /**
-   * If the cache is too far out of date, we may see request start to fail.
-   * For that reason, invalidate the cache every so often, and start over.
-   */
-  private validateCache(session = 1000 * 60 * 60 * 24 /* 24h */): void {
-    const now = Date.now();
-    const deadline = now - session;
-
-    const validate = (path: string): void => {
-      const files = glob(join(path, "*"), { nodir: true });
-      const modified = files.map((file) => statSync(file).mtime.getTime());
-      const oldest = Math.min(...modified);
-
-      if (oldest <= deadline) {
-        files.forEach((file) => rmSync(file));
-      }
-    };
-
-    validate(CACHE_API);
-    validate(CACHE_BACKUP);
-  }
+  private updated = false;
 
   async searchSongs<
     TResponse extends Record<string, unknown> | unknown[] = Youtube.Song[],
     TData extends Record<string, unknown> = { query: string },
     TOptions extends SpotiOptions = SpotiOptions,
   >(data?: TData, _options?: TOptions): Promise<TResponse> {
-    if (!this.constructed) this.construct();
-
     const query = data?.query as string | undefined;
 
     if (!query) {
       throw new Error("Missing 'query' for Youtube Music song search.");
     }
 
-    const api = await this.api();
-
     const result = await retry(
-      () => api.music.search(query, { type: "song" }),
+      () => this.api.music.search(query, { type: "song" }),
       YOUTUBE_RETRIES,
-      youtubeRetryDelay,
-      this.handleRetry(
-        "<youtube>/music/search",
-        { parameters: { query } },
-        _options
-      )
+      this.wait,
+      this.retry("<youtube>/music/search", { parameters: { query } }, _options)
     );
 
     return (result.songs?.contents ?? []) as unknown[] as TResponse;
@@ -191,93 +170,68 @@ class YoutubeApi {
     TData extends Record<string, unknown> = { query: string },
     TOptions extends SpotiOptions = SpotiOptions,
   >(data?: TData, _options?: TOptions): Promise<TResponse> {
-    if (!this.constructed) this.construct();
-
     const query = data?.query as string | undefined;
 
     if (!query) {
-      throw new Error("Missing 'query' for Youtube Music video search.");
+      throw new Error("Missing 'query' for Youtube Music song search.");
     }
 
-    const api = await this.api();
-
     const result = await retry(
-      () => api.music.search(query, { type: "video" }),
+      () => this.api.music.search(query, { type: "video" }),
       YOUTUBE_RETRIES,
-      youtubeRetryDelay,
-      this.handleRetry(
-        "<youtube>/music/search",
-        { parameters: { query } },
-        _options
-      )
+      this.wait,
+      this.retry("<youtube>/music/search", { parameters: { query } }, _options)
     );
 
-    return flatMap(
-      filter(result.contents ?? [], { type: "MusicShelf" }),
-      "contents"
-    ) as unknown[] as TResponse;
+    return (result.songs?.contents ?? []) as unknown[] as TResponse;
   }
 
-  private async getSongInfo<
+  async getInfo<
+    TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions,
+  >(song: Youtube.Song, options?: TOptions): Promise<Types.TrackInfo> {
+    if (options?.verbose) {
+      console.log();
+      console.log(chalk.bold.dim("Request"));
+      console.log(chalk.magenta("GET"), chalk.cyan("<youtube>/getInfo"));
+      console.log({ parameters: { id: song.id } });
+    }
+
+    return this.api.music.getInfo(song);
+  }
+
+  async getMetadata<
     TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions,
   >(
     title: string,
-    id: string,
+    song: Youtube.Song,
     options?: TOptions
-  ): Promise<{
-    info: Awaited<ReturnType<InstanceType<typeof Innertube>["getInfo"]>>;
-    api: InnertubeApiInstance;
-    client: "WEB" | "TV_EMBEDDED";
-  }> {
-    let api = await this.api();
-    let client: "WEB" | "TV_EMBEDDED" = "WEB";
-    let info = await api.getInfo(id);
+  ): Promise<YoutubeDownloadMetadata> {
+    const track = await this.getInfo(song);
+    const url = track.basic_info.url_canonical!;
+    const metadata = await getYoutubeMetadata(url, options);
+    const formats = extractYoutubeFormats(metadata);
+    const target = options?.format ?? Audio.DEFAULT_FORMAT;
 
-    const { playability_status: playability } = info;
-    const { status } = playability ?? {};
+    const inputs: Record<"audio" | "video", Youtube.Download> = {
+      audio: getDownloadPath(title, metadata, formats.audio, undefined, true),
+      video: getDownloadPath(title, metadata, formats.video, undefined, true),
+    };
 
-    if (options?.verbose) {
-      console.log(chalk.dim.bold("Playability"));
-      console.log(
-        title,
-        `(${chalk.blue(id)})`,
-        chalk.yellow(status),
-        playability
-      );
-    }
+    const outputs: Record<"audio" | "video", Youtube.Download> = {
+      audio: getDownloadPath(title, metadata, formats.audio, target),
+      video: getDownloadPath(title, metadata, formats.video),
+    };
 
-    if (status === "LOGIN_REQUIRED") {
-      api = await this.backup();
-      client = "TV_EMBEDDED";
-      info = await api.getInfo(id, { client: "TV_EMBEDDED" });
-    }
-
-    return { info, api, client };
+    return { title, song, url, track, metadata, formats, inputs, outputs };
   }
 
   async downloadSong<
-    TResponse extends Record<string, unknown> | unknown[] = Youtube.Download,
-    TData extends Record<string, unknown> = {
-      song: Youtube.Song;
-      file: string;
-    },
     TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions,
-  >(data?: TData, options?: TOptions): Promise<TResponse> {
-    if (!this.constructed) this.construct();
-
-    const title = data?.title as string | undefined;
-    const song = data?.song as Youtube.Song | undefined;
-
-    if (!title) throw new Error("Missing 'title' to use for download.");
-    if (!song) throw new Error("Missing 'song' to download.");
-
-    const target: {
-      input: AudioFormat;
-      output: AudioFormat;
-    } = {
-      input: AudioFormat.M4A,
-      output: options?.format ?? Audio.DEFAULT_FORMAT,
-    };
+  >(
+    meta: YoutubeDownloadMetadata,
+    options?: TOptions
+  ): Promise<YoutubeDownloadResult> {
+    const { title, url, inputs, outputs, formats, metadata } = meta;
 
     const progress = new Progress({
       label: title,
@@ -285,60 +239,64 @@ class YoutubeApi {
       color: chalk.yellow.dim,
     });
 
-    const download = async (id: string): Promise<TResponse> => {
-      if (options?.verbose) {
-        console.log();
-        console.log(chalk.bold.dim("Request"));
-        console.log(chalk.magenta("GET"), chalk.cyan("<youtube>/getInfo"));
-        console.log({ parameters: { id } });
+    const stream = async (
+      path: string,
+      source: Youtube.Format,
+      metadata: Youtube.Metadata
+    ): Promise<void> => {
+      const type = detectDownloadType(source);
+      const format = detectDownloadFormat(source);
+
+      // prettier-ignore
+      const size = source.filesize ?? source.filesize_approx ?? metadata.filesize_approx;
+      const target = await Library.new(path, size, format);
+
+      let update: ((amount?: number) => void) | undefined;
+
+      if (type === "audio") {
+        progress.total = size;
+        update = (amount = 1) => progress.update(amount);
       }
 
-      const { info, api, client } = await this.getSongInfo(title, id, options);
+      try {
+        const stream = getYoutubeStream(url, source, options);
+        await target.write(stream, update);
+      } catch (error) {
+        await target.clean(true);
+        throw error;
+      }
+    };
 
-      const config: Types.DownloadOptions = {
-        type: "video+audio",
-        quality: "best",
-        format: "mp4",
-        client,
-      };
+    const download = async (): Promise<YoutubeDownloadResult> => {
+      const { duration, size } = inputs.audio;
 
-      const format = info.chooseFormat(config);
-      const duration = info.basic_info.duration;
+      progress.total = size;
 
-      const data = getDownloadData(title, format.bitrate);
-      const input = data[target.input];
-      const output = data[target.output];
-
-      if (await Library.ready(input.path, { duration })) {
-        return output as unknown as TResponse;
+      // Skip if output file exists
+      if (await Library.ready(outputs.audio.path, { duration, size })) {
+        return { inputs, outputs };
       }
 
-      const stream = await api.download(id, config);
-
-      const file = Library.new(input.path);
-
-      for await (const chunk of Utils.streamToIterable(stream)) {
-        file.write(chunk);
-        progress.total = format.content_length ?? chunk.length;
-        progress.update(chunk.length);
+      // Skip if input file exists
+      if (await Library.ready(inputs.audio.path, { duration, size })) {
+        return { inputs, outputs };
       }
 
-      await file.save();
+      await stream(inputs.audio.path, formats.audio, metadata);
+      await stream(inputs.video.path, formats.video, metadata);
 
-      Library.set(input.file, Library.parse(input.file));
-
-      return output as unknown as TResponse;
+      return { inputs, outputs };
     };
 
     let error: Error | undefined;
-    let result: TResponse = {} as TResponse;
+    let result = {} as YoutubeDownloadResult;
 
     try {
       result = await retry(
-        () => download(song.id as string),
+        download,
         YOUTUBE_RETRIES,
-        youtubeRetryDelay,
-        this.handleRetry("download", { title, song }, options)
+        this.wait,
+        this.retry("download", meta, options)
       );
     } catch (e) {
       error = e as Error;
@@ -351,7 +309,11 @@ class YoutubeApi {
     return result;
   }
 
-  private handleRetry<TOptions extends SpotiOptions>(
+  private wait(attempt: number): number {
+    return Math.min(1000 * 2 ** (attempt - 1), 30000);
+  }
+
+  private retry<TOptions extends SpotiOptions>(
     request: string,
     data?: unknown,
     options?: TOptions
@@ -363,9 +325,10 @@ class YoutubeApi {
         const { stack } = error;
         const info = get(error, "info");
         const code = get(info, "response.status", -1);
-        const networkCode = get(error, "cause.code", get(error, "code")) as
-          string | undefined;
-        const errorType = get(info, "error_type");
+        // prettier-ignore
+        const cause = get(error, "cause.code", get(error, "code")) as string | undefined;
+        const type = get(info, "error_type");
+
         const message = chalk.dim(
           info ? `${stack}\n${JSON.stringify(info)}` : stack
         );
@@ -384,8 +347,8 @@ class YoutubeApi {
               message: chalk.red(`${code} Error\n${message}`),
               retryable:
                 RETRYABLE_STATUS_CODES.includes(code) ||
-                RETRYABLE_NETWORK_CODES.includes(networkCode ?? "") ||
-                errorType === "FETCH_FAILED",
+                RETRYABLE_NETWORK_CODES.includes(cause ?? "") ||
+                type === "FETCH_FAILED",
             };
         }
       }

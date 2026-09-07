@@ -1,11 +1,19 @@
 import { type AudioFormat } from "../../types/audio";
 import { type VideoFormat } from "../../types/video";
+import { type Format } from "../../utils/format";
+import { type Metadata } from "./Metadata";
 
-export type Download = {
+export type DownloadPath = {
+  format: VideoFormat | AudioFormat;
   file: string;
   path: string;
-  format: AudioFormat | VideoFormat;
+};
+
+export type Download = DownloadPath & {
   bitrate: number;
-  length: number;
+  size: number;
   duration: number;
+  metadata: Metadata;
+  source: Format;
+  type: "audio" | "video";
 };

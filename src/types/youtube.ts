@@ -1,5 +1,6 @@
 import { type Youtube, type Spotify } from "../models";
 import { type SpotiOptions } from "./config";
+import { type Types } from "youtubei.js";
 
 export type YoutubeSearchResult = {
   track: Spotify.Track;
@@ -14,4 +15,16 @@ export type YoutubeSearchOf<TType extends Spotify.Type> = <
   options?: TOptions
 ) => Promise<YoutubeSearchResult[]>;
 
-export type YoutubeDownloadResult = Youtube.Download;
+export interface YoutubeDownloadResult {
+  inputs: Record<"audio" | "video", Youtube.Download>;
+  outputs: Record<"audio" | "video", Youtube.Download>;
+}
+
+export interface YoutubeDownloadMetadata extends YoutubeDownloadResult {
+  title: string;
+  song: Youtube.Song;
+  url: string;
+  metadata: Youtube.Metadata;
+  formats: Record<"audio" | "video", Youtube.Format>;
+  track: Types.TrackInfo;
+}

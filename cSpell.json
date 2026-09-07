@@ -1,14 +1,18 @@
 {
   "words": [
+    "acodec",
     "acousticness",
     "callees",
     "cooldown",
+    "choco",
     "danceability",
     "essentia",
     "ffprobe",
+    "fulltitle",
     "innertube",
     "isrc",
     "instrumentalness",
+    "macports",
     "networkidle",
     "nodir",
     "playcount",
@@ -17,6 +21,9 @@
     "stringifier",
     "trivago",
     "unparse",
-    "youtubei"
+    "vcodec",
+    "winget",
+    "youtubei",
+    "ytdlp"
   ]
 }

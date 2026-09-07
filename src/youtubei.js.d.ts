@@ -15,6 +15,9 @@ declare module "youtubei.js" {
 
     export type VideoInfo = Awaited<ReturnType<InnerTubeInstance["getInfo"]>>;
 
+    // prettier-ignore
+    export type TrackInfo = Awaited<ReturnType<InnerTubeInstance["music"]['getInfo']>>;
+
     export type PlayerResponse = IPlayerResponse;
 
     export type RawResponse = IRawResponse;

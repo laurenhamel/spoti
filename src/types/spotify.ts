@@ -1,5 +1,4 @@
-import { type Spotify } from "../models";
-import { type AudioFormat } from "./audio";
+import { type Spotify, type Youtube } from "../models";
 import { type SpotiOptions } from "./config";
 import {
   type YoutubeDownloadResult,
@@ -18,27 +17,37 @@ export type SpotifySearchResult = Spotify.Item & {
 };
 
 export type SpotifyDownloadTarget = SpotifySearchResult & {
-  download: {
+  download: Youtube.DownloadPath & {
     title: string;
-    file: string;
-    path: string;
-    format: AudioFormat;
+    inputs?: Record<"audio" | "video", Youtube.DownloadPath>;
+    outputs?: Record<"audio" | "video", Youtube.DownloadPath>;
     result?: YoutubeDownloadResult;
   };
 };
 
+export type SpotifyDownloadStatus = "passed" | "skipped" | "failed";
+
 export type SpotifyDownloadResult =
   | {
-      item: SetRequiredDeep<SpotifyDownloadTarget, "download.result">;
-      status: "passed";
+      item: SetRequiredDeep<
+        SpotifyDownloadTarget,
+        "download.inputs" | "download.outputs"
+      >;
+      status: Extract<SpotifyDownloadStatus, "passed">;
     }
   | {
-      item: SetRequiredDeep<SpotifyDownloadTarget, "download.result">;
-      status: "skipped";
+      item: SetRequiredDeep<
+        SpotifyDownloadTarget,
+        "download.inputs" | "download.outputs"
+      >;
+      status: Extract<SpotifyDownloadStatus, "skipped">;
     }
   | {
-      item: SetRequiredDeep<SpotifyDownloadTarget, "download.result">;
-      status: "failed";
+      item: SetRequiredDeep<
+        SpotifyDownloadTarget,
+        "download.inputs" | "download.outputs"
+      >;
+      status: Extract<SpotifyDownloadStatus, "failed">;
       error: Error;
     };
 

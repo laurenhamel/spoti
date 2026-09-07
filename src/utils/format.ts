@@ -311,11 +311,12 @@ export class Format {
    * @param file - The filename to check
    */
   static isHidden(file: string): boolean {
-    const [base, ...exts] = basename(file).split(".");
+    const root = basename(file);
+    const [_base, ...exts] = trimStart(root, ".").split(".");
     const ext = "." + exts.join(".");
 
     return (
-      base.startsWith(Format.HIDDEN_FILE_PREFIX) &&
+      root.startsWith(Format.HIDDEN_FILE_PREFIX) &&
       ext.startsWith(Format.HIDDEN_FILE_SUFFIX)
     );
   }

@@ -2,8 +2,11 @@
 import "tsx/esm";
 import { tsImport } from "tsx/esm/api";
 
-const { loadEnv } = await tsImport("../src/utils/environment", import.meta.url);
+const { loadEnvs } = await tsImport(
+  "../src/utils/environment",
+  import.meta.url
+);
 
-loadEnv();
+loadEnvs();
 
 await import("../src/index");

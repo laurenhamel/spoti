@@ -32,6 +32,7 @@ export interface LibrarySource {
 
 export interface LibraryItem extends LibrarySource {
   raw: LibrarySource;
+  hidden: boolean;
   metadata: () => Promise<LibraryMetadata>;
 }
 

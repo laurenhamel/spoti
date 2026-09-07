@@ -21,87 +21,124 @@ import { Library } from "./library";
 import { Progress } from "./progress";
 import { pool } from "./promise";
 import chalk from "chalk";
-import { map, merge } from "lodash-es";
+import { find, map, merge } from "lodash-es";
+
+export function detectDownloadType(source: Youtube.Format): "audio" | "video" {
+  return source.acodec !== "none" ? "audio" : "video";
+}
 
 export function detectDownloadFormat(
-  format: string | AudioFormat | VideoFormat
-): AudioFormat | VideoFormat {
-  const mime = format.split(";")[0].trim();
+  source: Youtube.Format
+): AudioFormat | VideoFormat | undefined {
+  const { ext } = source;
 
-  const mimes: Record<string, AudioFormat | VideoFormat> = {
-    "video/mp4": VideoFormat.MP4,
-    "audio/mp4": AudioFormat.M4A,
-    "audio/mp3": AudioFormat.MP3,
-    "audio/aac": AudioFormat.AAC,
-    "audio/wav": AudioFormat.WAV,
+  const exts: Record<string, AudioFormat | VideoFormat> = {
+    mp4: VideoFormat.MP4,
+    m4a: AudioFormat.M4A,
+    webm: AudioFormat.WEBM,
+    mp3: AudioFormat.MP3,
+    aac: AudioFormat.AAC,
+    wav: AudioFormat.WAV,
   };
 
-  return mimes[mime] ?? format;
+  return exts[ext];
 }
 
 export function getDownloadPath(
   title: string,
-  source: Pick<Youtube.Download, "bitrate" | "duration" | "length"> & {
-    mime: string;
-  },
+  metadata: Youtube.Metadata,
+  source: Youtube.Format,
   target?: AudioFormat | VideoFormat,
   hidden: boolean = false
 ): Youtube.Download {
-  const { bitrate, duration, length } = source;
-  const mime = target ?? source.mime;
-  const format = detectDownloadFormat(mime);
+  const type = detectDownloadType(source);
+  const format = target ?? detectDownloadFormat(source) ?? AudioFormat.M4A;
+  const duration = metadata.duration * 1000;
+  // prettier-ignore
+  const size = source.filesize ?? source.filesize_approx ?? metadata.filesize_approx;
+  // prettier-ignore
+  const bitrate = type === 'audio' ? (source.abr ?? metadata.abr) : (source.vbr ?? metadata.vbr);
 
-  const paths: Record<AudioFormat | VideoFormat, Youtube.Download> = {
-    [AudioFormat.M4A]: {
-      file: Library.file(title, AudioFormat.M4A),
-      path: Library.path(title, AudioFormat.M4A),
-      format: AudioFormat.M4A,
-      bitrate,
-      length,
-      duration,
-    },
-    [AudioFormat.MP3]: {
-      file: Library.file(title, AudioFormat.MP3),
-      path: Library.path(title, AudioFormat.MP3),
-      format: AudioFormat.MP3,
-      bitrate,
-      length,
-      duration,
-    },
-    [AudioFormat.WAV]: {
-      file: Library.file(title, AudioFormat.WAV),
-      path: Library.path(title, AudioFormat.WAV),
-      format: AudioFormat.WAV,
-      bitrate,
-      length,
-      duration,
-    },
-    [AudioFormat.AAC]: {
-      file: Library.file(title, AudioFormat.AAC),
-      path: Library.path(title, AudioFormat.AAC),
-      format: AudioFormat.AAC,
-      bitrate,
-      length,
-      duration,
-    },
-    [VideoFormat.MP4]: {
-      file: Library.file(title, VideoFormat.MP4),
-      path: Library.path(title, VideoFormat.MP4),
-      format: VideoFormat.MP4,
-      bitrate,
-      length,
-      duration,
-    },
-  };
-
-  const path = paths[format];
+  let file = Library.file(title, format);
+  let path = Library.path(title, format);
 
   if (hidden) {
-    path.file = Format.hide(path.file);
-    path.path = Format.hide(path.path);
+    file = Format.hide(file);
+    path = Format.hide(path);
   }
 
-  return path;
+  return {
+    bitrate,
+    duration,
+    file,
+    format,
+    size,
+    metadata,
+    path,
+    source,
+    type,
+  };
+}
+
+export function getAudioPaths(
+  title: string,
+  hidden: boolean = false
+): { format: AudioFormat; file: string; path: string }[] {
+  return Object.values(AudioFormat).map((format) => {
+    let file = Library.file(title, format);
+    let path = Library.path(title, format);
+
+    if (hidden) {
+      file = Format.hide(file);
+      path = Format.hide(path);
+    }
+
+    return { format, file, path };
+  });
+}
+
+export function getVideoPaths(
+  title: string,
+  hidden: boolean = false
+): { format: VideoFormat; file: string; path: string }[] {
+  return Object.values(VideoFormat).map((format) => {
+    let file = Library.file(title, format);
+    let path = Library.path(title, format);
+
+    if (hidden) {
+      file = Format.hide(file);
+      path = Format.hide(path);
+    }
+
+    return { format, file, path };
+  });
+}
+
+export function getDownloadPaths(
+  title: string,
+  hidden: boolean = false
+): Youtube.DownloadPath[] {
+  return [...getAudioPaths(title, hidden), ...getVideoPaths(title, hidden)];
+}
+
+export function extractDownloadPaths(
+  paths: Youtube.DownloadPath[]
+): Record<"audio" | "video", Youtube.DownloadPath> {
+  const audios = paths.filter(({ format }) =>
+    Object.values(AudioFormat).includes(format as AudioFormat)
+  );
+
+  const videos = paths.filter(({ format }) =>
+    Object.values(VideoFormat).includes(format as VideoFormat)
+  );
+
+  const audio =
+    audios.find(({ path }) => Library.exists(path)) ??
+    find(audios, { format: Audio.DEFAULT_FORMAT })!;
+
+  const video = videos.find(({ path }) => Library.exists(path)) ?? videos[0];
+
+  return { audio, video };
 }
 
 export async function downloadYoutubeSong<TOptions extends SpotiOptions>(
@@ -109,7 +146,10 @@ export async function downloadYoutubeSong<TOptions extends SpotiOptions>(
   song: Youtube.Song,
   options?: TOptions
 ): Promise<YoutubeDownloadResult> {
-  return YoutubeApi.downloadSong({ title, song }, options);
+  const meta = await YoutubeApi.getMetadata(title, song, options);
+  const download = await YoutubeApi.downloadSong(meta);
+  await Library.sync();
+  return download;
 }
 
 export function createDownloadTarget<
@@ -218,44 +258,53 @@ export async function downloadSpotifyTrack<
   options?: TOptions,
   progress?: () => void
 ): Promise<SpotifyDownloadResult> {
-  const { title, file, path, format } = target.download;
+  const { title } = target.download;
+
+  const inputs = getDownloadPaths(title, true);
+  const outputs = getDownloadPaths(title);
 
   const item = merge({}, target, {
     download: {
-      result: {
-        file,
-        path,
-        format,
-      },
+      title,
+      inputs: extractDownloadPaths(inputs),
+      outputs: extractDownloadPaths(outputs),
     },
   }) as SpotifyDownloadResult["item"];
 
-  // Final audio file already exists
-  if (options?.force ? false : Library.exists(file)) {
-    console.log(chalk.gray("◦"), title);
+  // Output file exists
+  if (options?.force ? false : Library.contains(map(outputs, "path"))) {
+    console.log(chalk.gray("✓"), title);
     progress?.();
     return { item, status: "skipped" };
   }
 
-  const source = Library.source(file);
-
-  // Temporary source file already exists
-  if (Library.exists(source)) {
+  // Input file exists
+  if (options?.force ? false : Library.contains(map(inputs, "path"))) {
     console.log(chalk.green("✓"), title);
     progress?.();
     return { item, status: "passed" };
   }
 
-  const search = target.search.result;
+  const song = target.search.result;
 
   // Search result available
-  if (search) {
+  if (song) {
     const restoreWarnings = silenceWarnings();
 
     try {
-      const result = await downloadYoutubeSong(title, search, options);
+      const result = await downloadYoutubeSong(title, song, options);
       console.log(chalk.green("✓"), title);
-      return { item: merge(item, { download: { result } }), status: "passed" };
+
+      return {
+        item: merge(item, {
+          download: {
+            inputs: extractDownloadPaths(inputs),
+            outputs: extractDownloadPaths(outputs),
+            result,
+          },
+        }),
+        status: "passed",
+      };
     } catch (e) {
       const error = e as Error;
       console.log(chalk.red("𐄂"), title);
