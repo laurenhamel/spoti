@@ -195,8 +195,8 @@ export async function searchYoutubeSong<
   }
 
   try {
-    const songs = await YoutubeApi.searchSongs({ query }, options);
-    const videos = await YoutubeApi.searchVideos({ query }, options);
+    const songs = await YoutubeApi.searchSongs(query, options);
+    const videos = await YoutubeApi.searchVideos(query, options);
     const results = [...songs, ...videos];
     const result = findBestSearchResult(query, results, item, options);
     return { track, query, result };

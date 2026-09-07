@@ -143,61 +143,45 @@ class YoutubeApi {
     rateLimit: YOUTUBE_RATE_LIMIT,
   });
 
-  private updated = false;
-
-  async searchSongs<
-    TResponse extends Record<string, unknown> | unknown[] = Youtube.Song[],
-    TData extends Record<string, unknown> = { query: string },
-    TOptions extends SpotiOptions = SpotiOptions,
-  >(data?: TData, _options?: TOptions): Promise<TResponse> {
-    const query = data?.query as string | undefined;
-
-    if (!query) {
-      throw new Error("Missing 'query' for Youtube Music song search.");
-    }
-
+  async searchSongs<TOptions extends SpotiOptions = SpotiOptions>(
+    query: string,
+    options?: TOptions
+  ): Promise<Youtube.Song[]> {
     const result = await retry(
       () => this.api.music.search(query, { type: "song" }),
       YOUTUBE_RETRIES,
       this.wait,
-      this.retry("<youtube>/music/search", { parameters: { query } }, _options)
+      this.retry("<youtube>/music/search", { parameters: { query } }, options)
     );
 
-    return (result.songs?.contents ?? []) as unknown[] as TResponse;
+    return result.songs?.contents ?? [];
   }
 
-  async searchVideos<
-    TResponse extends Record<string, unknown> | unknown[] = Youtube.Song[],
-    TData extends Record<string, unknown> = { query: string },
-    TOptions extends SpotiOptions = SpotiOptions,
-  >(data?: TData, _options?: TOptions): Promise<TResponse> {
-    const query = data?.query as string | undefined;
-
-    if (!query) {
-      throw new Error("Missing 'query' for Youtube Music song search.");
-    }
-
+  async searchVideos<TOptions extends SpotiOptions = SpotiOptions>(
+    query: string,
+    options?: TOptions
+  ): Promise<Youtube.Song[]> {
     const result = await retry(
       () => this.api.music.search(query, { type: "video" }),
       YOUTUBE_RETRIES,
       this.wait,
-      this.retry("<youtube>/music/search", { parameters: { query } }, _options)
+      this.retry("<youtube>/music/search", { parameters: { query } }, options)
     );
 
-    return (result.songs?.contents ?? []) as unknown[] as TResponse;
+    return result.songs?.contents ?? [];
   }
 
   async getInfo<
     TOptions extends SpotiOptions & { format?: AudioFormat } = SpotiOptions,
-  >(song: Youtube.Song, _options?: TOptions): Promise<Types.TrackInfo> {
-    if (isDebuggingEnabled("youtube")) {
-      console.log();
-      console.log(chalk.bold.dim("Request"));
-      console.log(chalk.magenta("GET"), chalk.cyan("<youtube>/getInfo"));
-      console.log({ parameters: song });
-    }
+  >(song: Youtube.Song, options?: TOptions): Promise<Types.TrackInfo> {
+    const result = await retry(
+      () => this.api.music.getInfo(song),
+      YOUTUBE_RETRIES,
+      this.wait,
+      this.retry("<youtube>/getInfo", { parameters: song }, options)
+    );
 
-    return this.api.music.getInfo(song);
+    return result;
   }
 
   async getMetadata<
