@@ -29,7 +29,7 @@ export function createAction<
     const argv = yargs(command.args).argv as any;
     const args = cleanGlobals(params.slice(0, -2), argv) as TArgs;
     const options = { ...argv, ...command.optsWithGlobals() } as TOptions;
-    const next: ActionParameters<TArgs, TOptions> = [...args, options, command];
+    const next: ActionParameters<TArgs, TOptions> = [...args, options];
     await Library.mount(process.env.PWD!, options);
     return callback(...next);
   };

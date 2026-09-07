@@ -2,7 +2,7 @@ import { Spotify } from "../models";
 import { SpotifyApi, type SpotifyApiRequestMethod } from "../services";
 import { type SpotiOptions } from "../types/config";
 import { type LibraryFile } from "../types/library";
-import { type SpotifyMetadataResult } from "../types/spotify";
+import { type SpotiMetadata } from "../types/metadata";
 import {
   checkPlaywrightVersion,
   ensureChromiumInstalled,
@@ -46,7 +46,9 @@ export function validateSpotifyURL(url: string): void {
  * Parse Spotify URLs to extract relevant data
  * @example https://open.spotify.com/playlist/5g0EvNDibjJFgJeG7dAGeZ
  */
-export function parseSpotifyURL(url: string): SpotifyMetadataResult {
+export function parseSpotifyURL(
+  url: string
+): Pick<SpotiMetadata, "id" | "type"> {
   validateSpotifyURL(url);
   const { pathname } = new URL(url);
   const [type, id] = trimStart(pathname, "/").split("/");

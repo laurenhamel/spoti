@@ -7,7 +7,7 @@ import {
   type LibraryManifest,
   type LibraryFile,
 } from "../types/library";
-import { type SpotifyMetadataResult } from "../types/spotify";
+import { type SpotiMetadata } from "../types/metadata";
 import { VideoFormat } from "../types/video";
 import { generateTrackTag } from "../utils/tags";
 import { mergeOptions } from "./action";
@@ -717,7 +717,7 @@ export class Library {
 
     // Spoti metadata file (`*.spoti`)
     else if (file && Metadata.has(file)) {
-      const { id, type } = Metadata.read<SpotifyMetadataResult>(file);
+      const { id, type } = Metadata.read<SpotiMetadata>(file);
       const data = await getSpotifyType(id, type, options);
       const results = await searchYoutubeType(type, data, options);
       const targets = prepareDownloadTargets(type, data, results, options);

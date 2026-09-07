@@ -6,11 +6,6 @@ import {
 } from "./youtube";
 import { type SetRequiredDeep } from "type-fest";
 
-export type SpotifyMetadataResult = {
-  type: Spotify.Type;
-  id: string;
-};
-
 export type SpotifySearchResult = Spotify.Item & {
   search: YoutubeSearchResult;
 };
