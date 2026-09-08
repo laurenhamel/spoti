@@ -101,60 +101,66 @@ export function ensureChromiumInstalled(): void {
 /**
  * Enforces that the the `yt-dlp` binary is up-to-date.
  */
-export function ensureYtdlpLatest<TOptions extends SpotiOptions>(
-  options?: TOptions
-): void {
-  const os = platform();
-  const ytdlp = getYtdlpBin();
-  const version = runSync(`${ytdlp} --version`).split(".");
-  const json = runSync(`curl ${YTDLP_LATEST}`);
-  const target = JSON.parse(json).tag_name.split(".");
-  const current = new Date(`${version[0]}-${version[1]}-${version[2]}`);
-  const latest = new Date(`${target[0]}-${target[1]}-${target[2]}`);
+export const ensureYtdlpLatest = (() => {
+  let checked = false;
 
-  if (current.getTime() < latest.getTime()) {
-    const from = chalk.red(version.join("."));
-    const to = chalk.green(target.join("."));
+  return <TOptions extends SpotiOptions>(options?: TOptions): void => {
+    if (checked) return;
 
-    if (options?.verbose) {
-      console.log();
-      console.log(`Updating 'yt-dlp' from ${from} → ${to}`);
-    }
+    const os = platform();
+    const ytdlp = getYtdlpBin();
+    const version = runSync(`${ytdlp} --version`).split(".");
+    const json = runSync(`curl ${YTDLP_LATEST}`);
+    const target = JSON.parse(json).tag_name.split(".");
+    const current = new Date(`${version[0]}-${version[1]}-${version[2]}`);
+    const latest = new Date(`${target[0]}-${target[1]}-${target[2]}`);
 
-    const updateNative = () => runSync(`${ytdlp} -U`);
-    const updatePip = () => runSync(`pip install ${YTDLP_BINARY} -U`);
-    const updateBrew = () => runSync(`brew upgrade ${YTDLP_BINARY}`);
-    const updateScoop = () => runSync(`scoop update ${YTDLP_BINARY}`);
-    const updateChoco = () => runSync(`choco upgrade ${YTDLP_BINARY}`);
-    const updateWinget = () => runSync(`winget upgrade ${YTDLP_BINARY}`);
+    if (current.getTime() < latest.getTime()) {
+      const from = chalk.red(version.join("."));
+      const to = chalk.green(target.join("."));
 
-    const updates: (() => string)[] = [
-      updateNative,
-      updatePip,
-      ...(os === "darwin" ? [updateBrew] : []),
-      ...(os === "linux" ? [updateBrew] : []),
-      ...(os === "win32" ? [updateScoop, updateChoco, updateWinget] : []),
-    ];
+      if (options?.verbose) {
+        console.log();
+        console.log(`Updating 'yt-dlp' from ${from} → ${to}`);
+      }
 
-    // Force update `yt-dlp`.
-    for (let i = 0; i < updates.length; i++) {
-      const update = updates[i];
-      const last = i + 1 === updates.length;
+      const updateNative = () => runSync(`${ytdlp} -U`);
+      const updatePip = () => runSync(`pip install ${YTDLP_BINARY} -U`);
+      const updateBrew = () => runSync(`brew upgrade ${YTDLP_BINARY}`);
+      const updateScoop = () => runSync(`scoop update ${YTDLP_BINARY}`);
+      const updateChoco = () => runSync(`choco upgrade ${YTDLP_BINARY}`);
+      const updateWinget = () => runSync(`winget upgrade ${YTDLP_BINARY}`);
 
-      try {
-        update();
-        break;
-      } catch (_) {
-        if (!last) continue;
+      const updates: (() => string)[] = [
+        updateNative,
+        updatePip,
+        ...(os === "darwin" ? [updateBrew] : []),
+        ...(os === "linux" ? [updateBrew] : []),
+        ...(os === "win32" ? [updateScoop, updateChoco, updateWinget] : []),
+      ];
 
-        throw new Error(
-          [
-            `Failed to auto-update: '${YTDLP_BINARY}'.`,
-            `Please update manually, then try again.`,
-            `See ${YTDLP_REPO} for how to update.`,
-          ].join("\n")
-        );
+      // Force update `yt-dlp`.
+      for (let i = 0; i < updates.length; i++) {
+        const update = updates[i];
+        const last = i + 1 === updates.length;
+
+        try {
+          update();
+          break;
+        } catch (_) {
+          if (!last) continue;
+
+          throw new Error(
+            [
+              `Failed to auto-update: '${YTDLP_BINARY}'.`,
+              `Please update manually, then try again.`,
+              `See ${YTDLP_REPO} for how to update.`,
+            ].join("\n")
+          );
+        }
       }
     }
-  }
-}
+
+    checked = true;
+  };
+})();
