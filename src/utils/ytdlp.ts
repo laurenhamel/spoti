@@ -19,7 +19,11 @@ export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
 
   const abort = createProcessExitAbort();
 
-  const args = ["--no-warnings", "--dump-json", `ytsearch:${id}`];
+  const args = [
+    ...(options?.verbose ? ["--verbose"] : ["--no-warnings"]),
+    "--dump-json",
+    `ytsearch:${id}`,
+  ];
 
   const { stdout } = await execa(ytdlp, args, {
     cleanup: true,
@@ -44,17 +48,30 @@ export function getYoutubeStream<TOptions extends SpotiOptions>(
   const best = type === "video" ? "bestvideo[ext=mp4]" : "bestaudio";
 
   const args = [
+    ...(options?.verbose ? ["--verbose"] : ["--no-warnings"]),
+    "--ignore-errors",
     "--no-playlist",
-    "--no-warnings",
     "--user-agent",
     USER_AGENT,
     "--extractor-args",
-    "youtube:player-client=web,android",
+    "youtube:player-client=ios,mweb,android,web",
     "--format",
-    `${id}/${best}`,
+    `${id}/${best}/best`,
+    "--sleep-interval",
+    "5",
+    "--max-sleep-interval",
+    "15",
+    "--sleep-requests",
+    "1.5",
+    "--retries",
+    "10",
+    "--fragment-retries",
+    "10",
+    "--retry-sleep",
+    "fragment:exp=1:20",
     "--output",
     "-",
-    ...(type === "video" ? ["--remux-video", "mkv"] : []),
+    ...(type === "video" ? ["--remux-video", "mkv"] : ["-x"]),
     url,
   ];
 

@@ -11,8 +11,9 @@ import { pool } from "../utils/promise";
 import { Library } from "./library";
 import { Progress } from "./progress";
 import chalk from "chalk";
-import { spawnSync } from "child_process";
 import { trimStart } from "lodash-es";
+import { spawnSync } from "node:child_process";
+import { basename } from "node:path";
 import { extname } from "path";
 
 export async function convertAudioFile<
@@ -22,6 +23,8 @@ export async function convertAudioFile<
   options?: TOptions,
   progress?: () => void
 ): Promise<SpotifyConversionResult> {
+  await Library.sync();
+
   const scope = createLabel("convert");
   const { title } = source.item.download;
 
@@ -38,8 +41,8 @@ export async function convertAudioFile<
   const length = 75;
 
   const diff = ({ src, dest }: { src: string; dest: string }): string => {
-    const from = chalk.dim(Format.truncateFile(src, length));
-    const to = chalk.green(Format.truncateFile(dest, length));
+    const from = chalk.dim(Format.truncateFile(basename(src), length));
+    const to = chalk.green(Format.truncateFile(basename(dest), length));
     return [from, "→", to].join(" ");
   };
 
