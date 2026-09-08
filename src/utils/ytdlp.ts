@@ -22,7 +22,7 @@ export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
   const args = [
     ...(options?.verbose ? ["--verbose"] : ["--no-warnings"]),
     "--dump-json",
-    `ytsearch:${id}`,
+    `https://www.youtube.com/watch?v=${id}`,
   ];
 
   const { stdout } = await execa(ytdlp, args, {
