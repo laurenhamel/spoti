@@ -2,6 +2,8 @@
   "words": [
     "acodec",
     "acousticness",
+    "bestaudio",
+    "bestvideo",
     "callees",
     "cooldown",
     "choco",

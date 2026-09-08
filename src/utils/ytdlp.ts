@@ -51,6 +51,9 @@ export function getYoutubeStream<TOptions extends SpotiOptions>(
 
   const abort = createProcessExitAbort();
 
+  const type = detectDownloadType(format);
+  const best = type === "video" ? "bestvideo" : "bestaudio";
+
   const args = convertArgs(
     merge(
       {
@@ -59,7 +62,7 @@ export function getYoutubeStream<TOptions extends SpotiOptions>(
       },
       overrides,
       {
-        format: format.format_id,
+        format: `${format.format_id}/${best}`,
         output: "-",
       }
     )
