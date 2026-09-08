@@ -28,6 +28,7 @@ export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
   const { stdout } = await execa(ytdlp, args, {
     cleanup: true,
     cancelSignal: abort.signal,
+    maxBuffer: 100 * 1024 * 1024, // 100 MB
   });
 
   return JSON.parse(stdout.trim());
