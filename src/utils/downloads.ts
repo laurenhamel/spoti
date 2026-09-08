@@ -147,9 +147,7 @@ export async function downloadYoutubeSong<TOptions extends SpotiOptions>(
   options?: TOptions
 ): Promise<YoutubeDownloadResult> {
   const meta = await YoutubeApi.getMetadata(title, song, options);
-  const download = await YoutubeApi.downloadSong(meta);
-  await Library.sync();
-  return download;
+  return await YoutubeApi.downloadSong(meta);
 }
 
 export function createDownloadTarget<
