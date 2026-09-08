@@ -88,7 +88,8 @@ export async function convertAudioFile<
   // No audio input or output exists –– we should never end up here!
   console.log(scope, chalk.yellow("?"), title);
   options?.verbose && console.log(chalk.yellow("?"), diff(audio));
-  const error = new Error("Audio conversion failed.");
+  // prettier-ignore
+  const error = new Error(`Audio conversion failed for '${basename(audio.dest)}' ('${basename(audio.src)}').`);
   progress?.();
   return { source, status: "failed", error };
 }
