@@ -81,8 +81,8 @@ export class Progress {
 
   update(amount: number): void {
     this.value += amount;
+    this.total = this.value > this.total ? this.value : this.total;
     const { label, percentage, message } = this;
-    if (this.value > this.total) this.total = this.value;
     Progress.progress?.updateTask(label, { percentage, message });
     this.emit();
   }
