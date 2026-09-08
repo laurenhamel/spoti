@@ -18,6 +18,7 @@
     "networkidle",
     "nodir",
     "playcount",
+    "remux",
     "speechiness",
     "spoti",
     "stringifier",
