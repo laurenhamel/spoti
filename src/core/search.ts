@@ -30,13 +30,6 @@ export const search: ActionHandler<SearchArguments, SearchOptions> = async <
 
   console.log(`Searching for ${chalk.magenta(type)} (${chalk.blue(id)})…`);
 
-  if (options.verbose) {
-    console.log();
-    console.log(chalk.bold.dim("Data"));
-    console.log({ type, id });
-    console.log();
-  }
-
   const data = await getSpotifyType(id, type, options);
   const results = await searchYoutubeType(type, data, options);
   const details: Record<string, Primitive> = {};

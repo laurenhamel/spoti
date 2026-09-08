@@ -3,6 +3,7 @@ import { SpotifyApi, type SpotifyApiRequestMethod } from "../services";
 import { type SpotiOptions } from "../types/config";
 import { type LibraryFile } from "../types/library";
 import { type SpotiMetadata } from "../types/metadata";
+import { isDebuggingEnabled } from "./console";
 import {
   checkPlaywrightVersion,
   ensureChromiumInstalled,
@@ -52,7 +53,16 @@ export function parseSpotifyURL(
   validateSpotifyURL(url);
   const { pathname } = new URL(url);
   const [type, id] = trimStart(pathname, "/").split("/");
-  return { type: type as Spotify.Type, id };
+  const parsed = { type: type as Spotify.Type, id };
+
+  if (isDebuggingEnabled()) {
+    console.log();
+    console.log(chalk.bold.dim("Data"));
+    console.log(parsed);
+    console.log();
+  }
+
+  return parsed;
 }
 
 const noopSpotifyApiRequest: SpotifyApiRequestMethod = async <
