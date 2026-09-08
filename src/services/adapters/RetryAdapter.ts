@@ -1,4 +1,5 @@
 import { type SpotiOptions } from "../../types/config";
+import { isDebuggingEnabled } from "../../utils/console";
 import { sleep } from "../../utils/promise";
 import { type RetryAdapterInstance } from "./types";
 import { merge } from "lodash-es";
@@ -73,7 +74,10 @@ export default class RetryAdapter implements RetryAdapterInstance {
     const wait = this.sleep(status, headers);
 
     if (wait !== undefined && attempt <= this.config.max) {
-      options?.verbose && console.log(`Retrying in ${wait / 1000}s...`);
+      if (isDebuggingEnabled("spotify", "youtube")) {
+        console.log(`Retrying in ${wait / 1000}s...`);
+      }
+
       await sleep(wait);
       return request();
     } else {
