@@ -3,7 +3,7 @@ import { resolveBin } from "./path";
 import { runSync } from "./process";
 import chalk from "chalk";
 import { globSync } from "glob";
-import { template, isEmpty } from "lodash-es";
+import { template, isEmpty, once } from "lodash-es";
 import { platform, homedir } from "node:os";
 import semver from "semver";
 
@@ -60,7 +60,7 @@ export function getYtdlpBin(): string {
 /**
  * Verifies that macOS 13 is using `playwright@1.47.0` or older.
  */
-export function checkPlaywrightVersion(): void {
+export const checkPlaywrightVersion = once((): void => {
   if (platform() !== "darwin") return;
 
   const os = Number(runSync("sw_vers -productVersion").split(".")[0]);
@@ -78,12 +78,12 @@ export function checkPlaywrightVersion(): void {
       ].join("\n")
     );
   }
-}
+});
 
 /**
  * Enforces that some Chromium browser version is installed.
  */
-export function ensureChromiumInstalled(): void {
+export const ensureChromiumInstalled = once((): void => {
   const home = homedir();
   const cache = template(CHROMIUM_CACHE[platform()])({ home });
   const versions = globSync("chromium-*", { cwd: cache });
@@ -96,17 +96,13 @@ export function ensureChromiumInstalled(): void {
       stdio: "inherit",
     });
   }
-}
+});
 
 /**
  * Enforces that the the `yt-dlp` binary is up-to-date.
  */
-export const ensureYtdlpLatest = (() => {
-  let checked = false;
-
-  return <TOptions extends SpotiOptions>(options?: TOptions): void => {
-    if (checked) return;
-
+export const ensureYtdlpLatest = once(
+  <TOptions extends SpotiOptions>(options?: TOptions): void => {
     const os = platform();
     const ytdlp = getYtdlpBin();
     const version = runSync(`${ytdlp} --version`).split(".");
@@ -160,7 +156,5 @@ export const ensureYtdlpLatest = (() => {
         }
       }
     }
-
-    checked = true;
-  };
-})();
+  }
+);
