@@ -21,7 +21,11 @@ export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
 
   const args = [
     ...(options?.verbose ? ["--verbose"] : ["--no-warnings"]),
+    "--ignore-no-formats-error",
     "--dump-json",
+    "--extractor-args",
+    "youtube:player-client=ios,tv_embedded,android,mweb,web",
+    "--",
     `https://www.youtube.com/watch?v=${id}`,
   ];
 
@@ -55,7 +59,7 @@ export function getYoutubeStream<TOptions extends SpotiOptions>(
     "--user-agent",
     USER_AGENT,
     "--extractor-args",
-    "youtube:player-client=ios,mweb,android,web",
+    "youtube:player-client=ios,tv_embedded,android,mweb,web",
     "--format",
     `${id}/${best}/best`,
     "--sleep-interval",
@@ -73,6 +77,7 @@ export function getYoutubeStream<TOptions extends SpotiOptions>(
     "--output",
     "-",
     ...(type === "video" ? ["--remux-video", "mkv"] : ["-x"]),
+    "--",
     url,
   ];
 
