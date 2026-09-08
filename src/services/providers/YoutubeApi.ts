@@ -258,25 +258,21 @@ class YoutubeApi {
       return { inputs, outputs };
     };
 
-    let error: Error | undefined;
-    let result = {} as YoutubeDownloadResult;
-
     try {
-      result = await retry(
+      const result = await retry(
         download,
         YOUTUBE_RETRIES,
         this.wait,
         this.retry("download", meta, options)
       );
+
+      return result;
     } catch (e) {
-      error = e as Error;
+      const error = e as Error;
+      throw error;
+    } finally {
+      progress.done();
     }
-
-    progress.done();
-
-    if (error) throw error;
-
-    return result;
   }
 
   private wait(attempt: number): number {
