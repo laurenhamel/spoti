@@ -27,6 +27,7 @@ import id3, { type Tags } from "node-id3";
 import { spawnSync } from "node:child_process";
 import {
   createWriteStream,
+  existsSync,
   readFileSync,
   rmSync,
   statSync,
@@ -81,14 +82,6 @@ export class Library {
       this.files.forEach((file) => console.log(scope, file));
     }
     return this.mounted;
-  }
-
-  /**
-   * Syncs the mounted library state after file changes
-   */
-  static async sync(): Promise<void> {
-    this.files = this.scan();
-    this.library = await this.process(this.files, true);
   }
 
   /**
@@ -220,8 +213,6 @@ export class Library {
     duration?: number,
     preserve: (keyof Tags)[] = ["genre", "bpm", "initialKey"]
   ): Promise<void> {
-    await Library.sync();
-
     const item = this.find(file);
 
     if (item) {
@@ -269,20 +260,13 @@ export class Library {
 
     for (let i = 0; i < this.library.length; i++) {
       const item = this.library[i];
-      const { file, path, format, raw } = item;
+      const { file, path } = item;
 
-      if (file === target || path === target) {
+      if ([file, path].includes(target)) {
         result = i;
-      } else if (raw.file === target || raw.path === target) {
-        result = i;
-      } else if (format === Audio.format(target)) {
-        const { prefix, suffix } = this.normalize(item, target);
-        result = prefix || suffix ? i : result;
       }
 
-      if (result > -1) {
-        break;
-      }
+      if (result > -1) break;
     }
 
     return result;
@@ -458,8 +442,8 @@ export class Library {
       source: Readable,
       progress?: (amount?: number) => void
     ) => Promise<void>;
-    clean: (force?: boolean) => Promise<void>;
-    save: () => Promise<void>;
+    clean: (force?: boolean) => void;
+    save: () => void;
   }> {
     return new Promise((resolve) => {
       const file = this.file(dest, format);
@@ -483,7 +467,8 @@ export class Library {
           });
 
           source.on("error", (error) => {
-            void clean().then(() => reject(error));
+            clean();
+            reject(error);
           });
 
           source.on("close", () => {
@@ -492,19 +477,16 @@ export class Library {
         });
       };
 
-      const clean = async (force: boolean = false): Promise<void> => {
-        await Library.sync();
-
+      const clean = (force: boolean = false): void => {
         const eligible = force ? true : Library.size(file) < length;
 
         if (Library.exists(file) && eligible) {
-          await Library.remove(file);
+          Library.remove(file);
         }
       };
 
-      const save = async (): Promise<void> => {
+      const save = (): void => {
         stream.end();
-        await Library.sync();
       };
 
       stream.on("open", () => {
@@ -542,18 +524,24 @@ export class Library {
    * @param file - The file to write to
    * @param data - The contents to save to the file
    */
-  static async save(file: string, data: Buffer | string): Promise<void> {
-    writeFileSync(this.path(file), data);
-    await Library.sync();
+  static save(file: string, data: Buffer | string): void {
+    const path = this.path(file);
+    writeFileSync(path, data);
+    this.set(path, this.parse(path));
   }
 
   /**
    * Delete a file
    * @param file - The file to delete
    */
-  static async remove(file: string): Promise<void> {
-    rmSync(this.path(file));
-    await Library.sync();
+  static remove(file: string): void {
+    const path = this.path(file);
+    const index = this.findIndex(path);
+    existsSync(path) && rmSync(path);
+
+    if (index > -1) {
+      this.library.splice(index, 1);
+    }
   }
 
   /**
@@ -711,8 +699,6 @@ export class Library {
     file?: string,
     options?: TOptions
   ): Promise<LibraryManifest> {
-    await Library.sync();
-
     const files: LibraryFile[] = [];
 
     // MP3 file

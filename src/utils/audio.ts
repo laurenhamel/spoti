@@ -23,8 +23,6 @@ export async function convertAudioFile<
   options?: TOptions,
   progress?: () => void
 ): Promise<SpotifyConversionResult> {
-  await Library.sync();
-
   const scope = createLabel("convert");
   const { title } = source.item.download;
 
@@ -57,15 +55,13 @@ export async function convertAudioFile<
   };
 
   // Delete video files
-  if (Library.exists(video.src)) await Library.remove(video.src);
-  if (Library.exists(video.dest)) await Library.remove(video.dest);
+  if (Library.exists(video.src)) Library.remove(video.src);
+  if (Library.exists(video.dest)) Library.remove(video.dest);
 
   // Audio output exists
   if (Library.exists(audio.dest)) {
     // Delete audio input
-    if (Library.exists(audio.src)) await Library.remove(audio.src);
-    // Refresh library state
-    await Library.sync();
+    if (Library.exists(audio.src)) Library.remove(audio.src);
     console.log(scope, chalk.green("✓"), title);
     options?.verbose && console.log(scope, chalk.green("✓"), diff(audio));
     progress?.();
@@ -167,7 +163,7 @@ export class Audio {
 
     if (status === 0) {
       Library.set(src, Library.parse(dest));
-      await Library.remove(src);
+      Library.remove(src);
     }
 
     if (status === -1) throw new Error(stderr);

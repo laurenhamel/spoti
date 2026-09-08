@@ -232,7 +232,7 @@ class YoutubeApi {
         const stream = getYoutubeStream(url, source, options);
         await target.write(stream, update);
       } catch (error) {
-        await target.clean(true);
+        target.clean(true);
         throw error;
       }
     };
