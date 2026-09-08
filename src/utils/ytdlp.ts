@@ -3,7 +3,7 @@ import { type SpotiOptions } from "../types/config";
 import { type YtdlpOptions } from "../types/ytdlp";
 import { getYtdlpBin, ensureYtdlpLatest } from "./dependencies";
 import { detectDownloadType } from "./downloads";
-import { convertArgs } from "./process";
+import { convertArgs, createProcessExitAbort } from "./process";
 import { execa } from "execa";
 import { merge } from "lodash-es";
 import { type Readable } from "node:stream";
@@ -17,6 +17,8 @@ export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
 
   ensureYtdlpLatest(options);
 
+  const abort = createProcessExitAbort();
+
   const args = convertArgs(
     merge(
       {
@@ -29,7 +31,10 @@ export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
     )
   );
 
-  const { stdout } = await execa(ytdlp, [...args, `"ytsearch:${id}"`]);
+  const { stdout } = await execa(ytdlp, [...args, `ytsearch:${id}`], {
+    cleanup: true,
+    cancelSignal: abort.signal,
+  });
 
   return JSON.parse(stdout.trim());
 }
@@ -43,6 +48,8 @@ export function getYoutubeStream<TOptions extends SpotiOptions>(
   const ytdlp = getYtdlpBin();
 
   ensureYtdlpLatest(options);
+
+  const abort = createProcessExitAbort();
 
   const args = convertArgs(
     merge(
@@ -61,6 +68,8 @@ export function getYoutubeStream<TOptions extends SpotiOptions>(
   const { stdout } = execa(ytdlp, [...args, url], {
     encoding: "buffer",
     buffer: false,
+    cleanup: true,
+    cancelSignal: abort.signal,
   });
 
   return stdout;

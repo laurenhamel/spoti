@@ -26,6 +26,17 @@ export const registerProcessExitHandlers: ProcessExitRegistrar = (
   }
 };
 
+export function createProcessExitAbort(): AbortController {
+  const controller = new AbortController();
+
+  registerProcessExitHandlers({
+    SIGINT: () => controller.abort(),
+    SIGTERM: () => controller.abort(),
+  });
+
+  return controller;
+}
+
 export function convertArgs(
   options: Record<string, Primitive | Exclude<Primitive, boolean>[]>,
   delimited: boolean = false
