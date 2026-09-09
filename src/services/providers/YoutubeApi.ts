@@ -254,12 +254,6 @@ class YoutubeApi {
       return result;
     } catch (e) {
       const error = e as Error;
-      console.log("[ERROR]", {
-        title,
-        metadata,
-        formats: metadata.formats,
-        error,
-      });
       throw error;
     } finally {
       progress.remove();
