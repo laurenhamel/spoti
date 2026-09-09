@@ -1,4 +1,3 @@
-import { type Youtube } from "../models";
 import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
 import {
@@ -35,47 +34,45 @@ export async function convertAudioFile<
     return { source, status: "skipped" };
   }
 
-  const { item } = source;
-  const { download } = item;
-  const input = download.input!;
-  const output = download.output!;
   const length = 75;
+  const input =
+    source.item.download.result?.input?.path ??
+    source.item.download.input?.path ??
+    source.item.download.path;
+  const output =
+    source.item.download.result?.output?.path ??
+    source.item.download.output?.path ??
+    source.item.download.path;
 
-  const diff = (
-    input: Youtube.DownloadPath,
-    output: Youtube.DownloadPath
-  ): string => {
-    const src = basename(input.path);
-    const dest = basename(output.path);
+  const diff = (() => {
+    const src = basename(input);
+    const dest = basename(output);
     const from = chalk.dim(Format.truncateFile(src, length));
     const to = chalk.green(Format.truncateFile(dest, length));
     return [from, "→", to].join(" ");
-  };
+  })();
 
   // Output exists
-  if (Library.exists(output.path)) {
+  if (Library.exists(output)) {
     // Delete input
-    if (Library.exists(input.path)) Library.remove(input.path);
+    Library.remove(input);
     console.log(scope, chalk.green("✓"), title);
-    options?.verbose &&
-      console.log(scope, chalk.green("✓"), diff(input, output));
+    options?.verbose && console.log(scope, chalk.green("✓"), diff);
     progress?.();
     return { source, status: "passed" };
   }
 
   // Input exists
-  if (Library.exists(input.path)) {
+  if (Library.exists(input)) {
     try {
-      await Audio.convert(input.path, output.path, options);
+      await Audio.convert(input, output, options);
       console.log(scope, chalk.green("✓"), title);
-      options?.verbose &&
-        console.log(scope, chalk.green("✓"), diff(input, output));
+      options?.verbose && console.log(scope, chalk.green("✓"), diff);
       return { source, status: "passed" };
     } catch (e) {
       const error = e as Error;
       console.log(scope, chalk.red("𐄂"), title);
-      options?.verbose &&
-        console.log(scope, chalk.red("𐄂"), diff(input, output));
+      options?.verbose && console.log(scope, chalk.red("𐄂"), diff);
       return { source, status: "failed", error };
     } finally {
       progress?.();
@@ -84,9 +81,9 @@ export async function convertAudioFile<
 
   // No input or output exists –– we should never end up here!
   console.log(scope, chalk.yellow("?"), title);
-  options?.verbose && console.log(chalk.yellow("?"), diff(input, output));
-  const src = basename(input.path);
-  const dest = basename(output.path);
+  options?.verbose && console.log(chalk.yellow("?"), diff);
+  const src = basename(input);
+  const dest = basename(output);
   const error = new Error(`Audio conversion failed for '${dest}' ('${src}').`);
   progress?.();
   return { source, status: "failed", error };
