@@ -36,13 +36,17 @@ export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
       ? ["--verbose"]
       : ["--no-warnings"]),
     "--ignore-no-formats-error",
-    "--dump-json",
+    "--js-runtimes",
+    "node",
+    "--remote-components",
+    "ejs:github",
     "--user-agent",
     USER_AGENT,
     "--cookies-from-browser",
     browser,
     "--extractor-args",
     `youtube:player-client=${CLIENTS.join(",")}`,
+    "--dump-json",
     "--",
     `https://www.youtube.com/watch?v=${id}`,
   ];
@@ -79,6 +83,10 @@ export async function getYoutubeStream<
       ? ["--verbose"]
       : ["--no-warnings"]),
     "--no-playlist",
+    "--js-runtimes",
+    "node",
+    "--remote-components",
+    "ejs:github",
     "--user-agent",
     USER_AGENT,
     "--cookies-from-browser",
@@ -98,9 +106,7 @@ export async function getYoutubeStream<
     "--fragment-retries",
     FRAGMENT_RETRIES.toString(),
     "--retry-sleep",
-    // prettier-ignore
     `fragment:exp=${FRAGMENT_SLEEP_INTERVAL}:${FRAGMENT_MAX_SLEEP_INTERVAL}`,
-    ...(format.includes("video") ? ["--remux-video", "mkv"] : ["-x"]),
     "--output",
     "-",
     "--",
@@ -134,7 +140,7 @@ export async function getYoutubeStream<
             `Exited with code ${exitCode}.`,
             chalk.dim("  Type:", type),
             chalk.dim("  Clients:", CLIENTS.join(", ")),
-            chalk.dim("  Format:", format.split("/").join(", ")),
+            // chalk.dim("  Format:", format.split("/").join(", ")),
             stderr?.trim(),
           ]).join("\n")
         );
