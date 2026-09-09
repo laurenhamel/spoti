@@ -15,8 +15,8 @@ export type YoutubeSearchOf<TType extends Spotify.Type> = <
 ) => Promise<YoutubeSearchResult[]>;
 
 export interface YoutubeDownloadResult {
-  inputs: Record<"audio" | "video", Youtube.Download>;
-  outputs: Record<"audio" | "video", Youtube.Download>;
+  input: Youtube.Download;
+  output: Youtube.Download;
 }
 
 export interface YoutubeDownloadMetadata extends YoutubeDownloadResult {
@@ -24,5 +24,4 @@ export interface YoutubeDownloadMetadata extends YoutubeDownloadResult {
   song: Youtube.Song;
   url: string;
   metadata: Youtube.Metadata;
-  formats: Record<"audio" | "video", Youtube.Format>;
 }

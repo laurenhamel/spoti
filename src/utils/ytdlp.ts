@@ -1,13 +1,24 @@
 import { type Youtube } from "../models";
 import { type SpotiOptions } from "../types/config";
+import { isDebuggingEnabled } from "./console";
 import { getYtdlpBin, ensureYtdlpLatest } from "./dependencies";
-import { detectDownloadType } from "./downloads";
 import { createProcessExitAbort } from "./process";
+import chalk from "chalk";
+import defaultBrowser from "default-browser";
 import { execa } from "execa";
+import { compact } from "lodash-es";
 import { type Readable } from "node:stream";
 
 // prettier-ignore
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const CLIENTS = ["ios", "tv_embedded", "android", "mweb", "web"] as const;
+const SLEEP_INTERVAL = 5;
+const MAX_SLEEP_INTERVAL = 15;
+const SLEEP_REQUESTS = 1.5;
+const RETRIES = 10;
+const FRAGMENT_RETRIES = 10;
+const FRAGMENT_SLEEP_INTERVAL = 1;
+const FRAGMENT_MAX_SLEEP_INTERVAL = 20;
 
 export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
   id: string,
@@ -18,11 +29,18 @@ export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
   ensureYtdlpLatest(options);
 
   const abort = createProcessExitAbort();
+  const browser = (await defaultBrowser()).name.toLowerCase();
 
   const args = [
-    ...(options?.verbose ? ["--verbose"] : ["--no-warnings"]),
+    ...(isDebuggingEnabled("youtube", "ytdlp")
+      ? ["--verbose"]
+      : ["--no-warnings"]),
     "--ignore-no-formats-error",
     "--dump-json",
+    "--user-agent",
+    USER_AGENT,
+    "--cookies-from-browser",
+    browser,
     "--extractor-args",
     "youtube:player-client=ios,tv_embedded,android,mweb,web",
     "--",
@@ -38,68 +56,91 @@ export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
   return JSON.parse(stdout.trim());
 }
 
-export function getYoutubeStream<TOptions extends SpotiOptions>(
+export async function getYoutubeStream<
+  TOptions extends SpotiOptions & { output?: "audio" | "video" }, // @TODO Add configuration for 'audio' vs. 'video' output preference
+>(
   url: string,
-  format: Youtube.Format,
   options?: TOptions
-): Readable {
+): Promise<{
+  stream: Readable;
+  done: Promise<void>;
+}> {
   const ytdlp = getYtdlpBin();
 
   ensureYtdlpLatest(options);
 
   const abort = createProcessExitAbort();
-  const id = format.format_id;
-  const type = detectDownloadType(format);
-  const best = type === "video" ? "bestvideo[ext=mp4]" : "bestaudio";
+  const type = options?.output ?? "audio";
+  const format = "bestvideo+bestaudio/best";
+  const browser = (await defaultBrowser()).name.toLowerCase();
 
   const args = [
-    ...(options?.verbose ? ["--verbose"] : ["--no-warnings"]),
-    "--ignore-errors",
+    ...(isDebuggingEnabled("youtube", "ytdlp")
+      ? ["--verbose"]
+      : ["--no-warnings"]),
     "--no-playlist",
     "--user-agent",
     USER_AGENT,
+    "--cookies-from-browser",
+    browser,
     "--extractor-args",
-    "youtube:player-client=ios,tv_embedded,android,mweb,web",
+    `youtube:player-client=${CLIENTS.join(",")}`,
     "--format",
-    `${id}/${best}/best`,
+    format,
     "--sleep-interval",
-    "5",
+    SLEEP_INTERVAL.toString(),
     "--max-sleep-interval",
-    "15",
+    MAX_SLEEP_INTERVAL.toString(),
     "--sleep-requests",
-    "1.5",
+    SLEEP_REQUESTS.toString(),
     "--retries",
-    "10",
+    RETRIES.toString(),
     "--fragment-retries",
-    "10",
+    FRAGMENT_RETRIES.toString(),
     "--retry-sleep",
-    "fragment:exp=1:20",
+    // prettier-ignore
+    `fragment:exp=${FRAGMENT_SLEEP_INTERVAL}:${FRAGMENT_MAX_SLEEP_INTERVAL}`,
+    ...(format.includes("video") ? ["--remux-video", "mkv"] : ["-x"]),
     "--output",
     "-",
-    ...(type === "video" ? ["--remux-video", "mkv"] : ["-x"]),
     "--",
     url,
   ];
 
-  const { stdout } = execa(ytdlp, args, {
-    encoding: "buffer",
+  const download = execa(ytdlp, args, {
+    encoding: "buffer" as const,
     buffer: false,
     cleanup: true,
     cancelSignal: abort.signal,
+    reject: false,
   });
 
-  return stdout;
-}
+  let stderr: string | undefined;
 
-export function extractYoutubeFormats(
-  metadata: Youtube.Metadata
-): Record<"audio" | "video", Youtube.Format> {
-  const ids = metadata.format_id.split("+");
+  download.stderr.on("data", (chunk) => {
+    stderr = stderr ?? "";
+    stderr += chunk.toString();
+  });
 
-  return metadata.formats
-    .filter(({ format_id }) => ids.includes(format_id))
-    .reduce(
-      (result, format) => ({ ...result, [detectDownloadType(format)]: format }),
-      {} as Record<"audio" | "video", Youtube.Format>
-    );
+  return {
+    stream: download.stdout,
+    done: (async () => {
+      const { failed, exitCode } = await download;
+
+      if (failed) {
+        const error = new Error(
+          compact([
+            `Download failed for '${url}'.`,
+            `Exited with code ${exitCode}.`,
+            chalk.dim("  Type:", type),
+            chalk.dim("  Clients:", CLIENTS.join(", ")),
+            chalk.dim("  Format:", format.split("/").join(", ")),
+            stderr?.trim(),
+          ]).join("\n")
+        );
+
+        throw error;
+      }
+    })(),
+  };
 }

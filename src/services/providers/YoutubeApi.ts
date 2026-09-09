@@ -10,17 +10,14 @@ import { Audio } from "../../utils/audio";
 import { isDebuggingEnabled } from "../../utils/console";
 import {
   detectDownloadFormat,
+  detectDownloadSize,
   detectDownloadType,
   getDownloadPath,
 } from "../../utils/downloads";
 import { Library } from "../../utils/library";
 import { Progress } from "../../utils/progress";
 import { retry } from "../../utils/promise";
-import {
-  extractYoutubeFormats,
-  getYoutubeMetadata,
-  getYoutubeStream,
-} from "../../utils/ytdlp";
+import { getYoutubeMetadata, getYoutubeStream } from "../../utils/ytdlp";
 import { PolicyAdapter } from "../adapters";
 import chalk from "chalk";
 import { sync as glob } from "glob";
@@ -178,21 +175,11 @@ class YoutubeApi {
     options?: TOptions
   ): Promise<YoutubeDownloadMetadata> {
     const metadata = await getYoutubeMetadata(song.id!, options);
-    const formats = extractYoutubeFormats(metadata);
     const url = metadata.original_url;
     const target = options?.format ?? Audio.DEFAULT_FORMAT;
-
-    const inputs: Record<"audio" | "video", Youtube.Download> = {
-      audio: getDownloadPath(title, metadata, formats.audio, undefined, true),
-      video: getDownloadPath(title, metadata, formats.video, undefined, true),
-    };
-
-    const outputs: Record<"audio" | "video", Youtube.Download> = {
-      audio: getDownloadPath(title, metadata, formats.audio, target),
-      video: getDownloadPath(title, metadata, formats.video),
-    };
-
-    return { title, song, url, metadata, formats, inputs, outputs };
+    const input = getDownloadPath(title, metadata, undefined, true);
+    const output = getDownloadPath(title, metadata, target);
+    return { title, song, url, metadata, input, output };
   }
 
   async downloadSong<
@@ -201,24 +188,21 @@ class YoutubeApi {
     meta: YoutubeDownloadMetadata,
     options?: TOptions
   ): Promise<YoutubeDownloadResult> {
-    const { title, url, inputs, outputs, formats, metadata } = meta;
+    const { title, url, input, output, metadata } = meta;
 
     const progress = new Progress({
       label: title,
       total: 0,
-      color: chalk.yellow.dim,
+      color: chalk.gray,
     });
 
     const stream = async (
       path: string,
-      source: Youtube.Format,
       metadata: Youtube.Metadata
     ): Promise<void> => {
-      const type = detectDownloadType(source);
-      const format = detectDownloadFormat(source);
-
-      // prettier-ignore
-      const size = source.filesize ?? source.filesize_approx ?? metadata.filesize_approx;
+      const type = detectDownloadType(metadata);
+      const format = detectDownloadFormat(type, metadata);
+      const size = detectDownloadSize(type, metadata);
       const target = await Library.new(path, size, format);
 
       let update: ((amount?: number) => void) | undefined;
@@ -229,8 +213,10 @@ class YoutubeApi {
       }
 
       try {
-        const stream = getYoutubeStream(url, source, options);
-        await target.write(stream, update);
+        const { stream, done } = await getYoutubeStream(url, options);
+
+        target.write(stream, update);
+        await done;
       } catch (error) {
         target.clean(true);
         throw error;
@@ -238,24 +224,23 @@ class YoutubeApi {
     };
 
     const download = async (): Promise<YoutubeDownloadResult> => {
-      const { duration, size } = inputs.audio;
+      const { duration, size } = input;
 
       progress.total = size;
 
       // Skip if output file exists
-      if (await Library.ready(outputs.audio.path, { duration, size })) {
-        return { inputs, outputs };
+      if (await Library.ready(output.path, { duration, size })) {
+        return { input, output };
       }
 
       // Skip if input file exists
-      if (await Library.ready(inputs.audio.path, { duration, size })) {
-        return { inputs, outputs };
+      if (await Library.ready(input.path, { duration, size })) {
+        return { input, output };
       }
 
-      await stream(inputs.audio.path, formats.audio, metadata);
-      await stream(inputs.video.path, formats.video, metadata);
+      await stream(input.path, metadata);
 
-      return { inputs, outputs };
+      return { input, output };
     };
 
     try {
@@ -269,9 +254,15 @@ class YoutubeApi {
       return result;
     } catch (e) {
       const error = e as Error;
+      console.log("[ERROR]", {
+        title,
+        metadata,
+        formats: metadata.formats,
+        error,
+      });
       throw error;
     } finally {
-      progress.done();
+      progress.remove();
     }
   }
 

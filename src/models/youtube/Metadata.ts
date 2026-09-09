@@ -63,7 +63,7 @@ export interface Metadata {
   epoch: number;
   requested_formats: object[];
   format: string;
-  format_id: string;
+  format_id?: string;
   ext: string;
   protocol: string;
   language: string | null;

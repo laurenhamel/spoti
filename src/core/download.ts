@@ -18,19 +18,23 @@ export type DownloadArguments = [string];
 
 export interface DownloadOptions extends SpotiOptions {
   cache: boolean;
+  convert: boolean;
   force: boolean;
   format: AudioFormat;
   prefixes: boolean;
   suffixes: boolean;
+  tag: boolean;
 }
 
 const DOWNLOAD_DEFAULTS: DownloadOptions = {
   cache: true,
+  convert: true,
   force: false,
   format: Audio.DEFAULT_FORMAT,
   verbose: false,
   prefixes: true,
   suffixes: true,
+  tag: true,
 };
 
 export const download: ActionHandler<
@@ -53,17 +57,18 @@ export const download: ActionHandler<
   const results = await searchYoutubeType(type, data, options);
   const targets = prepareDownloadTargets(type, data, results, options);
   const downloads = await downloadSpotifyTracks(targets, options);
-  const conversions = await convertAudioFiles(downloads, options);
-  const tags = await addTrackTags(downloads, options);
+  // prettier-ignore
+  const conversions = options.convert ? await convertAudioFiles(downloads, options) : null;
+  const tags = options.tag ? await addTrackTags(downloads, options) : null;
 
   reportStatuses("Downloaded", downloads);
-  reportStatuses("Converted", conversions);
-  reportStatuses("Tagged", tags);
+  conversions && reportStatuses("Converted", conversions);
+  tags && reportStatuses("Tagged", tags);
 
   if (options?.verbose) {
     reportErrors(downloads as { error?: Error }[]);
-    reportErrors(conversions as { error?: Error }[]);
-    reportErrors(tags as { error?: Error }[]);
+    conversions && reportErrors(conversions as { error?: Error }[]);
+    tags && reportErrors(tags as { error?: Error }[]);
   }
 
   console.log("");

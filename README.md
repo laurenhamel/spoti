@@ -46,15 +46,17 @@ spoti download [options] <url>
 | -------- | ------------------------------------------------- |
 | `<url>`  | A spotify URL to download tracks from (required). |
 
-| Option          | Description                                 |
-| --------------- | ------------------------------------------- |
-| `--force`       | Force download and overwrite existing files |
-| `--format`/`-f` | The output audio file format (default: mp3) |
-| `--verbose`     | Output more information to the console      |
-| `--no-cache`    | Disables using cached search results        |
-| `--no-prefixes` | Disallow prefixes in file names             |
-| `--no-suffixes` | Disallow suffixes in file names             |
-| `--help`/`-h`   | Display help for command                    |
+| Option          | Description                                       |
+| --------------- | ------------------------------------------------- |
+| `--force`       | Force download and overwrite existing files       |
+| `--format`/`-f` | The output audio file format (default: mp3)       |
+| `--verbose`     | Output more information to the console            |
+| `--no-cache`    | Disables using cached search results              |
+| `--no-convert`  | Skips `ffmpeg` file conversions after downloading |
+| `--no-prefixes` | Disallow prefixes in file names                   |
+| `--no-suffixes` | Disallow suffixes in file names                   |
+| `--no-tag`      | Skips ID3 tagging after downloading               |
+| `--help`/`-h`   | Display help for command                          |
 
 ### `info`
 

@@ -1,3 +1,4 @@
+import { type Youtube } from "../models";
 import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/config";
 import {
@@ -13,6 +14,7 @@ import { Progress } from "./progress";
 import chalk from "chalk";
 import { trimStart } from "lodash-es";
 import { spawnSync } from "node:child_process";
+import { renameSync } from "node:fs";
 import { basename } from "node:path";
 import { extname } from "path";
 
@@ -35,61 +37,57 @@ export async function convertAudioFile<
 
   const { item } = source;
   const { download } = item;
-  const { inputs, outputs, result } = download;
+  const input = download.input!;
+  const output = download.output!;
   const length = 75;
 
-  const diff = ({ src, dest }: { src: string; dest: string }): string => {
-    const from = chalk.dim(Format.truncateFile(basename(src), length));
-    const to = chalk.green(Format.truncateFile(basename(dest), length));
+  const diff = (
+    input: Youtube.DownloadPath,
+    output: Youtube.DownloadPath
+  ): string => {
+    const src = basename(input.path);
+    const dest = basename(output.path);
+    const from = chalk.dim(Format.truncateFile(src, length));
+    const to = chalk.green(Format.truncateFile(dest, length));
     return [from, "→", to].join(" ");
   };
 
-  const audio = {
-    src: inputs.audio.path,
-    dest: outputs.audio.path,
-  };
-
-  const video = {
-    src: inputs.video.path,
-    dest: outputs.video.path,
-  };
-
-  // Delete video files
-  if (Library.exists(video.src)) Library.remove(video.src);
-  if (Library.exists(video.dest)) Library.remove(video.dest);
-
-  // Audio output exists
-  if (Library.exists(audio.dest)) {
-    // Delete audio input
-    if (Library.exists(audio.src)) Library.remove(audio.src);
+  // Output exists
+  if (Library.exists(output.path)) {
+    // Delete input
+    if (Library.exists(input.path)) Library.remove(input.path);
     console.log(scope, chalk.green("✓"), title);
-    options?.verbose && console.log(scope, chalk.green("✓"), diff(audio));
+    options?.verbose &&
+      console.log(scope, chalk.green("✓"), diff(input, output));
     progress?.();
     return { source, status: "passed" };
   }
 
-  // Audio input exists
-  if (Library.exists(audio.src)) {
+  // Input exists
+  if (Library.exists(input.path)) {
     try {
-      await Audio.convert(audio.src, audio.dest, result?.outputs.audio.bitrate);
+      await Audio.convert(input.path, output.path, options);
       console.log(scope, chalk.green("✓"), title);
-      options?.verbose && console.log(scope, chalk.green("✓"), diff(audio));
+      options?.verbose &&
+        console.log(scope, chalk.green("✓"), diff(input, output));
       return { source, status: "passed" };
     } catch (e) {
       const error = e as Error;
       console.log(scope, chalk.red("𐄂"), title);
-      options?.verbose && console.log(scope, chalk.red("𐄂"), diff(audio));
+      options?.verbose &&
+        console.log(scope, chalk.red("𐄂"), diff(input, output));
       return { source, status: "failed", error };
     } finally {
       progress?.();
     }
   }
 
-  // No audio input or output exists –– we should never end up here!
+  // No input or output exists –– we should never end up here!
   console.log(scope, chalk.yellow("?"), title);
-  options?.verbose && console.log(chalk.yellow("?"), diff(audio));
-  // prettier-ignore
-  const error = new Error(`Audio conversion failed for '${basename(audio.dest)}' ('${basename(audio.src)}').`);
+  options?.verbose && console.log(chalk.yellow("?"), diff(input, output));
+  const src = basename(input.path);
+  const dest = basename(output.path);
+  const error = new Error(`Audio conversion failed for '${dest}' ('${src}').`);
   progress?.();
   return { source, status: "failed", error };
 }
@@ -136,34 +134,41 @@ export class Audio {
    * @param dest - The destination file
    * @returns
    */
-  static async convert(
-    src: string,
-    dest: string,
-    bitrate?: number
-  ): Promise<void> {
+  static async convert<
+    TOptions extends SpotiOptions & { output?: "audio" | "video" }, // @TODO Add configuration for 'audio' vs. 'video' output preference
+  >(src: string, dest: string, options?: TOptions): Promise<void> {
+    if (extname(src) === extname(dest) && basename(src) !== basename(dest)) {
+      renameSync(src, dest);
+      Library.set(dest, Library.parse(dest));
+      Library.remove(src);
+      return;
+    }
+
+    const type = options?.output ?? "audio";
+    const codec = type === "video" ? "v" : "a";
     const input = '"' + Library.file(src).replace(/"/g, '\\"') + '"';
     const output = '"' + Library.file(dest).replace(/"/g, '\\"') + '"';
 
-    const flags: string[] = [
-      "-c:a",
+    const args = [
+      "-i",
+      input,
+      "-y",
+      ...(type === "audio" ? ["-vn"] : []),
+      `-c:${codec}`,
       "libmp3lame",
-      ...(bitrate
-        ? ["-b:a", `${(bitrate / 1000).toFixed(0)}k`] // constant bitrate
-        : ["-q:a", "2"]), // variable bitrate
+      "-q:a",
+      "0",
+      output,
     ];
 
-    const { status, stderr } = spawnSync(
-      "ffmpeg",
-      ["-i", input, "-y", ...flags, output],
-      {
-        shell: true,
-        encoding: "utf-8",
-        cwd: Library.dir,
-      }
-    );
+    const { status, stderr } = spawnSync("ffmpeg", args, {
+      shell: true,
+      encoding: "utf-8",
+      cwd: Library.dir,
+    });
 
     if (status === 0) {
-      Library.set(src, Library.parse(dest));
+      Library.set(dest, Library.parse(dest));
       Library.remove(src);
     }
 

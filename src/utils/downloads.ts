@@ -23,15 +23,43 @@ import { pool } from "./promise";
 import chalk from "chalk";
 import { find, map, merge } from "lodash-es";
 
-export function detectDownloadType(source: Youtube.Format): "audio" | "video" {
-  return source.acodec !== "none" ? "audio" : "video";
+export function detectDownloadType(
+  metadata: Youtube.Metadata
+): "audio" | "video" {
+  const { ext } = metadata;
+
+  return (Object.values(VideoFormat) as string[]).includes(ext)
+    ? "video"
+    : "audio";
+}
+
+export function detectDownloadBitrate(
+  type: "audio" | "video",
+  metadata: Youtube.Metadata
+): number {
+  if (type === "audio") return metadata.abr;
+  if (type === "video") return metadata.vbr;
+  return metadata.tbr;
+}
+
+export function detectDownloadSize(
+  type: "audio" | "video",
+  metadata: Youtube.Metadata
+): number {
+  return metadata.filesize_approx;
+}
+
+export function detectDownloadDuration(
+  type: "audio" | "video",
+  metadata: Youtube.Metadata
+): number {
+  return metadata.duration * 1000;
 }
 
 export function detectDownloadFormat(
-  source: Youtube.Format
-): AudioFormat | VideoFormat | undefined {
-  const { ext } = source;
-
+  type: "audio" | "video",
+  metadata: Youtube.Metadata
+): AudioFormat | VideoFormat {
   const exts: Record<string, AudioFormat | VideoFormat> = {
     mp4: VideoFormat.MP4,
     m4a: AudioFormat.M4A,
@@ -41,23 +69,25 @@ export function detectDownloadFormat(
     wav: AudioFormat.WAV,
   };
 
-  return exts[ext];
+  const fallbacks: Record<"audio" | "video", AudioFormat | VideoFormat> = {
+    audio: AudioFormat.M4A,
+    video: VideoFormat.MP4,
+  };
+
+  return exts[metadata.ext] ?? fallbacks[type];
 }
 
 export function getDownloadPath(
   title: string,
   metadata: Youtube.Metadata,
-  source: Youtube.Format,
   target?: AudioFormat | VideoFormat,
   hidden: boolean = false
 ): Youtube.Download {
-  const type = detectDownloadType(source);
-  const format = target ?? detectDownloadFormat(source) ?? AudioFormat.M4A;
-  const duration = metadata.duration * 1000;
-  // prettier-ignore
-  const size = source.filesize ?? source.filesize_approx ?? metadata.filesize_approx;
-  // prettier-ignore
-  const bitrate = type === 'audio' ? (source.abr ?? metadata.abr) : (source.vbr ?? metadata.vbr);
+  const type = detectDownloadType(metadata);
+  const format = target ?? detectDownloadFormat(type, metadata);
+  const bitrate = detectDownloadBitrate(type, metadata);
+  const size = detectDownloadSize(type, metadata);
+  const duration = detectDownloadDuration(type, metadata);
 
   let file = Library.file(title, format);
   let path = Library.path(title, format);
@@ -75,7 +105,6 @@ export function getDownloadPath(
     size,
     metadata,
     path,
-    source,
     type,
   };
 }
@@ -121,24 +150,20 @@ export function getDownloadPaths(
   return [...getAudioPaths(title, hidden), ...getVideoPaths(title, hidden)];
 }
 
-export function extractDownloadPaths(
-  paths: Youtube.DownloadPath[]
-): Record<"audio" | "video", Youtube.DownloadPath> {
-  const audios = paths.filter(({ format }) =>
-    Object.values(AudioFormat).includes(format as AudioFormat)
+export function findDownloadPath<
+  TOptions extends SpotiOptions & { output?: "audio" | "video" }, // @TODO Add configuration for 'audio' vs. 'video' output preference
+>(paths: Youtube.DownloadPath[], options?: TOptions): Youtube.DownloadPath {
+  const formats: Record<"audio" | "video", AudioFormat | VideoFormat> = {
+    audio: Audio.DEFAULT_FORMAT,
+    video: VideoFormat.MP4,
+  };
+
+  const type = options?.output ?? "audio";
+  const format = formats[type];
+
+  return (
+    paths.find(({ path }) => Library.exists(path)) ?? find(paths, { format })!
   );
-
-  const videos = paths.filter(({ format }) =>
-    Object.values(VideoFormat).includes(format as VideoFormat)
-  );
-
-  const audio =
-    audios.find(({ path }) => Library.exists(path)) ??
-    find(audios, { format: Audio.DEFAULT_FORMAT })!;
-
-  const video = videos.find(({ path }) => Library.exists(path)) ?? videos[0];
-
-  return { audio, video };
 }
 
 export async function downloadYoutubeSong<TOptions extends SpotiOptions>(
@@ -255,8 +280,8 @@ export async function downloadSpotifyTrack<
   const item = merge({}, target, {
     download: {
       title,
-      inputs: extractDownloadPaths(inputs),
-      outputs: extractDownloadPaths(outputs),
+      input: findDownloadPath(inputs, options),
+      output: findDownloadPath(outputs, options),
     },
   }) as SpotifyDownloadResult["item"];
 
@@ -287,8 +312,8 @@ export async function downloadSpotifyTrack<
       return {
         item: merge(item, {
           download: {
-            inputs: extractDownloadPaths(inputs),
-            outputs: extractDownloadPaths(outputs),
+            input: findDownloadPath(inputs, options),
+            output: findDownloadPath(outputs, options),
             result,
           },
         }),

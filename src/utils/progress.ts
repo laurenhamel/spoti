@@ -100,6 +100,11 @@ export class Progress {
     Progress.progress?.close();
   }
 
+  remove() {
+    Progress.progress?.done(this.label);
+    Progress.progress?.removeTask(this.label);
+  }
+
   subscribe(payload: ProgressPayload): void {
     this.update(payload.value);
   }

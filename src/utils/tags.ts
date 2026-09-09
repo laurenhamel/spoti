@@ -11,7 +11,7 @@ import { Library } from "../utils/library";
 import { pool } from "../utils/promise";
 import { Progress } from "./progress";
 import chalk from "chalk";
-import { includes, map, merge, trimStart } from "lodash-es";
+import { includes, isBoolean, map, merge, trimStart } from "lodash-es";
 import fetch from "node-fetch";
 import { type Tags, TagConstants } from "node-id3";
 import { extname } from "node:path";
@@ -45,7 +45,7 @@ export async function generateTrackTag(
   const { file } = download;
 
   const format =
-    (download.result as YoutubeDownloadResult)?.outputs.audio.format ??
+    (download.result as YoutubeDownloadResult)?.output.format ??
     trimStart(extname(file), ".");
 
   if (includes(Object.values(AudioFormat), format)) {
@@ -77,7 +77,9 @@ export async function generateTrackTag(
   return result.tags;
 }
 
-export async function getTrackTag<TOptions extends SpotiOptions>(
+export async function getTrackTag<
+  TOptions extends SpotiOptions & { convert?: boolean },
+>(
   input: SpotifyDownloadTarget | SpotifyDownloadResult,
   options?: TOptions,
   progress?: () => void
@@ -87,8 +89,16 @@ export async function getTrackTag<TOptions extends SpotiOptions>(
       ? (input as SpotifyDownloadTarget)
       : input.item;
 
-  // prettier-ignore
-  const path = item.download.result?.outputs.audio.path ?? item.download.outputs?.audio.path ?? item.download.path;
+  const converted = isBoolean(options?.convert) ? options.convert : true;
+
+  const path = converted
+    ? (item.download.result?.output.path ??
+      item.download.output?.path ??
+      item.download.path)
+    : (item.download.result?.input.path ??
+      item.download.input?.path ??
+      item.download.path);
+
   const id = item.item.id;
   const tags = Library.exists(path) ? await generateTrackTag(item) : undefined;
 

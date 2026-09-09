@@ -13,8 +13,8 @@ export type SpotifySearchResult = Spotify.Item & {
 export type SpotifyDownloadTarget = SpotifySearchResult & {
   download: Youtube.DownloadPath & {
     title: string;
-    inputs?: Record<"audio" | "video", Youtube.DownloadPath>;
-    outputs?: Record<"audio" | "video", Youtube.DownloadPath>;
+    input?: Youtube.DownloadPath;
+    output?: Youtube.DownloadPath;
     result?: YoutubeDownloadResult;
   };
 };

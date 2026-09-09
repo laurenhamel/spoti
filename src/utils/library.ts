@@ -438,10 +438,7 @@ export class Library {
     file: string;
     title: string;
     format: AudioFormat | VideoFormat;
-    write: (
-      source: Readable,
-      progress?: (amount?: number) => void
-    ) => Promise<void>;
+    write: (source: Readable, progress?: (amount?: number) => void) => void;
     clean: (force?: boolean) => void;
     save: () => void;
   }> {
@@ -455,25 +452,18 @@ export class Library {
         encoding: "binary",
       });
 
-      const write = async (
+      const write = (
         source: Readable,
         progress?: (amount?: number) => void
-      ): Promise<void> => {
-        return new Promise<void>((resolve, reject) => {
-          source.pipe(stream);
+      ): void => {
+        source.pipe(stream);
 
-          source.on("data", (chunk) => {
-            progress?.(chunk.length);
-          });
+        source.on("data", (chunk) => {
+          progress?.(chunk.length);
+        });
 
-          source.on("error", (error) => {
-            clean();
-            reject(error);
-          });
-
-          source.on("close", () => {
-            resolve();
-          });
+        source.on("error", () => {
+          clean();
         });
       };
 
