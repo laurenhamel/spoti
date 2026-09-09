@@ -121,7 +121,7 @@ export async function addTrackTag<
 
   const { title } = item.download;
   const scope = createLabel("tag");
-  const { id, path, tags } = await getTrackTag(source);
+  const { id, path, tags } = await getTrackTag(source, options);
 
   if (tags && !options?.dry) {
     try {

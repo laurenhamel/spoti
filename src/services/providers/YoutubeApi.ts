@@ -214,7 +214,6 @@ class YoutubeApi {
 
       try {
         const { stream, done } = await getYoutubeStream(url, options);
-
         target.write(stream, update);
         await done;
       } catch (error) {

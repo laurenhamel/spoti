@@ -431,7 +431,7 @@ export class Library {
    */
   static new(
     dest: string,
-    size?: number,
+    length?: number,
     format: AudioFormat | VideoFormat = Audio.format(dest)
   ): Promise<{
     path: string;
@@ -445,7 +445,7 @@ export class Library {
     return new Promise((resolve) => {
       const file = this.file(dest, format);
       const path = this.path(dest, format);
-      const length = size ?? 1;
+      const size = length ?? 1;
 
       const stream = createWriteStream(path, {
         flags: "w",
@@ -456,27 +456,31 @@ export class Library {
         source: Readable,
         progress?: (amount?: number) => void
       ): void => {
-        source.pipe(stream);
-
         source.on("data", (chunk) => {
+          Library.set(path, Library.parse(path));
           progress?.(chunk.length);
+        });
+
+        source.on("open", () => {
+          Library.set(path, Library.parse(path));
         });
 
         source.on("error", () => {
           clean();
         });
+
+        source.pipe(stream);
       };
 
       const clean = (force: boolean = false): void => {
-        const eligible = force ? true : Library.size(file) < length;
-
-        if (Library.exists(file) && eligible) {
+        if (force ? true : Library.size(file) < size) {
           Library.remove(file);
         }
       };
 
       const save = (): void => {
         stream.end();
+        Library.set(path, Library.parse(path));
       };
 
       stream.on("open", () => {
@@ -560,7 +564,7 @@ export class Library {
    */
   static size(file: string): number {
     const path = this.path(file);
-    return this.exists(file) ? statSync(path).size : 0;
+    return existsSync(file) ? statSync(path).size : 0;
   }
 
   /**
