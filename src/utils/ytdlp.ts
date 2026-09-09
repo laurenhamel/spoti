@@ -42,7 +42,7 @@ export async function getYoutubeMetadata<TOptions extends SpotiOptions>(
     "--cookies-from-browser",
     browser,
     "--extractor-args",
-    "youtube:player-client=ios,tv_embedded,android,mweb,web",
+    `youtube:player-client=${CLIENTS.join(",")}`,
     "--",
     `https://www.youtube.com/watch?v=${id}`,
   ];
