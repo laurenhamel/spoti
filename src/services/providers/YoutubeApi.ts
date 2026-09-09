@@ -226,15 +226,15 @@ class YoutubeApi {
     const download = async (): Promise<YoutubeDownloadResult> => {
       const { duration, size } = input;
 
+      const ready = {
+        output: await Library.ready(output.path, { duration, size }),
+        input: await Library.ready(input.path, { duration, size }),
+      };
+
       progress.total = size;
 
-      // Skip if output file exists
-      if (await Library.ready(output.path, { duration, size })) {
-        return { input, output };
-      }
-
-      // Skip if input file exists
-      if (await Library.ready(input.path, { duration, size })) {
+      // Skip when output or input exists
+      if (ready.output || ready.input) {
         return { input, output };
       }
 

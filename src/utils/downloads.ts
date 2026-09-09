@@ -21,7 +21,7 @@ import { Library } from "./library";
 import { Progress } from "./progress";
 import { pool } from "./promise";
 import chalk from "chalk";
-import { find, map, merge } from "lodash-es";
+import { find, merge } from "lodash-es";
 
 export function detectDownloadType(
   metadata: Youtube.Metadata
@@ -152,7 +152,13 @@ export function getDownloadPaths(
 
 export function findDownloadPath<
   TOptions extends SpotiOptions & { output?: "audio" | "video" }, // @TODO Add configuration for 'audio' vs. 'video' output preference
->(paths: Youtube.DownloadPath[], options?: TOptions): Youtube.DownloadPath {
+>(
+  title: string,
+  options?: TOptions,
+  hidden: boolean = false
+): Youtube.DownloadPath {
+  const paths = getDownloadPaths(title, hidden);
+
   const formats: Record<"audio" | "video", AudioFormat | VideoFormat> = {
     audio: Audio.DEFAULT_FORMAT,
     video: VideoFormat.MP4,
@@ -274,26 +280,31 @@ export async function downloadSpotifyTrack<
   const scope = createLabel("download");
   const { title } = target.download;
 
-  const inputs = getDownloadPaths(title, true);
-  const outputs = getDownloadPaths(title);
+  const input = findDownloadPath(title, options, true);
+  const output = findDownloadPath(title, options);
+
+  const ready = {
+    input: await Library.ready(input.path, { size: 1 }),
+    output: await Library.ready(output.path, { size: 1 }),
+  };
 
   const item = merge({}, target, {
     download: {
       title,
-      input: findDownloadPath(inputs, options),
-      output: findDownloadPath(outputs, options),
+      input,
+      output,
     },
   }) as SpotifyDownloadResult["item"];
 
-  // Output file exists
-  if (options?.force ? false : Library.contains(map(outputs, "path"))) {
+  // Output exists
+  if (options?.force ? false : ready.output) {
     console.log(scope, chalk.gray("✓"), title);
     progress?.();
     return { item, status: "skipped" };
   }
 
-  // Input file exists
-  if (options?.force ? false : Library.contains(map(inputs, "path"))) {
+  // Input exists
+  if (options?.force ? false : ready.input) {
     console.log(scope, chalk.green("✓"), title);
     progress?.();
     return { item, status: "passed" };
@@ -310,10 +321,8 @@ export async function downloadSpotifyTrack<
       console.log(scope, chalk.green("✓"), title);
 
       return {
-        item: merge(item, {
+        item: merge(item, result, {
           download: {
-            input: findDownloadPath(inputs, options),
-            output: findDownloadPath(outputs, options),
             result,
           },
         }),

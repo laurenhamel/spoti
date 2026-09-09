@@ -663,7 +663,7 @@ export class Library {
     item: LibraryItem,
     expected?: number
   ): Promise<boolean> {
-    return !isNil(expected) ? item.size >= expected : true;
+    return !isNil(expected) ? item.size >= expected : false;
   }
 
   private static async assertDuration(
@@ -677,7 +677,7 @@ export class Library {
       return duration >= min && duration <= max;
     }
 
-    return true;
+    return false;
   }
 
   /**
