@@ -1,3 +1,4 @@
+export * from "./configure";
 export * from "./download";
 export * from "./info";
 export * from "./library";
