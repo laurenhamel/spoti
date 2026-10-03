@@ -1,6 +1,6 @@
 import { Spotify } from "../models";
 import { type ActionHandler } from "../types/action";
-import { type SpotiOptions } from "../types/config";
+import { type SpotiOptions } from "../types/configuration";
 import { mergeOptions } from "../utils/action";
 import { searchYoutubeType } from "../utils/search";
 import { parseSpotifyURL, getSpotifyType } from "../utils/spotify";

@@ -1,5 +1,5 @@
 import { type Youtube, type Spotify } from "../models";
-import { type SpotiOptions } from "./config";
+import { type SpotiOptions } from "./configuration";
 
 export type YoutubeSearchResult = {
   track: Spotify.Track;

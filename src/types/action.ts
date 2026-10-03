@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { type SpotiOptions } from "./config";
+import { type SpotiOptions } from "./configuration";
 
 export type ActionParameters<
   TArguments extends any[],

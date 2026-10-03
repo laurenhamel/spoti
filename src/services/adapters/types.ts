@@ -1,4 +1,4 @@
-import { type SpotiOptions } from "../../types/config";
+import { type SpotiOptions } from "../../types/configuration";
 import { type Headers } from "node-fetch";
 
 export interface AuthorizationAdapterInstance {

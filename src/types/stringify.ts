@@ -1,5 +1,5 @@
 import { type Spotify } from "../models";
-import { type SpotiOptions } from "./config";
+import { type SpotiOptions } from "./configuration";
 import { type YoutubeSearchResult } from "./youtube";
 import { type Primitive } from "type-fest";
 

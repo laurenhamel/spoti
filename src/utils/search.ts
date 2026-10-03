@@ -1,6 +1,6 @@
 import { Spotify, type Youtube } from "../models";
 import { YoutubeApi } from "../services";
-import { type SpotiOptions } from "../types/config";
+import { type SpotiOptions } from "../types/configuration";
 import { type SpotifySearchResult } from "../types/spotify";
 import {
   type YoutubeSearchOf,

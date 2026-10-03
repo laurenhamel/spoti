@@ -1,5 +1,5 @@
 import { runSync } from "./process";
-import { compact, isEmpty } from "lodash-es";
+import { compact, isEmpty, uniq } from "lodash-es";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, resolve } from "node:path";
@@ -31,6 +31,54 @@ export function resolveCwd(...paths: string[]): string {
  */
 export function resolveHome(...paths: string[]): string {
   return resolve(HOME, ...paths);
+}
+
+/**
+ * Locates the given files relative to the directory where the CLI is running from
+ *
+ * @remarks
+ * Searches the project root directory, user home directory, and
+ * directory where the CLI is running from, in that order.
+ */
+export function locateCwd(file: string): string | undefined {
+  const path = resolveCwd(file);
+  return existsSync(path) ? path : undefined;
+}
+
+/**
+ * Locates the given files relative to the current user's home directory
+ *
+ * @remarks
+ * Searches the project root directory, user home directory, and
+ * directory where the CLI is running from, in that order.
+ */
+export function locateHome(file: string): string | undefined {
+  const path = resolveHome(file);
+  return existsSync(path) ? path : undefined;
+}
+
+/**
+ * Locates the given files from the root of this project
+ *
+ * @remarks
+ * Searches the project root directory, user home directory, and
+ * directory where the CLI is running from, in that order.
+ */
+export function locateRoot(file: string): string | undefined {
+  const path = resolveRoot(file);
+  return existsSync(path) ? path : undefined;
+}
+
+/**
+ * Locates the given configuration files in supported user locations
+ *
+ * @remarks
+ * Searches the project root directory, user home directory, and
+ * directory where the CLI is running from, in that order.
+ */
+export function locateUser(file: string): string[] {
+  const paths = uniq([resolveRoot(file), resolveHome(file), resolveCwd(file)]);
+  return paths.filter(existsSync);
 }
 
 export function resolveModules(): string[] {

@@ -1,7 +1,7 @@
 import { Spotify } from "../models";
 import { type ActionHandler } from "../types/action";
 import { type AudioFormat } from "../types/audio";
-import { type SpotiOptions } from "../types/config";
+import { type SpotiOptions } from "../types/configuration";
 import { mergeOptions } from "../utils/action";
 import { Audio, convertAudioFiles } from "../utils/audio";
 import { reportStatuses, reportErrors } from "../utils/console";

@@ -1,4 +1,4 @@
-import { type SpotiOptions } from "../types/config";
+import { type SpotiOptions } from "../types/configuration";
 import { type SpotifyStatus } from "../types/spotify";
 import chalk from "chalk";
 import { filter, pad } from "lodash-es";

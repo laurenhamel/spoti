@@ -1,4 +1,4 @@
-import { type SpotiOptions } from "../types/config";
+import { type SpotiOptions } from "../types/configuration";
 import { resolveBin } from "./path";
 import { runSync } from "./process";
 import chalk from "chalk";

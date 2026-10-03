@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { type ActionHandler, type ActionParameters } from "../types/action";
-import { type SpotiOptions } from "../types/config";
+import {
+  type SpotiConfigurationLayer,
+  type SpotiOptions,
+} from "../types/configuration";
+import { detectConfigurations, loadConfigurations } from "./configuration";
 import { Library } from "./library";
 import { type Command } from "commander";
-import { merge } from "lodash-es";
+import { omit } from "lodash-es";
 import yargs from "yargs";
 
 function cleanGlobals(args: any[], argv: any): any[] {
@@ -35,9 +39,23 @@ export function createAction<
   };
 }
 
+export function detectOptions<TOptions extends SpotiOptions>(
+  defaults?: Partial<TOptions>,
+  overrides?: Partial<TOptions>
+): SpotiConfigurationLayer<TOptions>[] {
+  return detectConfigurations<TOptions>(defaults, overrides);
+}
+
 export function mergeOptions<TOptions extends SpotiOptions>(
   defaults?: Partial<TOptions>,
   overrides?: Partial<TOptions>
 ): TOptions {
-  return merge({}, defaults, overrides) as TOptions;
+  return loadConfigurations<TOptions>(defaults, overrides);
+}
+
+export function pruneOptions<TOptions extends SpotiOptions>(
+  options: TOptions
+): TOptions {
+  const prune = ["_", "$0"] as (keyof TOptions)[];
+  return omit(options, ...prune) as TOptions;
 }

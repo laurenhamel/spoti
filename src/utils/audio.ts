@@ -1,5 +1,5 @@
 import { AudioFormat } from "../types/audio";
-import { type SpotiOptions } from "../types/config";
+import { type SpotiOptions } from "../types/configuration";
 import {
   type SpotifyDownloadResult,
   type SpotifyConversionResult,

@@ -1,8 +1,8 @@
 import { Spotify, type Youtube } from "../models";
 import { YoutubeApi } from "../services";
 import { AudioFormat } from "../types/audio";
-import { type SpotiOptions } from "../types/config";
 import { type ProcessExitRegister } from "../types/process";
+import { type SpotiOptions } from "../types/configuration";
 import {
   type SpotifyDownloadResult,
   type SpotifyDownloadPreparer,

@@ -1,17 +1,20 @@
-import { resolveRoot, resolveCwd, resolveHome } from "./path";
+import { type SpotiConfiguration } from "../types/configuration";
+import { isDebuggingEnabled } from "./console";
+import { locateUser } from "./path";
 import dotenv from "dotenv";
-import { uniq } from "lodash-es";
-import { existsSync } from "node:fs";
+import { camelCase, set } from "lodash-es";
+
+const ENV_PREFIX = "SPOTI_";
 
 /**
  * Locates `.env` files in supported locations
  */
 export function locateEnvs(): string[] {
-  return locateConfigs(".env");
+  return locateUser(".env");
 }
 
 /**
- * Auto-loads `.env` files from supported locations
+ * Loads `.env` files from supported locations
  */
 export function loadEnvs(): void {
   const path = locateEnvs();
@@ -19,13 +22,23 @@ export function loadEnvs(): void {
 }
 
 /**
- * Locates the given configuration files in supported locations
- *
- * @remarks
- * Searches the project root directory, user home directory, and
- * directory where the CLI is running from, in that order.
+ * Convert environment variables to a configuration
  */
-export function locateConfigs(file: string): string[] {
-  const paths = uniq([resolveRoot(file), resolveHome(file), resolveCwd(file)]);
-  return paths.filter(existsSync);
+export function convertEnvs<
+  TConfiguration extends SpotiConfiguration,
+>(): TConfiguration {
+  const result = {} as TConfiguration;
+
+  result.debug = isDebuggingEnabled();
+
+  for (const variable in process.env) {
+    if (variable.startsWith(ENV_PREFIX)) {
+      const constant = variable.substring(ENV_PREFIX.length);
+      const key = constant.split("_").map(camelCase);
+      const value = process.env[variable];
+      set(result, key, value);
+    }
+  }
+
+  return result;
 }

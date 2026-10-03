@@ -1,6 +1,6 @@
 import { type Spotify } from "../models";
 import { type ActionHandler } from "../types/action";
-import { type SpotiOptions } from "../types/config";
+import { type SpotiOptions } from "../types/configuration";
 import { type LibraryFile } from "../types/library";
 import { mergeOptions } from "../utils/action";
 import { reportDry } from "../utils/console";

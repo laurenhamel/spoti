@@ -1,6 +1,6 @@
 import { type Spotify } from "../models";
 import { type AudioFormat } from "./audio";
-import { type SpotiOptions } from "./config";
+import { type SpotiOptions } from "./configuration";
 import { type VideoFormat } from "./video";
 import { type Tags } from "node-id3";
 

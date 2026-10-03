@@ -1,5 +1,5 @@
 import { type ActionHandler } from "../types/action";
-import { type SpotiOptions } from "../types/config";
+import { type SpotiOptions } from "../types/configuration";
 import { mergeOptions } from "../utils/action";
 import { reportDry } from "../utils/console";
 import { Format } from "../utils/format";

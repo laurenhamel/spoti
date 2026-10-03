@@ -1,4 +1,4 @@
-import { type SpotiOptions } from "../../types/config";
+import { type SpotiOptions } from "../../types/configuration";
 import { isDebuggingEnabled } from "../../utils/console";
 import {
   type RetryAdapterInstance,

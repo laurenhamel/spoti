@@ -1,5 +1,5 @@
 import { type Youtube } from "../models";
-import { type SpotiOptions } from "../types/config";
+import { type SpotiOptions } from "../types/configuration";
 import { isDebuggingEnabled } from "./console";
 import { getYtdlpBin, ensureYtdlpLatest } from "./dependencies";
 import { createProcessExitAbort } from "./process";

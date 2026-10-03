@@ -14,6 +14,8 @@ temp/
 tmp/
 
 .env
+.spoti.*.json
+!.spoti.default.json
 
 .spoti/*
 .youtube/*
