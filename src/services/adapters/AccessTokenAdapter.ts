@@ -35,7 +35,6 @@ export default class AccessTokenAdapter<
 
   constructor(config: AccessTokenAdapterConfig<TResponse, TCredentials>) {
     this.config = config;
-    this.validate();
   }
 
   private validate(): void {
@@ -102,6 +101,7 @@ export default class AccessTokenAdapter<
   }
 
   async authorize(): Promise<Record<"Authorization", string>> {
+    this.validate();
     const { token, type } = await this.refresh();
     const Authorization = `${type} ${token}`;
     return { Authorization };

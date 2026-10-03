@@ -1,6 +1,6 @@
 import { type Youtube } from "../../models";
 import { type AudioFormat } from "../../types/audio";
-import { type SpotiOptions } from "../../types/config";
+import { type SpotiOptions } from "../../types/configuration";
 import { type RetryHandlers } from "../../types/promise";
 import {
   type YoutubeDownloadMetadata,
@@ -70,7 +70,7 @@ export interface YoutubeApiOptions {
   innertube?: Types.SessionOptions;
 }
 
-class YoutubeApi {
+class YoutubeApiService {
   options?: YoutubeApiOptions;
 
   // @ts-expect-error async initialization
@@ -332,4 +332,4 @@ class YoutubeApi {
   }
 }
 
-export default new YoutubeApi();
+export const YoutubeApi = new YoutubeApiService();

@@ -1,5 +1,8 @@
 import { Spotify } from "../models";
-import { SpotifyApi, type SpotifyApiRequestMethod } from "../services";
+import {
+  SpotifyApi,
+  type SpotifyApiRequestMethod,
+} from "../services/providers/SpotifyApi";
 import { type SpotiOptions } from "../types/configuration";
 import { type LibraryFile } from "../types/library";
 import { type SpotiMetadata } from "../types/metadata";

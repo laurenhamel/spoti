@@ -1,5 +1,5 @@
 import { type Spotify } from "../models";
-import { SpotifyApi } from "../services";
+import { SpotifyApi } from "../services/providers/SpotifyApi";
 import { type SpotiOptions } from "../types/configuration";
 import { type SpotifySearchResult } from "../types/spotify";
 import { Progress } from "./progress";

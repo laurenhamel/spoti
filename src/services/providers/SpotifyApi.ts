@@ -1,3 +1,4 @@
+import { getConfigurationKey } from "../../utils/configuration";
 import {
   AccessTokenAdapter,
   AccessTokenAdapterType,
@@ -14,7 +15,7 @@ import {
 
 export type SpotifyApiRequestMethod = RestApiRequestMethod;
 
-const SpotifyApi = new RestApi({
+const SpotifyApiService = new RestApi({
   api: "https://api.spotify.com/v1",
   debug: "spotify",
   endpoints: {
@@ -76,8 +77,8 @@ const SpotifyApi = new RestApi({
       type: AccessTokenAdapterType.FORM,
       credentials: {
         grant_type: "client_credentials",
-        client_id: process.env.SPOTI_SPOTIFY_CLIENT_ID,
-        client_secret: process.env.SPOTI_SPOTIFY_CLIENT_SECRET,
+        client_id: getConfigurationKey("spotify.client.id"),
+        client_secret: getConfigurationKey("spotify.client.secret"),
       },
       handler(response) {
         return {
@@ -93,4 +94,6 @@ const SpotifyApi = new RestApi({
   },
 });
 
-export default SpotifyApi as RestApiInstance<typeof SpotifyApi>;
+export const SpotifyApi = SpotifyApiService as RestApiInstance<
+  typeof SpotifyApiService
+>;

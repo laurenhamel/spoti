@@ -1,5 +1,5 @@
 import { Spotify, type Youtube } from "../models";
-import { YoutubeApi } from "../services";
+import { YoutubeApi } from "../services/providers/YoutubeApi";
 import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/configuration";
 import {
