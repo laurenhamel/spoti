@@ -1,7 +1,6 @@
 import { Spotify, type Youtube } from "../models";
 import { YoutubeApi } from "../services";
 import { AudioFormat } from "../types/audio";
-import { type ProcessExitRegister } from "../types/process";
 import { type SpotiOptions } from "../types/configuration";
 import {
   type SpotifyDownloadResult,
@@ -367,19 +366,3 @@ export async function downloadSpotifyTracks<
   progress.done();
   return downloads;
 }
-
-export function cleanDownloadRemnants<TOptions extends SpotiOptions>(
-  _options?: TOptions
-): void {
-  // @TODO Clean up remnants of m4a/mp4 files
-  // @TODO Look for any zero-byte/zero-duration MP3 files to delete
-}
-
-export const gracefullyCleanupDownloads: ProcessExitRegister = () => ({
-  SIGINT: () => {
-    cleanDownloadRemnants();
-  },
-  SIGTERM: () => {
-    cleanDownloadRemnants();
-  },
-});

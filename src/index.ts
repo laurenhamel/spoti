@@ -1,6 +1,5 @@
 import pkg from "../package.json";
 import { registerCommands } from "./utils/commands";
-import { gracefullyCleanupDownloads } from "./utils/downloads";
 import { loadEnvs } from "./utils/environment";
 import {
   registerProcessExitHandlers,
@@ -23,8 +22,7 @@ await registerCommands(program);
 // @FIXME This isn't actually cleaning up download remnants
 registerProcessExitHandlers(
   gracefullyStopProcess(),
-  Progress.gracefullyStopProgress(),
-  gracefullyCleanupDownloads()
+  Progress.gracefullyStopProgress()
 );
 
 try {

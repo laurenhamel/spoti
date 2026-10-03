@@ -9,7 +9,6 @@ import {
 } from "../types/library";
 import { type SpotiMetadata } from "../types/metadata";
 import { VideoFormat } from "../types/video";
-import { generateTrackTag } from "../utils/tags";
 import { mergeOptions } from "./action";
 import { Audio } from "./audio";
 import { createLabel } from "./console";
@@ -20,6 +19,7 @@ import { Progress } from "./progress";
 import { pool, Deferred } from "./promise";
 import { searchYoutubeType } from "./search";
 import { getSpotifyType } from "./spotify";
+import { generateTrackTag } from "./tags";
 import chalk from "chalk";
 import { sync as glob } from "glob";
 import { find, get, isNil, merge, pick, noop } from "lodash-es";
