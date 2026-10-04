@@ -11,4 +11,6 @@ export default new Command()
   .description("Get or set Spoti configurations")
   .argument("[key]", "A Spoti configuration key")
   .argument("[value]", "A Spoti configuration value")
+  .option("--clean", "Removes entries from the user configuration")
+  .option("--inspect", "Inspect the configuration data by source")
   .action(createAction<ConfigureArguments, ConfigureOptions>(configure));

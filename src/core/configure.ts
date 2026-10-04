@@ -4,16 +4,23 @@ import {
   type SpotiOptions,
 } from "../types/configuration";
 import { detectOptions, mergeOptions, pruneOptions } from "../utils/action";
+import {
+  updateUserConfiguration,
+  readUserConfiguration,
+  saveUserConfiguration,
+} from "../utils/configuration";
 import chalk from "chalk";
-import { get, isNil } from "lodash-es";
+import { get, set, unset } from "lodash-es";
 
 export type ConfigureArguments = [string?, string?];
 
 export interface ConfigureOptions extends SpotiOptions {
+  clean: boolean;
   inspect: boolean;
 }
 
 export const CONFIGURE_DEFAULTS: ConfigureOptions = {
+  clean: false,
   inspect: false,
   verbose: false,
 };
@@ -28,51 +35,57 @@ export const configure: ActionHandler<
 ) => {
   const options = mergeOptions(CONFIGURE_DEFAULTS, config);
 
-  const mode: "GET" | "SET" | "INSPECT" = !isNil(value)
+  const mode: "CLEAN" | "GET" | "SET" | "INSPECT" = value
     ? "SET"
     : options.inspect
       ? "INSPECT"
-      : "GET";
+      : options.clean
+        ? "CLEAN"
+        : "GET";
 
   switch (mode) {
     case "INSPECT": {
-      const titles: Partial<Record<SpotiConfigurationSource, string>> = {
+      const titles: Record<SpotiConfigurationSource, string> = {
+        [SpotiConfigurationSource.CLI_DEFAULTS]: "CLI Defaults",
+        [SpotiConfigurationSource.CLI_OPTIONS]: "CLI Options",
         [SpotiConfigurationSource.DEFAULTS]: "Defaults",
         [SpotiConfigurationSource.ENV]: "Environment",
         [SpotiConfigurationSource.USER]: "User",
       };
 
-      const layers = detectOptions(CONFIGURE_DEFAULTS, config).filter(
-        // Exclude CLI configurations.
-        ({ source }) =>
-          ![
-            SpotiConfigurationSource.CLI_DEFAULTS,
-            SpotiConfigurationSource.CLI_OPTIONS,
-          ].includes(source)
-      );
+      const layers = detectOptions(CONFIGURE_DEFAULTS, config);
 
       for (const { source, data } of layers) {
-        // @TODO Validate valid user configuration key
-        const suffix = !isNil(key) ? ` (${chalk.blue(key)})` : "";
+        const suffix = key ? ` (${chalk.cyan(key)})` : "";
         const title = titles[source] + suffix;
-        const value = !isNil(key) ? get(data, key, null) : pruneOptions(data);
-        console.log(title);
+        const value = key ? get(data, key) : pruneOptions(data);
+        console.log(chalk.blue(title));
         console.log(JSON.stringify(value, null, 2));
+        console.log();
       }
 
       break;
     }
     case "GET": {
-      // @TODO Validate valid user configuration key
-      const value = !isNil(key)
-        ? get(options, key, null)
-        : pruneOptions(options);
+      const value = key ? get(options, key) : pruneOptions(options);
       console.log(JSON.stringify(value, null, 2));
       break;
     }
     case "SET": {
-      // @TODO Validate valid user configuration key
-      // @TODO Save user configurations locally
+      const config = set({}, key!, value);
+      updateUserConfiguration(config);
+      break;
+    }
+    case "CLEAN": {
+      let config = readUserConfiguration();
+
+      if (key) {
+        unset(config, key);
+      } else {
+        config = {};
+      }
+
+      saveUserConfiguration(config);
       break;
     }
   }

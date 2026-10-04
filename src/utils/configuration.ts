@@ -4,9 +4,9 @@ import {
   type SpotiConfiguration,
 } from "../types/configuration";
 import { convertEnvs } from "./environment";
-import { locateUser, locateRoot } from "./path";
+import { locateUser, locateRoot, resolveRoot } from "./path";
 import { compact, get, merge } from "lodash-es";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 let Configuration: SpotiConfiguration;
 
@@ -16,9 +16,14 @@ let Configuration: SpotiConfiguration;
 const CONFIGURATION_DEFAULTS = [".spotirc.default.json", ".spotirc.local.json"];
 
 /**
+ * Supported project-local user configuration file.
+ */
+const CONFIGURATION_USER = ".spotirc.user.json";
+
+/**
  * Supported configuration file names, in order of preference.
  */
-const CONFIGURATION_FILES = [".spotirc", ".spotirc.json", ".spotirc.user.json"];
+const CONFIGURATION_FILES = [".spotirc", ".spotirc.json", CONFIGURATION_USER];
 
 /**
  * Locates default configuration files in the project root
@@ -43,7 +48,7 @@ function locateUserConfigurations(): string[] {
 }
 
 /**
- * Read the configuration file
+ * Reads the configuration file
  */
 function readConfiguration<TConfiguration extends SpotiConfiguration>(
   file?: string,
@@ -55,6 +60,36 @@ function readConfiguration<TConfiguration extends SpotiConfiguration>(
   }
 
   return fallback;
+}
+
+/**
+ * Readds the user configuration to a project-local user configuration file.
+ */
+export function readUserConfiguration<
+  TConfiguration extends SpotiConfiguration,
+>(): TConfiguration {
+  return readConfiguration<TConfiguration>(resolveRoot(CONFIGURATION_USER));
+}
+
+/**
+ * Saves the user configuration to a project-local user configuration file.
+ */
+export function saveUserConfiguration<
+  TConfiguration extends SpotiConfiguration,
+>(config: TConfiguration = {} as TConfiguration): void {
+  const json = JSON.stringify(config, null, 2);
+  writeFileSync(resolveRoot(CONFIGURATION_USER), json);
+}
+
+/**
+ * Updates the user configuration in the project-local user configuration file.
+ */
+export function updateUserConfiguration<
+  TConfiguration extends SpotiConfiguration,
+>(patch: Partial<TConfiguration>): void {
+  const previous = readUserConfiguration<TConfiguration>();
+  const next = merge({}, previous, patch);
+  saveUserConfiguration(next);
 }
 
 /**
