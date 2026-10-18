@@ -9,7 +9,11 @@ export interface SpotiConfiguration extends Partial<SpotiOptions> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 
+  /** @defaultValue false */
   debug?: boolean;
+  /** @defaultValue true */
+  progress?: boolean;
+
   spotify?: SpotiSpotifyConfiguration;
   youtube?: SpotiYoutubeConfiguration;
 }

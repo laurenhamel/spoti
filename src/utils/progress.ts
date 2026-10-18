@@ -4,8 +4,9 @@ import {
   type ProgressOptions,
   type ProgressPayload,
 } from "../types/progress";
+import { getConfigurationKey } from "./configuration";
 import { Format } from "./format";
-import { merge } from "lodash-es";
+import { defaultTo, merge, noop } from "lodash-es";
 import { MultiProgressBars } from "multi-progress-bars";
 
 const PROGRESS_LABEL_LENGTH = 40;
@@ -15,17 +16,41 @@ const getMultiProgressBar = (() => {
 
   return (): MultiProgressBars => {
     if (!progress) {
-      progress = new MultiProgressBars({
-        initMessage: " Spoti ",
-        persist: true,
-        border: true,
-        anchor: "top",
-      });
+      const enabled = defaultTo(getConfigurationKey("progress"), true);
+
+      progress = enabled
+        ? new MultiProgressBars({
+            initMessage: " Spoti ",
+            persist: true,
+            border: true,
+            anchor: "top",
+          })
+        : noopMultiProgressBar();
     }
 
     return progress;
   };
 })();
+
+const noopMultiProgressBar = () =>
+  ({
+    promise: Promise.resolve(),
+    cleanup: noop,
+    setHeader: noop,
+    setFooter: noop,
+    removeHeader: noop,
+    removeFooter: noop,
+    addTask: noop,
+    isDone: noop,
+    removeTask: noop,
+    incrementTask: noop,
+    updateTask: noop,
+    done: noop,
+    restartTask: noop,
+    close: noop,
+    getIndex: noop,
+    getName: noop,
+  }) as InstanceType<typeof MultiProgressBars>;
 
 export class Progress {
   static progress: MultiProgressBars;
