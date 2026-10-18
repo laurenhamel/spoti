@@ -5,12 +5,26 @@ import { type TaggingResult } from "../types/tag";
 import { createLabel } from "../utils/console";
 import { Library } from "../utils/library";
 import { pool } from "../utils/promise";
+import { getConfigurationKey } from "./configuration";
 import { Progress } from "./progress";
 import chalk from "chalk";
-import { includes, isBoolean, map, merge, trimStart } from "lodash-es";
+import {
+  compact,
+  castArray,
+  includes,
+  isBoolean,
+  map,
+  merge,
+  trimStart,
+  defaultTo,
+  uniq,
+  trim,
+} from "lodash-es";
 import fetch from "node-fetch";
 import { type Tags, TagConstants } from "node-id3";
 import { extname } from "node:path";
+
+export const DEFAULT_GENRE_DELIMITER = ";";
 
 async function generateImageTag(
   url: string,
@@ -31,6 +45,42 @@ async function generateImageTag(
   }
 }
 
+export function parseGenres(
+  genres?: string | string[],
+  delimiter: string = DEFAULT_GENRE_DELIMITER
+): string[] {
+  return uniq(
+    compact(castArray(genres)).flatMap((genre) =>
+      uniq(genre.split(delimiter).map(trim))
+    )
+  );
+}
+
+export function stringifyGenres(
+  genres: string[],
+  delimiter: string = DEFAULT_GENRE_DELIMITER
+): string {
+  return genres.join(`${delimiter} `);
+}
+
+function generateGenreTag(item: DownloadTarget): string | undefined {
+  const delimiter = defaultTo<string>(
+    getConfigurationKey("tags.genreDelimiter"),
+    DEFAULT_GENRE_DELIMITER
+  );
+
+  const { item: track, search } = item;
+  const { artists } = track;
+  const { lastfm } = search;
+
+  const genres = [
+    ...parseGenres(artists[0].genres?.[0], delimiter),
+    ...parseGenres(map(lastfm?.track.toptags.tag ?? [], "name")),
+  ];
+
+  return genres.length ? stringifyGenres(genres) : undefined;
+}
+
 export async function generateTrackTag(item: DownloadTarget): Promise<Tags> {
   const result = item as DownloadTarget & { tags: Tags };
 
@@ -48,11 +98,11 @@ export async function generateTrackTag(item: DownloadTarget): Promise<Tags> {
       track.album.name
     );
 
-    const tags = {
+    const tags: Tags = {
       title: track.name,
       artist: map(track.artists, "name").join(", "),
       album: track.album.name,
-      genre: track.artists[0].genres?.[0],
+      genre: generateGenreTag(item),
       year: track.album.release_date.split("-")[0],
       fileUrl: track.href,
       trackNumber: track.track_number.toString(),

@@ -35,6 +35,10 @@ export interface PaginationAdapterInstance {
   ) => Promise<TResponse>;
 }
 
+export interface QueryAdapterInstance {
+  query: () => Record<string, unknown>;
+}
+
 export interface PaginationOptions {
   target: string;
   offset?: string;

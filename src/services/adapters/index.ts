@@ -13,4 +13,7 @@ export * from "./PaginationAdapter";
 export { default as PolicyAdapter } from "./PolicyAdapter";
 export * from "./PolicyAdapter";
 
+export { default as QueryStringAdapter } from "./QueryStringAdapter";
+export * from "./QueryStringAdapter";
+
 export type * from "./types";

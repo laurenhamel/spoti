@@ -4,6 +4,7 @@ import { type SpotiOptions } from "./configuration";
 export type SearchResult = {
   track: Spotify.Track;
   youtube?: Youtube.Song;
+  lastfm?: Lastfm.Track;
 };
 
 export type SearchOf<TType extends Spotify.Type> = <

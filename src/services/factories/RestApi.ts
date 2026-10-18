@@ -5,6 +5,7 @@ import {
   type AuthorizationAdapterInstance,
   type PolicyAdapterInstance,
   type PaginationAdapterInstance,
+  type QueryAdapterInstance,
   type PaginationOptions,
 } from "../adapters";
 import chalk from "chalk";
@@ -14,9 +15,11 @@ import {
   snakeCase,
   trimEnd,
   trimStart,
+  isEmpty,
   isNil,
   escapeRegExp,
   castArray,
+  compact,
 } from "lodash-es";
 import fetch, { type Headers, type Response } from "node-fetch";
 import qs from "qs";
@@ -55,6 +58,7 @@ export interface RestApiAdapters {
   policy?: PolicyAdapterInstance;
   retry?: RetryAdapterInstance;
   pagination?: PaginationAdapterInstance;
+  query?: QueryAdapterInstance;
 }
 
 export enum RestApiMethod {
@@ -157,10 +161,10 @@ export default class RestApi<
   ): Promise<TResponse> {
     const config = this.find(endpoint);
     const path = config.expand(data);
-    const params = this.params<TData>(method, data);
     const body = this.body<TData>(method, data);
-    const base = trimEnd(this.config.api, "/") + "/" + trimStart(path, "/");
-    const url = base + params;
+    const [base, query] = this.url<TData>(path);
+    const params = this.params<TData>(method, data, query);
+    const url = base + (params ?? "");
 
     const authorization = await this.authorize();
     const request = {
@@ -175,19 +179,18 @@ export default class RestApi<
       console.log(chalk.magenta(request.method), chalk.cyan(base));
       console.log({
         ...request,
-        parameters:
-          request.method === RestApiMethod.GET
-            ? params
-              ? qs.parse(params, {
-                  comma: true,
-                  ignoreQueryPrefix: true,
-                  parseArrays: true,
-                  duplicates: "combine",
-                  allowEmptyArrays: true,
-                  allowDots: true,
-                })
-              : {}
-            : undefined,
+        parameters: this.parameterized.includes(request.method)
+          ? params
+            ? qs.parse(params, {
+                comma: true,
+                ignoreQueryPrefix: true,
+                parseArrays: true,
+                duplicates: "combine",
+                allowEmptyArrays: true,
+                allowDots: true,
+              })
+            : {}
+          : undefined,
       });
     }
 
@@ -298,6 +301,22 @@ export default class RestApi<
 
   private parameterized: RestApiMethod[] = [RestApiMethod.GET];
 
+  private url<TQuery extends Record<string, unknown>>(
+    uri: string
+  ): [string, TQuery | undefined] {
+    const base = trimEnd(this.config.api, "/");
+    const src = `${base}/${trimStart(uri, "/")}`;
+    const { protocol, host, pathname, search } = new URL(src);
+    const query = trimStart(search, "?");
+    const url = `${protocol}//${trimEnd(host, "/")}/${trimStart(pathname, "/")}`;
+    const params = isEmpty(query) ? undefined : (qs.parse(query) as TQuery);
+    return [url, params];
+  }
+
+  private query(): Record<string, unknown> | undefined {
+    return this.config.adapters?.query?.query();
+  }
+
   private async authorize(): Promise<
     Record<"Authorization", string> | undefined
   > {
@@ -363,11 +382,24 @@ export default class RestApi<
 
   private params<TData extends Record<string, unknown>>(
     method: RestApiMethod,
-    data: TData = {} as TData
+    data: TData = {} as TData,
+    endpoint: TData = {} as TData
   ): string | undefined {
+    const fixed = this.query();
+
+    const stringify = (
+      ...values: (Record<string, unknown> | undefined)[]
+    ): string | undefined => {
+      const params = compact(values);
+
+      return params.length
+        ? `?${qs.stringify(merge({}, ...params), { arrayFormat: "comma" })}`
+        : undefined;
+    };
+
     return this.parameterized.includes(method)
-      ? `?${qs.stringify(data, { arrayFormat: "comma" })}`
-      : undefined;
+      ? stringify(fixed, endpoint, data)
+      : stringify(fixed, endpoint);
   }
 
   private get<TData extends Record<string, unknown>>(

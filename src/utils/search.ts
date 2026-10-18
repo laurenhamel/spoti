@@ -1,4 +1,5 @@
-import { Spotify, type Youtube } from "../models";
+import { type Lastfm, Spotify, type Youtube } from "../models";
+import { LastfmApi } from "../services/providers/LastfmApi";
 import { YoutubeApi } from "../services/providers/YoutubeApi";
 import { type SpotiOptions } from "../types/configuration";
 import { type SearchOf, type SearchResult } from "../types/search";
@@ -186,6 +187,19 @@ async function searchYoutube<
   }
 }
 
+async function searchLastfm<
+  TOptions extends SpotiOptions & { cache?: boolean },
+>(item: Spotify.Item, _options?: TOptions): Promise<Lastfm.Track | undefined> {
+  const { artists, name: track } = item.item;
+  const artist = map(artists, "name").join(", ");
+
+  try {
+    return LastfmApi.getTrackInfo<Lastfm.Track>({ artist, track });
+  } catch (_) {
+    // @TODO If we cannot acquire search results, then the song may not exist on Last.fm
+    return;
+  }
+}
 
 export function findSearchResult<
   TOptions extends SpotiOptions & { cache?: boolean },
@@ -223,10 +237,13 @@ export async function searchSong<
 
   const track = item.item;
 
-  const [youtube] = await Promise.all([searchYoutube(item, options)]);
+  const [youtube, lastfm] = await Promise.all([
+    searchYoutube(item, options),
+    searchLastfm(item, options),
+  ]);
 
   progress?.();
-  return { track, youtube };
+  return { track, youtube, lastfm };
 }
 
 export async function searchSongs<TOptions extends SpotiOptions>(
