@@ -13,21 +13,25 @@ export type SyncArguments = [string, string?];
 
 export interface SyncOptions extends SpotiOptions {
   cache: boolean;
+  convert: boolean;
   force: boolean;
   format: AudioFormat;
   init: boolean;
   prefixes: boolean;
   suffixes: boolean;
+  tag: boolean;
 }
 
 const SYNC_DEFAULTS: SyncOptions = {
   cache: true,
+  convert: true,
   force: false,
   format: Audio.DEFAULT_FORMAT,
   init: false,
   verbose: false,
   prefixes: true,
   suffixes: true,
+  tag: true,
 };
 
 export const sync: ActionHandler<SyncArguments, SyncOptions> = async <

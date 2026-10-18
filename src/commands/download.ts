@@ -15,7 +15,7 @@ export default new Command()
   .option("-f, --format", "The output audio file format", Audio.DEFAULT_FORMAT)
   .option("--no-cache", "Disables using cached search results")
   .option("--no-convert", "Skips 'ffmpeg' file conversions after downloading")
-  .option("--no-tag", "Skips ID3 tagging after downloading")
   .option("--no-prefixes", "Disallow prefixes in file names")
   .option("--no-suffixes", "Disallow suffixes in file names")
+  .option("--no-tag", "Skips ID3 tagging after downloading")
   .action(createAction<DownloadArguments, DownloadOptions>(download));
