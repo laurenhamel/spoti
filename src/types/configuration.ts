@@ -15,8 +15,8 @@ export interface SpotiConfiguration extends Partial<SpotiOptions> {
 }
 
 export interface SpotiSpotifyConfiguration {
-  client?: {
-    id?: string;
+  api?: {
+    key?: string;
     secret?: string;
   };
 }

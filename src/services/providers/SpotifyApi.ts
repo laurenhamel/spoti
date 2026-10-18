@@ -81,8 +81,8 @@ const SpotifyApiService = new RestApi({
       type: AccessTokenAdapterType.FORM,
       credentials: () => ({
         grant_type: "client_credentials",
-        client_id: getConfigurationKey("spotify.client.id"),
-        client_secret: getConfigurationKey("spotify.client.secret"),
+        client_id: getConfigurationKey("spotify.api.key"),
+        client_secret: getConfigurationKey("spotify.api.secret"),
       }),
       handler(response) {
         return {
