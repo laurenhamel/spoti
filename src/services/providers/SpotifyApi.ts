@@ -75,11 +75,11 @@ const SpotifyApiService = new RestApi({
     }>({
       url: "https://accounts.spotify.com/api/token",
       type: AccessTokenAdapterType.FORM,
-      credentials: {
+      credentials: () => ({
         grant_type: "client_credentials",
         client_id: getConfigurationKey("spotify.client.id"),
         client_secret: getConfigurationKey("spotify.client.secret"),
-      },
+      }),
       handler(response) {
         return {
           token: response.access_token,

@@ -1,4 +1,5 @@
 import { type AuthorizationAdapterInstance } from "./types";
+import { isFunction } from "lodash-es";
 import fetch from "node-fetch";
 import qs from "qs";
 
@@ -13,9 +14,13 @@ export interface AccessTokenAdapterData {
   expires: Date;
 }
 
+export type AccessTokenAdapterCredentials =
+  Record<string, unknown> | (() => Record<string, unknown>);
+
 export interface AccessTokenAdapterConfig<
   TResponse extends Record<string, unknown>,
-  TCredentials extends Record<string, unknown> = Record<string, unknown>,
+  TCredentials extends AccessTokenAdapterCredentials =
+    AccessTokenAdapterCredentials,
 > {
   url: string;
   type: AccessTokenAdapterType;
@@ -29,7 +34,8 @@ export type AccessTokenAdapterHandler<
 
 export default class AccessTokenAdapter<
   TResponse extends Record<string, unknown>,
-  TCredentials extends Record<string, unknown> = Record<string, unknown>,
+  TCredentials extends AccessTokenAdapterCredentials =
+    AccessTokenAdapterCredentials,
 > implements AuthorizationAdapterInstance {
   readonly config: AccessTokenAdapterConfig<TResponse, TCredentials>;
 
@@ -40,8 +46,8 @@ export default class AccessTokenAdapter<
   private validate(): void {
     const errors: string[] = [];
 
-    for (const key in this.config.credentials) {
-      const value = this.config.credentials[key];
+    for (const key in this.credentials) {
+      const value = this.credentials[key];
 
       if (!value) {
         errors.push(`Missing access token credential(s): ${key}`);
@@ -62,7 +68,9 @@ export default class AccessTokenAdapter<
   }
 
   private get credentials(): Record<string, unknown> {
-    return this.config.credentials;
+    return isFunction(this.config.credentials)
+      ? this.config.credentials()
+      : this.config.credentials;
   }
 
   private get handler(): AccessTokenAdapterHandler<TResponse> {
