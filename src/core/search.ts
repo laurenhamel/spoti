@@ -2,7 +2,7 @@ import { Spotify } from "../models";
 import { type ActionHandler } from "../types/action";
 import { type SpotiOptions } from "../types/configuration";
 import { mergeOptions } from "../utils/action";
-import { searchYoutubeType } from "../utils/search";
+import { searchType } from "../utils/search";
 import { parseSpotifyURL, getSpotifyType } from "../utils/spotify";
 import { stringifySearch } from "../utils/stringify";
 import chalk from "chalk";
@@ -31,7 +31,7 @@ export const search: ActionHandler<SearchArguments, SearchOptions> = async <
   console.log(`Searching for ${chalk.magenta(type)} (${chalk.blue(id)})…`);
 
   const data = await getSpotifyType(id, type, options);
-  const results = await searchYoutubeType(type, data, options);
+  const results = await searchType(type, data, options);
   const details: Record<string, Primitive> = {};
   const info = stringifySearch(type, data, results, options, details);
 

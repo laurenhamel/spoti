@@ -1,13 +1,10 @@
 import { Spotify, type Youtube } from "../models";
 import { YoutubeApi } from "../services/providers/YoutubeApi";
 import { type SpotiOptions } from "../types/configuration";
-import { type SpotifySearchResult } from "../types/spotify";
-import {
-  type YoutubeSearchOf,
-  type YoutubeSearchResult,
-} from "../types/youtube";
+import { type SearchOf, type SearchResult } from "../types/search";
 import { cache } from "./cache";
 import { Progress } from "./progress";
+import { drain } from "./promise";
 import chalk from "chalk";
 import Fuse from "fuse.js";
 import { find, map, sum } from "lodash-es";
@@ -171,80 +168,92 @@ export function findBestSearchResult<TOptions extends SpotiOptions>(
   return results[0].song;
 }
 
-export async function searchYoutubeSong<
+async function searchYoutube<
   TOptions extends SpotiOptions & { cache?: boolean },
->(
-  item: Spotify.Item,
-  options?: TOptions,
-  progress?: () => void
-): Promise<YoutubeSearchResult> {
-  const track = item.item;
-  const { artists, name: song, uri } = track;
+>(item: Spotify.Item, options?: TOptions): Promise<Youtube.Song | undefined> {
+  const { artists, name } = item.item;
   const artist = artists[0].name;
-  const query = [artist, song].join(" ").trim();
-  const cached = options?.cache ?? true;
-
-  if (cached) {
-    const resource = cache.get<SpotifySearchResult>(uri);
-
-    if (resource?.search) {
-      progress?.();
-
-      return { ...resource.search, track };
-    }
-  }
+  const query = [artist, name].join(" ").trim();
 
   try {
     const songs = await YoutubeApi.searchSongs(query, options);
     const videos = await YoutubeApi.searchVideos(query, options);
     const results = [...songs, ...videos];
-    const result = findBestSearchResult(query, results, item, options);
-    return { track, query, result };
+    return findBestSearchResult(query, results, item, options);
   } catch (_) {
     // @TODO If we cannot acquire search results, then the song may not exist on Youtube
-    return { track, query };
-  } finally {
-    progress?.();
+    return;
   }
 }
 
-export async function searchYoutubeSongs<TOptions extends SpotiOptions>(
+
+export function findSearchResult<
+  TOptions extends SpotiOptions & { cache?: boolean },
+>(item: Spotify.Item, options?: TOptions): SearchResult | undefined {
+  const uri = item.item.uri;
+  const enabled = options?.cache ?? true;
+  return enabled ? cache.get<SearchResult>(uri) : undefined;
+}
+
+export function cacheSearchResults(
   items: Spotify.Item[],
-  options?: TOptions,
-  progress?: () => void
-): Promise<YoutubeSearchResult[]> {
-  const tasks: (() => Promise<YoutubeSearchResult>)[] = items.map(
-    (item) => () => searchYoutubeSong(item, options, progress)
-  );
-
-  const results = await Promise.all(tasks.map((task) => task()));
-
+  results: SearchResult[]
+): void {
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     const search = results[i];
     item.search = search;
     cache.set(item.item.uri, item);
   }
+}
+
+export async function searchSong<
+  TOptions extends SpotiOptions & { cache?: boolean },
+>(
+  item: Spotify.Item,
+  options?: TOptions,
+  progress?: () => void
+): Promise<SearchResult> {
+  const cached = findSearchResult(item, options);
+
+  if (cached) {
+    progress?.();
+    return cached;
+  }
+
+  const track = item.item;
+
+  const [youtube] = await Promise.all([searchYoutube(item, options)]);
+
+  progress?.();
+  return { track, youtube };
+}
+
+export async function searchSongs<TOptions extends SpotiOptions>(
+  items: Spotify.Item[],
+  options?: TOptions,
+  progress?: () => void
+): Promise<SearchResult[]> {
+  const results = await drain(
+    items.map((item) => () => searchSong(item, options, progress))
+  );
+
+  cacheSearchResults(items, results);
 
   return results;
 }
 
-const searchNoop: YoutubeSearchOf<Spotify.Type> = () => Promise.resolve([]);
+const searchNoop: SearchOf<Spotify.Type> = () => Promise.resolve([]);
 
-const searchTrack: YoutubeSearchOf<Spotify.Type.TRACK> = async (
-  data,
-  options
-) => {
+const searchTrack: SearchOf<Spotify.Type.TRACK> = async (data, options) => {
   const progress = new Progress({
-    label: "Searching Youtube…",
+    label: "Searching track…",
     total: 1,
     color: chalk.yellow,
   });
 
-  const result = await searchYoutubeSong(
-    { item: data } as Spotify.Item,
-    options,
-    () => progress.increment()
+  const result = await searchSong({ item: data } as Spotify.Item, options, () =>
+    progress.increment()
   );
 
   progress.done();
@@ -252,7 +261,7 @@ const searchTrack: YoutubeSearchOf<Spotify.Type.TRACK> = async (
   return [result];
 };
 
-const searchPlaylist: YoutubeSearchOf<Spotify.Type.PLAYLIST> = async (
+const searchPlaylist: SearchOf<Spotify.Type.PLAYLIST> = async (
   data,
   options
 ) => {
@@ -260,29 +269,27 @@ const searchPlaylist: YoutubeSearchOf<Spotify.Type.PLAYLIST> = async (
   const total = tracks.length;
 
   const progress = new Progress({
-    label: "Searching Youtube…",
+    label: "Searching playlist…",
     total,
     color: chalk.yellow,
   });
 
-  const result = await searchYoutubeSongs(tracks, options, () =>
-    progress.increment()
-  );
+  const result = await searchSongs(tracks, options, () => progress.increment());
 
   progress.done();
 
   return result;
 };
 
-export async function searchYoutubeType<
+export async function searchType<
   TType extends Spotify.Type,
   TOptions extends SpotiOptions,
 >(
   type: TType,
   data: Spotify.ModelOf<TType>,
   options?: TOptions
-): Promise<YoutubeSearchResult[]> {
-  const callees: { [TType in Spotify.Type]: YoutubeSearchOf<TType> } = {
+): Promise<SearchResult[]> {
+  const callees: { [TType in Spotify.Type]: SearchOf<TType> } = {
     [Spotify.Type.ALBUM]: searchNoop,
     [Spotify.Type.ARTIST]: searchNoop,
     [Spotify.Type.FEATURES]: searchNoop,

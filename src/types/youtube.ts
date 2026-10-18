@@ -1,18 +1,4 @@
-import { type Youtube, type Spotify } from "../models";
-import { type SpotiOptions } from "./configuration";
-
-export type YoutubeSearchResult = {
-  track: Spotify.Track;
-  query: string;
-  result?: Youtube.Song;
-};
-
-export type YoutubeSearchOf<TType extends Spotify.Type> = <
-  TOptions extends SpotiOptions,
->(
-  data: Spotify.ModelOf<TType>,
-  options?: TOptions
-) => Promise<YoutubeSearchResult[]>;
+import { type Youtube } from "../models";
 
 export interface YoutubeDownloadResult {
   input: Youtube.Download;

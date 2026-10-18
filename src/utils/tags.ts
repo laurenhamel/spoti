@@ -1,11 +1,7 @@
 import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/configuration";
-import {
-  type SpotifyDownloadTarget,
-  type SpotifyDownloadResult,
-  type SpotifyTaggingResult,
-} from "../types/spotify";
-import { type YoutubeDownloadResult } from "../types/youtube";
+import { type DownloadTarget, type DownloadResult } from "../types/download";
+import { type TaggingResult } from "../types/tag";
 import { createLabel } from "../utils/console";
 import { Library } from "../utils/library";
 import { pool } from "../utils/promise";
@@ -35,17 +31,15 @@ async function generateImageTag(
   }
 }
 
-export async function generateTrackTag(
-  item: SpotifyDownloadTarget
-): Promise<Tags> {
-  const result = item as SpotifyDownloadTarget & { tags: Tags };
+export async function generateTrackTag(item: DownloadTarget): Promise<Tags> {
+  const result = item as DownloadTarget & { tags: Tags };
 
   const { item: track, download } = item;
   const { id } = track;
   const { file } = download;
 
   const format =
-    (download.result as YoutubeDownloadResult)?.output.format ??
+    (download.result as DownloadResult)?.item.download.format ??
     trimStart(extname(file), ".");
 
   if (includes(Object.values(AudioFormat), format)) {
@@ -80,22 +74,22 @@ export async function generateTrackTag(
 export async function getTrackTag<
   TOptions extends SpotiOptions & { convert?: boolean },
 >(
-  input: SpotifyDownloadTarget | SpotifyDownloadResult,
+  input: DownloadTarget | DownloadResult,
   options?: TOptions,
   progress?: () => void
 ): Promise<{ id: string; path: string; tags?: Tags }> {
   const item =
     "search" in input || "download" in input
-      ? (input as SpotifyDownloadTarget)
+      ? (input as DownloadTarget)
       : input.item;
 
   const converted = isBoolean(options?.convert) ? options.convert : true;
 
   const path = converted
-    ? (item.download.result?.output.path ??
+    ? (item.download.result?.item.download.output.path ??
       item.download.output?.path ??
       item.download.path)
-    : (item.download.result?.input.path ??
+    : (item.download.result?.item.download.input.path ??
       item.download.input?.path ??
       item.download.path);
 
@@ -107,16 +101,16 @@ export async function getTrackTag<
 }
 
 export async function addTrackTag<
-  TSource extends SpotifyDownloadTarget | SpotifyDownloadResult,
+  TSource extends DownloadTarget | DownloadResult,
   TOptions extends SpotiOptions & { dry?: boolean },
 >(
   source: TSource,
   options?: TOptions,
   progress?: () => void
-): Promise<SpotifyTaggingResult<TSource>> {
+): Promise<TaggingResult<TSource>> {
   const item =
     "search" in source || "download" in source
-      ? (source as SpotifyDownloadTarget)
+      ? (source as DownloadTarget)
       : source.item;
 
   const { title } = item.download;
@@ -143,12 +137,9 @@ export async function addTrackTag<
 }
 
 export async function addTrackTags<
-  TSource extends SpotifyDownloadTarget | SpotifyDownloadResult,
+  TSource extends DownloadTarget | DownloadResult,
   TOptions extends SpotiOptions & { dry?: boolean },
->(
-  items: TSource[],
-  options?: TOptions
-): Promise<SpotifyTaggingResult<TSource>[]> {
+>(items: TSource[], options?: TOptions): Promise<TaggingResult<TSource>[]> {
   const progress = new Progress({
     label: "Tagging…",
     total: items.length,

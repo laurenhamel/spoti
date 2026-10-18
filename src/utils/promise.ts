@@ -1,4 +1,8 @@
-import { type RetryHandlers } from "../types/promise";
+import type {
+  PromiseCallback,
+  PromiseCallbackReturnTypeArray,
+  RetryHandlers,
+} from "../types/promise";
 import { isFunction } from "lodash-es";
 import limit from "p-limit";
 
@@ -32,15 +36,23 @@ export class Deferred<TResponse = void> {
   }
 }
 
+export async function drain<TCallbacks extends PromiseCallback[]>(
+  callbacks: TCallbacks
+): Promise<PromiseCallbackReturnTypeArray<TCallbacks>> {
+  const promises = callbacks.map((callback) => callback());
+  const results = await Promise.all(promises);
+  return results as PromiseCallbackReturnTypeArray<TCallbacks>;
+}
+
 export function pool(
   max: number
 ): <TResponse>(
-  callbacks: (() => Promise<TResponse>)[]
+  callbacks: PromiseCallback<TResponse>[]
 ) => Promise<TResponse[]> {
   const task = limit(max);
 
   return async <TResponse>(
-    callbacks: (() => Promise<TResponse>)[]
+    callbacks: PromiseCallback<TResponse>[]
   ): Promise<TResponse[]> => {
     const tasks = callbacks.map(task);
     const results = await Promise.all(tasks);
@@ -49,7 +61,7 @@ export function pool(
 }
 
 export async function retry<TResult>(
-  async: () => Promise<TResult>,
+  async: PromiseCallback<TResult>,
   retries: number,
   wait: number | ((attempt: number) => number),
   { before, after }: RetryHandlers | undefined = {},

@@ -9,7 +9,7 @@ import {
   downloadSpotifyTracks,
   prepareDownloadTargets,
 } from "../utils/downloads";
-import { searchYoutubeType } from "../utils/search";
+import { searchType } from "../utils/search";
 import { parseSpotifyURL, getSpotifyType } from "../utils/spotify";
 import { addTrackTags } from "../utils/tags";
 import chalk from "chalk";
@@ -54,7 +54,7 @@ export const download: ActionHandler<
   console.log(`Downloading ${chalk.magenta(type)} (${chalk.blue(id)})…`);
 
   const data = await getSpotifyType(id, type, options);
-  const results = await searchYoutubeType(type, data, options);
+  const results = await searchType(type, data, options);
   const targets = prepareDownloadTargets(type, data, results, options);
   const downloads = await downloadSpotifyTracks(targets, options);
   // prettier-ignore

@@ -3,16 +3,13 @@ import { YoutubeApi } from "../services/providers/YoutubeApi";
 import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/configuration";
 import {
-  type SpotifyDownloadResult,
-  type SpotifyDownloadPreparer,
-  type SpotifyDownloadTarget,
-  type SpotifySearchResult,
-} from "../types/spotify";
+  type DownloadResult,
+  type DownloadPreparerOf,
+  type DownloadTarget,
+} from "../types/download";
+import { type SearchResultItem, type SearchResult } from "../types/search";
 import { VideoFormat } from "../types/video";
-import {
-  type YoutubeSearchResult,
-  type YoutubeDownloadResult,
-} from "../types/youtube";
+import { type YoutubeDownloadResult } from "../types/youtube";
 import { Audio } from "../utils/audio";
 import { createLabel, silenceWarnings } from "./console";
 import { Format } from "./format";
@@ -182,7 +179,7 @@ export async function downloadYoutubeSong<TOptions extends SpotiOptions>(
 
 export function createDownloadTarget<
   TOptions extends SpotiOptions & { format?: AudioFormat },
->(item: SpotifySearchResult, options?: TOptions): SpotifyDownloadTarget {
+>(item: SearchResultItem, options?: TOptions): DownloadTarget {
   const format = options?.format ?? Audio.DEFAULT_FORMAT;
   const file = Format.file(item.item, format);
   const path = Library.path(file);
@@ -191,42 +188,42 @@ export function createDownloadTarget<
   return { ...item, download };
 }
 
-const prepareNoop: SpotifyDownloadPreparer<Spotify.Type> = () => [];
+const prepareNoop: DownloadPreparerOf<Spotify.Type> = () => [];
 
-export const prepareTrack: SpotifyDownloadPreparer<Spotify.Type.TRACK> = (
+export const prepareTrack: DownloadPreparerOf<Spotify.Type.TRACK> = (
   data,
   results,
   options
 ) => {
   const search = results[0];
   const item = { item: data } as Spotify.Item;
-  const result: SpotifySearchResult = { ...item, search };
+  const result: SearchResultItem = { ...item, search };
   const prepared = [createDownloadTarget(result, options)];
   return prepared.sort(sortDownloadResults((item) => item.download.file));
 };
 
 export function prepareTracks<TOptions extends SpotiOptions>(
   data: Spotify.Track[],
-  results: YoutubeSearchResult[],
+  results: SearchResult[],
   options?: TOptions
-): SpotifyDownloadTarget[] {
+): DownloadTarget[] {
   return data.flatMap((track, i) => {
     const search = [results[i]];
     return prepareTrack(track, search, options);
   });
 }
 
-export const preparePlaylist: SpotifyDownloadPreparer<Spotify.Type.PLAYLIST> = (
+export const preparePlaylist: DownloadPreparerOf<Spotify.Type.PLAYLIST> = (
   data,
   results,
   options
 ) => {
-  const prepared: SpotifyDownloadTarget[] = [];
+  const prepared: DownloadTarget[] = [];
 
   for (let i = 0; i < data.items.items.length; i++) {
     const item = data.items.items[i];
     const search = results[i];
-    const result: SpotifySearchResult = { ...item, search };
+    const result: SearchResultItem = { ...item, search };
     prepared.push(createDownloadTarget(result, options));
   }
 
@@ -239,10 +236,10 @@ export function prepareDownloadTargets<
 >(
   type: TType,
   data: Spotify.ModelOf<TType>,
-  results: YoutubeSearchResult[],
+  results: SearchResult[],
   options?: TOptions
-): SpotifyDownloadTarget[] {
-  const callees: Record<Spotify.Type, SpotifyDownloadPreparer<Spotify.Type>> = {
+): DownloadTarget[] {
+  const callees: Record<Spotify.Type, DownloadPreparerOf<Spotify.Type>> = {
     [Spotify.Type.ALBUM]: prepareNoop,
     [Spotify.Type.ARTIST]: prepareNoop,
     [Spotify.Type.FEATURES]: prepareNoop,
@@ -272,10 +269,10 @@ export function sortDownloadResults<TData = Record<string, unknown>>(
 export async function downloadSpotifyTrack<
   TOptions extends SpotiOptions & { force?: boolean },
 >(
-  target: SpotifyDownloadTarget,
+  target: DownloadTarget,
   options?: TOptions,
   progress?: () => void
-): Promise<SpotifyDownloadResult> {
+): Promise<DownloadResult> {
   const scope = createLabel("download");
   const { title } = target.download;
 
@@ -293,7 +290,7 @@ export async function downloadSpotifyTrack<
       input,
       output,
     },
-  }) as SpotifyDownloadResult["item"];
+  }) as DownloadResult["item"];
 
   // Output exists
   if (options?.force ? false : ready.output) {
@@ -309,7 +306,7 @@ export async function downloadSpotifyTrack<
     return { item, status: "passed" };
   }
 
-  const song = target.search.result;
+  const song = target.search.youtube;
 
   // Search result available
   if (song) {
@@ -346,10 +343,7 @@ export async function downloadSpotifyTrack<
 
 export async function downloadSpotifyTracks<
   TOptions extends SpotiOptions & { force?: boolean },
->(
-  targets: SpotifyDownloadTarget[],
-  options?: TOptions
-): Promise<SpotifyDownloadResult[]> {
+>(targets: DownloadTarget[], options?: TOptions): Promise<DownloadResult[]> {
   const progress = new Progress({
     label: "Downloading…",
     total: targets.length,

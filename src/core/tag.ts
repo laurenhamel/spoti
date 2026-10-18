@@ -7,7 +7,7 @@ import { reportDry } from "../utils/console";
 import { prepareTracks } from "../utils/downloads";
 import { Library } from "../utils/library";
 import { Progress } from "../utils/progress";
-import { searchYoutubeSongs } from "../utils/search";
+import { searchSongs } from "../utils/search";
 import { getSpotifyTracks, searchSpotifyTracks } from "../utils/spotify";
 import { stringifyManifest } from "../utils/stringify";
 import { addTrackTags } from "../utils/tags";
@@ -85,7 +85,7 @@ export const tag: ActionHandler<TagArguments, TagOptions> = async <
 
   // prettier-ignore
   const items = map(tracks, 'track').map((item) => ({ item })) as Spotify.Item[];
-  const results = await searchYoutubeSongs(items, options);
+  const results = await searchSongs(items, options);
   const targets = prepareTracks(map(tracks, "track"), results, options);
 
   await addTrackTags(targets, options);

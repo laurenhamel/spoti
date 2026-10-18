@@ -17,7 +17,7 @@ import { Format } from "./format";
 import { Metadata } from "./metadata";
 import { Progress } from "./progress";
 import { pool, Deferred } from "./promise";
-import { searchYoutubeType } from "./search";
+import { searchType } from "./search";
 import { getSpotifyType } from "./spotify";
 import { generateTrackTag } from "./tags";
 import chalk from "chalk";
@@ -704,7 +704,7 @@ export class Library {
     else if (file && Metadata.has(file)) {
       const { id, type } = Metadata.read<SpotiMetadata>(file);
       const data = await getSpotifyType(id, type, options);
-      const results = await searchYoutubeType(type, data, options);
+      const results = await searchType(type, data, options);
       const targets = prepareDownloadTargets(type, data, results, options);
 
       for (const target of targets) {
