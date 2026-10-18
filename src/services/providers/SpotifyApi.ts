@@ -19,6 +19,10 @@ const SpotifyApiService = new RestApi({
   api: "https://api.spotify.com/v1",
   debug: "spotify",
   endpoints: {
+    getArtist: {
+      method: RestApiMethod.GET,
+      path: "/artists/{id}",
+    },
     getPlaylist: {
       method: RestApiMethod.GET,
       path: "/playlists/{id}",

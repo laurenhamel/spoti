@@ -14,7 +14,14 @@ import {
 import { Progress } from "./progress";
 import { retry } from "./promise";
 import chalk from "chalk";
-import { find, merge, template, flatMap, trimStart } from "lodash-es";
+import {
+  find,
+  findIndex,
+  merge,
+  template,
+  flatMap,
+  trimStart,
+} from "lodash-es";
 import fetch from "node-fetch";
 import { chromium, type Request, type Page, type Browser } from "playwright";
 
@@ -409,6 +416,27 @@ async function scrapeSpotifyPlaylist<
   return toPlaylist(playlist);
 }
 
+export async function getSpotifyTrackArtists<TOptions extends SpotiOptions>(
+  track: Spotify.Track,
+  options?: TOptions
+): Promise<void> {
+  const tasks: (() => Promise<void>)[] = [];
+
+  for (let i = 0; i < track.artists.length; i++) {
+    tasks.push(async () => {
+      const previous = track.artists[i];
+      const data = { id: previous.id };
+      const artist = await SpotifyApi.getArtist<Spotify.Artist>(data, options);
+      const next = merge(previous, artist);
+      track.artists[i] = next;
+      const n = findIndex(track.album.artists, data);
+      if (n > -1) track.album.artists[n] = next;
+    });
+  }
+
+  await Promise.all(tasks.map((task) => task()));
+}
+
 export async function getSpotifyTrack<
   TData extends Record<string, unknown>,
   TOptions extends SpotiOptions,
@@ -417,9 +445,10 @@ export async function getSpotifyTrack<
   options?: TOptions,
   progress?: () => void
 ): Promise<Spotify.Track> {
-  const track = await SpotifyApi.getTrack(data, options);
+  const track = await SpotifyApi.getTrack<Spotify.Track>(data, options);
+  await getSpotifyTrackArtists(track, options);
   progress?.();
-  return track as Spotify.Track;
+  return track;
 }
 
 export async function getSpotifyTracks<TOptions extends SpotiOptions>(
