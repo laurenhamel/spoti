@@ -34,6 +34,25 @@ Spoti is a CLI tool that allows you to download Spotify tracks and playlists and
 
 The `spoti` CLI supports the following commands:
 
+### `configure`
+
+Get or set Spoti user configurations.
+
+```sh
+spoti configure [options] [key] [value]
+```
+
+| Argument  | Description                             |
+| --------- | --------------------------------------- |
+| `[key]`   | A Spoti configuration key (optional).   |
+| `[value]` | A Spoti configuration value (optional). |
+
+| Option        | Description                                 |
+| ------------- | ------------------------------------------- |
+| `--clean`     | Removes entries from the user configuration |
+| `--inspect`   | Removes entries from the user configuration |
+| `--help`/`-h` | Display help for command                    |
+
 ### `download`
 
 Download tracks from a Spotify URL. Currently, supports `/track/{id}` and `/playlist/{id}` endpoints.
