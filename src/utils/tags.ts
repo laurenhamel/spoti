@@ -1,3 +1,4 @@
+import { invokePlugins } from "../plugins";
 import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/configuration";
 import { type DownloadTarget, type DownloadResult } from "../types/download";
@@ -113,7 +114,11 @@ export async function generateTrackTag(item: DownloadTarget): Promise<Tags> {
 
     Library.assignId(tags, id);
 
-    result.tags = merge({}, result.tags, tags);
+    const merged = merge({}, result.tags, tags);
+
+    await invokePlugins("transformTags", [item, merged]);
+
+    result.tags = merged;
   }
 
   result.tags = result.tags ?? {};
