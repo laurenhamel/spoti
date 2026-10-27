@@ -2,6 +2,10 @@
   "name": "spoti",
   "version": "0.1.0",
   "description": "Yet another Spotify music downloader",
+  "homepage": "https://github.com/laurenhame/spoti",
+  "repository": {
+    "url": "https://github.com/laurenhamel/spoti"
+  },
   "type": "module",
   "main": "./bin/cli.js",
   "bin": "bin/cli.js",

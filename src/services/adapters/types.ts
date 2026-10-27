@@ -39,6 +39,10 @@ export interface QueryAdapterInstance {
   query: () => Record<string, unknown>;
 }
 
+export interface HeaderAdapterInstance {
+  headers: () => Record<string, unknown>;
+}
+
 export interface PaginationOptions {
   target: string;
   offset?: string;

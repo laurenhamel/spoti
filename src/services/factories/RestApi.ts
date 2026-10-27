@@ -7,6 +7,7 @@ import {
   type PaginationAdapterInstance,
   type QueryAdapterInstance,
   type PaginationOptions,
+  type HeaderAdapterInstance,
 } from "../adapters";
 import chalk from "chalk";
 import {
@@ -20,6 +21,7 @@ import {
   escapeRegExp,
   castArray,
   compact,
+  mapValues,
 } from "lodash-es";
 import fetch, { type Headers, type Response } from "node-fetch";
 import qs from "qs";
@@ -49,6 +51,7 @@ export interface RestApiOptions<
 > {
   api: string;
   debug?: string | string[];
+  redirect?: "follow" | "error";
   endpoints: TEndpoints;
   adapters?: RestApiAdapters;
 }
@@ -59,6 +62,7 @@ export interface RestApiAdapters {
   retry?: RetryAdapterInstance;
   pagination?: PaginationAdapterInstance;
   query?: QueryAdapterInstance;
+  headers?: HeaderAdapterInstance;
 }
 
 export enum RestApiMethod {
@@ -98,6 +102,7 @@ interface RestApiConfig<
 > {
   api: string;
   debug?: string | string[];
+  redirect?: "follow" | "error";
   endpoints: {
     [TEndpoint in keyof TEndpoints]: RestApiEndpointConfig<
       TEndpoints[TEndpoint]
@@ -170,7 +175,11 @@ export default class RestApi<
     const request = {
       method,
       body,
-      headers: { "Content-Type": "application/json", ...authorization },
+      redirect: this.config.redirect,
+      headers: merge({}, this.headers(), {
+        "Content-Type": "application/json",
+        ...authorization,
+      }),
     };
 
     if (isDebuggingEnabled(...castArray(this.config.debug))) {
@@ -311,6 +320,11 @@ export default class RestApi<
     const url = `${protocol}//${trimEnd(host, "/")}/${trimStart(pathname, "/")}`;
     const params = isEmpty(query) ? undefined : (qs.parse(query) as TQuery);
     return [url, params];
+  }
+
+  private headers(): Record<string, string> {
+    const headers = this.config.adapters?.headers?.headers() ?? {};
+    return mapValues(headers, (value) => `${value}`);
   }
 
   private query(): Record<string, unknown> | undefined {

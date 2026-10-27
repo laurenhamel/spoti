@@ -16,4 +16,7 @@ export * from "./PolicyAdapter";
 export { default as QueryStringAdapter } from "./QueryStringAdapter";
 export * from "./QueryStringAdapter";
 
+export { default as HeaderAdapter } from "./HeaderAdapter";
+export * from "./HeaderAdapter";
+
 export type * from "./types";

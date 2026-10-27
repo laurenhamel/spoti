@@ -15,13 +15,13 @@ export default class QueryStringAdapter implements QueryAdapterInstance {
     this.config = config;
   }
 
-  private get params(): Record<string, unknown> {
+  private get data(): Record<string, unknown> {
     return isFunction(this.config.params)
       ? this.config.params()
       : this.config.params;
   }
 
   query(): Record<string, unknown> {
-    return this.params;
+    return this.data;
   }
 }

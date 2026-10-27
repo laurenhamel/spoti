@@ -1,10 +1,5 @@
 import { getConfigurationKey } from "../../utils/configuration";
-import {
-  PaginationAdapter,
-  PolicyAdapter,
-  RetryAdapter,
-  QueryStringAdapter,
-} from "../adapters";
+import { PolicyAdapter, RetryAdapter, QueryStringAdapter } from "../adapters";
 import {
   RestApi,
   RestApiMethod,
@@ -26,7 +21,6 @@ const LastfmApiService = new RestApi({
   adapters: {
     policy: new PolicyAdapter(),
     retry: new RetryAdapter(),
-    pagination: new PaginationAdapter(),
     query: new QueryStringAdapter({
       params: () => ({
         api_key: getConfigurationKey("lastfm.api.key"),

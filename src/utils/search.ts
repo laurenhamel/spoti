@@ -1,5 +1,11 @@
-import { type Lastfm, Spotify, type Youtube } from "../models";
+import {
+  type Lastfm,
+  type Musicbrainz,
+  Spotify,
+  type Youtube,
+} from "../models";
 import { LastfmApi } from "../services/providers/LastfmApi";
+import { MusicbrainzApi } from "../services/providers/MusicbrainzApi";
 import { YoutubeApi } from "../services/providers/YoutubeApi";
 import { type SpotiOptions } from "../types/configuration";
 import { type SearchOf, type SearchResult } from "../types/search";
@@ -201,6 +207,22 @@ async function searchLastfm<
   }
 }
 
+async function searchMusicbrainz<
+  TOptions extends SpotiOptions & { cache?: boolean },
+>(
+  item: Lastfm.Track,
+  _options?: TOptions
+): Promise<Musicbrainz.Recording | undefined> {
+  const { mbid: id } = item.track;
+
+  try {
+    return MusicbrainzApi.getRecording<Musicbrainz.Recording>({ id });
+  } catch (_) {
+    // @TODO If we cannot acquire search results, then the recording may not exist on MusicBrainz.org
+    return;
+  }
+}
+
 export function findSearchResult<
   TOptions extends SpotiOptions & { cache?: boolean },
 >(item: Spotify.Item, options?: TOptions): SearchResult | undefined {
@@ -242,8 +264,12 @@ export async function searchSong<
     searchLastfm(item, options),
   ]);
 
+  const musicbrainz = lastfm
+    ? await searchMusicbrainz(lastfm, options)
+    : undefined;
+
   progress?.();
-  return { track, youtube, lastfm };
+  return { track, youtube, lastfm, musicbrainz };
 }
 
 export async function searchSongs<TOptions extends SpotiOptions>(
