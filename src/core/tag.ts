@@ -12,7 +12,7 @@ import { getSpotifyTracks, searchSpotifyTracks } from "../utils/spotify";
 import { stringifyManifest } from "../utils/stringify";
 import { addTrackTags } from "../utils/tags";
 import chalk from "chalk";
-import { map } from "lodash-es";
+import { find, map } from "lodash-es";
 
 export type TagArguments = [string];
 
@@ -87,8 +87,13 @@ export const tag: ActionHandler<TagArguments, TagOptions> = async <
   const items = map(tracks, 'track').map((item) => ({ item })) as Spotify.Item[];
   const results = await searchSongs(items, options);
   const targets = prepareTracks(map(tracks, "track"), results, options);
+  const tags = await addTrackTags(targets, options);
 
-  await addTrackTags(targets, options);
+  for (const file of manifest.files) {
+    if (file.item) {
+      file.tagging = find(tags, ["source.item.id", file.item.item.id]);
+    }
+  }
 
   const info = await stringifyManifest(manifest, {
     ...options,

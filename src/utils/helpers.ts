@@ -8,3 +8,12 @@ export function mergeAndConcat<TType extends object>(
     if (isArray(a)) return a.concat(b);
   });
 }
+
+export function sortByKeys<TType extends object>(object: TType): TType {
+  const keys = Object.keys(object).sort();
+
+  return keys.reduce(
+    (result, key) => ({ ...result, [key]: object[key as keyof typeof object] }),
+    {} as TType
+  );
+}

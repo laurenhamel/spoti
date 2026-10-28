@@ -11,10 +11,12 @@ import {
   type YoutubeSearchStringifier,
 } from "../types/stringify";
 import { Format } from "./format";
+import { sortByKeys } from "./helpers";
 import { Library } from "./library";
 import { pool } from "./promise";
 import chalk from "chalk";
 import Table from "cli-table3";
+import { diffJson } from "diff";
 import stringify from "fast-safe-stringify";
 import { map, padStart, sortBy, zipObject } from "lodash-es";
 import { type Tags } from "node-id3";
@@ -270,6 +272,10 @@ export function stringifySearch<
   return callee<TOptions>(data, results, options, details);
 }
 
+function stringifyBuffer(buffer: Buffer): string {
+  return buffer.toString("utf8");
+}
+
 function stringifyTags<TOptions extends SpotiOptions>(
   tags: Tags = {},
   _options?: TOptions
@@ -284,7 +290,12 @@ function stringifyTags<TOptions extends SpotiOptions>(
         case "userDefinedText": {
           const keys = map(value, "description");
           const values = map(value, "value");
-          return zipObject(keys, values);
+          return sortByKeys(zipObject(keys, values));
+        }
+        case "uniqueFileIdentifier": {
+          const keys = map(value, "ownerIdentifier");
+          const values = map(value, "identifier").map(stringifyBuffer);
+          return sortByKeys(zipObject(keys, values));
         }
         case "raw": {
           return;
@@ -296,6 +307,23 @@ function stringifyTags<TOptions extends SpotiOptions>(
     },
     2
   );
+}
+
+function stringifyTagsDiff<TOptions extends SpotiOptions>(
+  tags: Tags = {},
+  patch: Tags = {},
+  options?: TOptions
+): string {
+  const source = stringifyTags(tags, options);
+  const dest = stringifyTags(patch, options);
+  const diff = diffJson(source, dest);
+
+  return diff
+    .map((line) => {
+      const color = line.added ? chalk.green : line.removed ? chalk.red : chalk;
+      return color(line.value);
+    })
+    .join("");
 }
 
 export async function stringifyManifest<
@@ -352,7 +380,12 @@ export async function stringifyManifest<
           ? [
               [Heading.Id, item.id],
               [Heading.Duration, Format.duration(item.duration)],
-              [Heading.Tags, stringifyTags(item.tags)],
+              [
+                Heading.Tags,
+                options?.dry
+                  ? stringifyTagsDiff(item.tags, item.tagging?.tags, options)
+                  : stringifyTags(item.tagging?.tags ?? item.tags, options),
+              ],
             ]
           : []),
         ...stringifyDetails(details)
