@@ -5,11 +5,11 @@ import {
   type LibraryMetadata,
   type LibraryManifest,
 } from "../types/library";
+import { type SearchResult } from "../types/search";
 import {
   type SpotifyTypeStringifier,
   type YoutubeSearchStringifier,
 } from "../types/stringify";
-import { type YoutubeSearchResult } from "../types/youtube";
 import { Format } from "./format";
 import { Library } from "./library";
 import { pool } from "./promise";
@@ -63,14 +63,14 @@ const stringifyTrackSearch: YoutubeSearchStringifier<Spotify.Type.TRACK> = (
   details
 ) => {
   const { id, name, artists } = data;
-  const { query, result } = results[0] ?? {};
+  const { youtube } = results[0] ?? {};
 
   const head = new Table({
     wordWrap: true,
     colWidths: [14],
   });
 
-  head.push([chalk.bold("Query"), query], ...stringifyDetails(details));
+  head.push(...stringifyDetails(details));
 
   const body = new Table({
     wordWrap: true,
@@ -89,15 +89,15 @@ const stringifyTrackSearch: YoutubeSearchStringifier<Spotify.Type.TRACK> = (
   });
 
   body.push([
-    [chalk.green(id), chalk.red(result?.id)].join("\n"),
-    [chalk.green(name), chalk.red(result?.title)].join("\n"),
+    [chalk.green(id), chalk.red(youtube?.id)].join("\n"),
+    [chalk.green(name), chalk.red(youtube?.title)].join("\n"),
     [
       chalk.green(map(artists, "name").join(", ")),
-      chalk.red(map(result?.artists ?? [], "name").join(", ")),
+      chalk.red(map(youtube?.artists ?? [], "name").join(", ")),
     ].join("\n"),
     [
       chalk.green(Format.getDuration(data)),
-      chalk.red(result?.duration?.text),
+      chalk.red(youtube?.duration?.text),
     ].join("\n"),
   ]);
 
@@ -201,24 +201,20 @@ const stringifyPlaylistSearch: YoutubeSearchStringifier<
   });
 
   for (let i = 0; i < length; i++) {
-    const { track, query, result } = results[i];
+    const { track, youtube } = results[i];
     const count = padStart(`${i + 1}`, padding, "0");
 
     body.push([
       count,
-      [chalk.green(track.id), chalk.red(result?.id)].join("\n"),
-      [
-        chalk.green(track.name),
-        chalk.red(result?.title),
-        chalk.gray(`"${query}"`),
-      ].join("\n"),
+      [chalk.green(track.id), chalk.red(youtube?.id)].join("\n"),
+      [chalk.green(track.name), chalk.red(youtube?.title)].join("\n"),
       [
         chalk.green(map(track.artists, "name").join(", ")),
-        chalk.red(map(result?.artists ?? [], "name").join(", ")),
+        chalk.red(map(youtube?.artists ?? [], "name").join(", ")),
       ].join("\n"),
       [
         chalk.green(Format.getDuration(track)),
-        chalk.red(result?.duration?.text),
+        chalk.red(youtube?.duration?.text),
       ].join("\n"),
     ]);
   }
@@ -255,7 +251,7 @@ export function stringifySearch<
 >(
   type: TType,
   data: Spotify.ModelOf<TType>,
-  results: YoutubeSearchResult[],
+  results: SearchResult[],
   options: TOptions,
   details?: Record<string, Primitive>
 ): string {
