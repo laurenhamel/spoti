@@ -60,6 +60,14 @@ export interface SpotiYoutubeConfiguration {
 }
 
 export interface SpotiLastfmConfiguration {
+  /**
+   * Whether Last.fm should be used as a source for tag data
+   * @defaultValue true
+   */
+  enabled?: boolean;
+  /**
+   * Credentials for the Last.fm API
+   */
   api?: {
     key?: string;
     secret?: string;

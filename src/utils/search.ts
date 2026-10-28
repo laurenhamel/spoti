@@ -14,7 +14,7 @@ import { Progress } from "./progress";
 import { drain } from "./promise";
 import chalk from "chalk";
 import Fuse from "fuse.js";
-import { find, map, sum } from "lodash-es";
+import { defaultTo, find, map, sum } from "lodash-es";
 
 export function findBestSearchResult<TOptions extends SpotiOptions>(
   query: string,
@@ -196,6 +196,13 @@ async function searchYoutube<
 async function searchLastfm<
   TOptions extends SpotiOptions & { cache?: boolean },
 >(item: Spotify.Item, _options?: TOptions): Promise<Lastfm.Track | undefined> {
+  const enabled = defaultTo<boolean>(
+    getConfigurationKey("lastfm.enabled"),
+    true
+  );
+
+  if (!enabled) return;
+
   const { artists, name: track } = item.item;
   const artist = map(artists, "name").join(", ");
 
