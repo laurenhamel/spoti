@@ -25,6 +25,7 @@ export interface SpotiConfiguration extends Partial<SpotiOptions> {
   spotify?: SpotiSpotifyConfiguration;
   youtube?: SpotiYoutubeConfiguration;
   lastfm?: SpotiLastfmConfiguration;
+  musicbrainz?: SpotiMusicbrainzConfiguration;
   plugins?: SpotiPluginsConfiguration;
 }
 
@@ -72,6 +73,20 @@ export interface SpotiLastfmConfiguration {
     key?: string;
     secret?: string;
   };
+}
+
+export interface SpotiMusicbrainzConfiguration {
+  /**
+   * Whether MusicBrainz should be used as a source for tag data
+   * @remarks Requires Last.fm also be enabled for sourcing MusicBrainz IDs.
+   * @defaultValue true
+   */
+  enabled?: boolean;
+  /**
+   * The minimum number of votes a genre must have to be included in tags
+   * @defaultValue 3
+   */
+  genreThreshold?: number;
 }
 
 export enum SpotiConfigurationSource {

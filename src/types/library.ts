@@ -1,8 +1,10 @@
-import { type Spotify } from "../models";
-import { type AudioFormat } from "./audio";
-import { type SpotiOptions } from "./configuration";
-import { type VideoFormat } from "./video";
-import { type Tags } from "node-id3";
+import type { Spotify } from "../models";
+import type { AudioFormat } from "./audio";
+import type { SpotiOptions } from "./configuration";
+import type { DownloadResult, DownloadTarget } from "./download";
+import type { TaggingResult } from "./tag";
+import type { VideoFormat } from "./video";
+import type { Tags } from "node-id3";
 
 export interface LibraryMetadata {
   tags: Tags;
@@ -36,8 +38,13 @@ export interface LibraryItem extends LibrarySource {
   metadata: () => Promise<LibraryMetadata>;
 }
 
+export interface LibraryResult {
+  tagging?: TaggingResult<DownloadTarget | DownloadResult>;
+}
+
 export type LibraryFile = LibraryItem &
-  Partial<LibraryMetadata> & {
+  Partial<LibraryMetadata> &
+  Partial<LibraryResult> & {
     item?: Spotify.Item;
   };
 

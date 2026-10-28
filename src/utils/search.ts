@@ -10,6 +10,7 @@ import { YoutubeApi } from "../services/providers/YoutubeApi";
 import { type SpotiOptions } from "../types/configuration";
 import { type SearchOf, type SearchResult } from "../types/search";
 import { cache } from "./cache";
+import { getConfigurationKey } from "./configuration";
 import { Progress } from "./progress";
 import { drain } from "./promise";
 import chalk from "chalk";
@@ -220,6 +221,13 @@ async function searchMusicbrainz<
   item: Lastfm.Track,
   _options?: TOptions
 ): Promise<Musicbrainz.Recording | undefined> {
+  const enabled = defaultTo<boolean>(
+    getConfigurationKey("musicbrainz.enabled"),
+    true
+  );
+
+  if (!enabled) return;
+
   const { mbid: id } = item.track;
 
   try {

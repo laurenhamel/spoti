@@ -1,3 +1,4 @@
+import { type Lastfm, type Musicbrainz } from "../models";
 import { invokePlugins } from "../plugins";
 import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/configuration";
@@ -7,6 +8,7 @@ import { createLabel } from "../utils/console";
 import { Library } from "../utils/library";
 import { pool } from "../utils/promise";
 import { getConfigurationKey } from "./configuration";
+import { mergeAndConcat } from "./helpers";
 import { Progress } from "./progress";
 import chalk from "chalk";
 import {
@@ -19,13 +21,15 @@ import {
   trimStart,
   defaultTo,
   uniq,
-  trim,
+  upperFirst,
 } from "lodash-es";
 import fetch from "node-fetch";
 import { type Tags, TagConstants } from "node-id3";
 import { extname } from "node:path";
 
 export const DEFAULT_GENRE_DELIMITER = ";";
+
+export const DEFAULT_MUSICBRAINZ_GENRE_THRESHOLD = 3;
 
 async function generateImageTag(
   url: string,
@@ -46,15 +50,75 @@ async function generateImageTag(
   }
 }
 
+export function capitalizeGenre(value: string): string {
+  const capitalizeAfter = (value: string, separator: string): string => {
+    return value.trim().split(separator).map(upperFirst).join(separator);
+  };
+
+  const capitalizeWhere = (value: string, ...separators: string[]): string => {
+    return separators.reduce(
+      (value, separator) => capitalizeAfter(value, separator),
+      value
+    );
+  };
+
+  return capitalizeWhere(value, " ", "&", "-");
+}
+
 export function parseGenres(
   genres?: string | string[],
   delimiter: string = DEFAULT_GENRE_DELIMITER
 ): string[] {
   return uniq(
     compact(castArray(genres)).flatMap((genre) =>
-      uniq(genre.split(delimiter).map(trim))
+      uniq(genre.split(delimiter).map(capitalizeGenre))
     )
   );
+}
+
+export function parseMusicbrainzGenres(
+  musicbrainz?: Musicbrainz.Recording,
+  delimiter: string = DEFAULT_GENRE_DELIMITER
+): string[] {
+  const enabled = defaultTo<boolean>(
+    getConfigurationKey("musicbrainz.enabled"),
+    true
+  );
+
+  if (!enabled) return [];
+
+  const threshold = defaultTo<number>(
+    getConfigurationKey("musicbrainz.genreThreshold"),
+    DEFAULT_MUSICBRAINZ_GENRE_THRESHOLD
+  );
+
+  const recording = musicbrainz?.genres ?? [];
+  const artist = musicbrainz?.["artist-credit"][0]?.artist.genres ?? [];
+
+  const filterThreshold = (genre: Musicbrainz.Genre): boolean => {
+    return genre.count >= threshold;
+  };
+
+  return [
+    ...parseGenres(map(recording.filter(filterThreshold), "name"), delimiter),
+    ...parseGenres(map(artist.filter(filterThreshold), "name"), delimiter),
+  ];
+}
+
+export function parseLastfmGenres(
+  lastfm?: Lastfm.Track,
+  delimiter: string = DEFAULT_GENRE_DELIMITER
+): string[] {
+  const enabled = defaultTo<boolean>(
+    getConfigurationKey("lastfm.enabled"),
+    true
+  );
+
+  if (!enabled) return [];
+
+  const track = lastfm?.track.toptags.tag ?? [];
+
+  return [...parseGenres(map(track, "name"), delimiter)];
 }
 
 export function stringifyGenres(
@@ -72,22 +136,39 @@ function generateGenreTag(item: DownloadTarget): string | undefined {
 
   const { item: track, search } = item;
   const { artists } = track;
-  const { lastfm } = search;
+  const { lastfm, musicbrainz } = search;
 
   const genres = [
     ...parseGenres(artists[0].genres?.[0], delimiter),
-    ...parseGenres(map(lastfm?.track.toptags.tag ?? [], "name")),
+    ...parseLastfmGenres(lastfm, delimiter),
+    ...parseMusicbrainzGenres(musicbrainz, delimiter),
   ];
 
   return genres.length ? stringifyGenres(genres) : undefined;
 }
 
+export function generateMusicbrainzTags(
+  musicbrainz?: Musicbrainz.Recording
+): Tags {
+  return musicbrainz
+    ? {
+        uniqueFileIdentifier: [
+          {
+            ownerIdentifier: "http://musicbrainz.org",
+            identifier: Buffer.from(musicbrainz.id),
+          },
+        ],
+      }
+    : {};
+}
+
 export async function generateTrackTag(item: DownloadTarget): Promise<Tags> {
   const result = item as DownloadTarget & { tags: Tags };
 
-  const { item: track, download } = item;
+  const { item: track, download, search } = item;
   const { id } = track;
   const { file } = download;
+  const { musicbrainz } = search;
 
   const format =
     (download.result as DownloadResult)?.item.download.format ??
@@ -99,18 +180,21 @@ export async function generateTrackTag(item: DownloadTarget): Promise<Tags> {
       track.album.name
     );
 
-    const tags: Tags = {
-      title: track.name,
-      artist: map(track.artists, "name").join(", "),
-      album: track.album.name,
-      genre: generateGenreTag(item),
-      year: track.album.release_date.split("-")[0],
-      fileUrl: track.href,
-      trackNumber: track.track_number.toString(),
-      image,
-      // @TODO Use essentia.js for `initialKey` detection
-      // @TODO Use essentia.js for `bpm` detection
-    };
+    const tags: Tags = mergeAndConcat(
+      {
+        title: track.name,
+        artist: map(track.artists, "name").join(", "),
+        album: track.album.name,
+        genre: generateGenreTag(item),
+        year: track.album.release_date.split("-")[0],
+        fileUrl: track.href,
+        trackNumber: track.track_number.toString(),
+        image,
+        // @TODO Use essentia.js for `initialKey` detection
+        // @TODO Use essentia.js for `bpm` detection
+      },
+      generateMusicbrainzTags(musicbrainz)
+    );
 
     Library.assignId(tags, id);
 
@@ -170,17 +254,18 @@ export async function addTrackTag<
 
   const { title } = item.download;
   const scope = createLabel("tag");
-  const { id, path, tags } = await getTrackTag(source, options);
+  const { id, path, tags: patch } = await getTrackTag(source, options);
+  const { tags, save } = await Library.tag(path, patch, id);
 
   if (tags && !options?.dry) {
     try {
-      await Library.tag(path, tags, id);
+      await save();
       console.log(scope, chalk.green("✓"), title);
-      return { source, status: "passed" };
+      return { source, tags, status: "passed" };
     } catch (e) {
       const error = e as Error;
       console.log(scope, chalk.red("𐄂"), title);
-      return { source, status: "failed", error };
+      return { source, tags, status: "failed", error };
     } finally {
       progress?.();
     }
@@ -188,7 +273,7 @@ export async function addTrackTag<
 
   progress?.();
   console.log(scope, chalk.gray("✓"), title);
-  return { source, status: "skipped" };
+  return { source, tags, status: "skipped" };
 }
 
 export async function addTrackTags<

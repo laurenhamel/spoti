@@ -208,25 +208,33 @@ export class Library {
    */
   static async tag(
     file: string,
-    tags: Tags,
+    tags: Tags = {},
     id?: string,
     duration?: number,
     preserve: (keyof Tags)[] = ["genre", "bpm", "initialKey"]
-  ): Promise<void> {
+  ): Promise<{
+    tags?: Tags;
+    save: () => Promise<void>;
+  }> {
     const item = this.find(file);
 
     if (item) {
       const path = item.raw.path;
       const previous = await ID3.read(readFileSync(path));
       const next = merge({}, previous, tags, pick(previous, ...preserve));
-
       this.assignId(next, id);
       this.assignDuration(next, duration);
 
-      await ID3.update(next, path);
-
-      this.set(file, this.parse(file));
+      return {
+        tags: next,
+        save: async (): Promise<void> => {
+          await ID3.update(next, path);
+          this.set(file, this.parse(file));
+        },
+      };
     }
+
+    return { save: () => Promise.resolve() };
   }
 
   /**
