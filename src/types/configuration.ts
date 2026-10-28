@@ -4,6 +4,9 @@ import { type CamelCase, type PascalCase } from "type-fest";
 export interface SpotiOptions {
   [key: string]: any;
 
+  /**
+   * Whether to output more information to the console
+   */
   verbose: boolean;
 }
 
