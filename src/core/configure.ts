@@ -33,7 +33,7 @@ export const configure: ActionHandler<
   value?: string,
   config?: TOptions
 ) => {
-  const options = mergeOptions(CONFIGURE_DEFAULTS, config);
+  const options = await mergeOptions(CONFIGURE_DEFAULTS, config);
 
   const mode: "CLEAN" | "GET" | "SET" | "INSPECT" = value
     ? "SET"

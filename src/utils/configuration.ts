@@ -1,3 +1,4 @@
+import { invokePlugins } from "../plugins";
 import {
   SpotiConfigurationSource,
   type SpotiConfigurationLayer,
@@ -134,14 +135,18 @@ function reduceConfigurations<TConfiguration extends SpotiConfiguration>(
  * (i.e., the directory that the Spoti CLI is running in/from, usually
  * your music library folder).
  */
-export function loadConfigurations<TConfiguration extends SpotiConfiguration>(
+export async function loadConfigurations<
+  TConfiguration extends SpotiConfiguration,
+>(
   initial: Partial<TConfiguration> = {},
   options: Partial<TConfiguration> = {}
-): TConfiguration {
+): Promise<TConfiguration> {
   Configuration = detectConfigurations<TConfiguration>(initial, options).reduce(
     (result, { data }) => merge(result, data),
     {} as TConfiguration
   );
+
+  await invokePlugins("resolvedConfiguration", [Configuration]);
 
   return Configuration as TConfiguration;
 }

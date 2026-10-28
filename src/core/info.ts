@@ -21,7 +21,7 @@ export const info: ActionHandler<InfoArguments, InfoOptions> = async <
   url: string,
   config?: TOptions
 ) => {
-  const options = mergeOptions(INFO_DEFAULTS, config);
+  const options = await mergeOptions(INFO_DEFAULTS, config);
   const { type, id } = parseSpotifyURL(url);
 
   console.log(

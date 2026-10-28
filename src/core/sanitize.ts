@@ -31,7 +31,7 @@ export const sanitize: ActionHandler<
   file?: string,
   config?: TOptions
 ) => {
-  const options = mergeOptions(SANITIZE_DEFAULTS, config);
+  const options = await mergeOptions(SANITIZE_DEFAULTS, config);
   const manifest = await Library.manifest(file, options);
 
   const progress = new Progress({

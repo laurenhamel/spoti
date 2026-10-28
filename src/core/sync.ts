@@ -41,7 +41,7 @@ export const sync: ActionHandler<SyncArguments, SyncOptions> = async <
   file?: string,
   config?: TOptions
 ) => {
-  const options = mergeOptions(SYNC_DEFAULTS, config);
+  const options = await mergeOptions(SYNC_DEFAULTS, config);
 
   // URL provided
   if (isSpotifyURL(query)) {

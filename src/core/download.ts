@@ -44,7 +44,7 @@ export const download: ActionHandler<
   url: string,
   config?: TOptions
 ) => {
-  const options = mergeOptions(DOWNLOAD_DEFAULTS, config);
+  const options = await mergeOptions(DOWNLOAD_DEFAULTS, config);
   const { type, id } = parseSpotifyURL(url);
 
   if (![Spotify.Type.PLAYLIST, Spotify.Type.TRACK].includes(type)) {

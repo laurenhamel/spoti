@@ -26,7 +26,7 @@ export const library: ActionHandler<LibraryArguments, LibraryOptions> = async <
   file?: string,
   config?: TOptions
 ) => {
-  const options = mergeOptions(LIBRARY_DEFAULTS, config);
+  const options = await mergeOptions(LIBRARY_DEFAULTS, config);
   const manifest = await Library.manifest(file, options);
 
   const progress = new Progress({

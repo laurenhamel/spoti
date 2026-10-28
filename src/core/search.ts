@@ -25,7 +25,7 @@ export const search: ActionHandler<SearchArguments, SearchOptions> = async <
   url: string,
   config?: TOptions
 ) => {
-  const options = mergeOptions(SEARCH_DEFAULTS, config);
+  const options = await mergeOptions(SEARCH_DEFAULTS, config);
   const { type, id } = parseSpotifyURL(url);
 
   console.log(`Searching for ${chalk.magenta(type)} (${chalk.blue(id)})…`);

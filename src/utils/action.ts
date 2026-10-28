@@ -46,10 +46,10 @@ export function detectOptions<TOptions extends SpotiOptions>(
   return detectConfigurations<TOptions>(defaults, overrides);
 }
 
-export function mergeOptions<TOptions extends SpotiOptions>(
+export async function mergeOptions<TOptions extends SpotiOptions>(
   defaults?: Partial<TOptions>,
   overrides?: Partial<TOptions>
-): TOptions {
+): Promise<TOptions> {
   return loadConfigurations<TOptions>(defaults, overrides);
 }
 

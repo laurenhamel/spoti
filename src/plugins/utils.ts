@@ -70,7 +70,7 @@ export async function invokePlugins<
   const plugins = prioritizePlugins(...Array.from(registry.values()));
 
   for (const plugin of plugins) {
-    // eslint-disable-next-line prefer-spread
-    await plugin[hook]?.apply(plugin, params);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+    await (plugin[hook] as Function)?.apply(plugin, params);
   }
 }

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { SpotiConfiguration } from "../types/configuration";
 import type { DownloadTarget } from "../types/download";
 import type { Tags } from "node-id3";
 import type { CamelCase, Class, PascalCase } from "type-fest";
@@ -39,6 +40,11 @@ export interface PluginMetadata {
 }
 
 export interface PluginHooks {
+  /**
+   * Provides the fully resolved configuration object when ready
+   * @remarks Configuration objects will be empty in plugin constructors.
+   */
+  resolvedConfiguration?: PluginHook<[SpotiConfiguration], void>;
   /**
    * Enables transforming track tags before writing them to the download file.
    * @remarks Tags must be mutated in place.

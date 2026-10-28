@@ -33,7 +33,7 @@ export const tag: ActionHandler<TagArguments, TagOptions> = async <
   file?: string,
   config?: TOptions
 ) => {
-  const options = mergeOptions(TAG_DEFAULTS, config);
+  const options = await mergeOptions(TAG_DEFAULTS, config);
   const manifest = await Library.manifest(file, options);
 
   const scanning = new Progress({

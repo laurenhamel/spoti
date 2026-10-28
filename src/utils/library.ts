@@ -59,8 +59,8 @@ export class Library {
     return this.__options;
   }
 
-  static set options(options: LibraryOptions) {
-    this.__options = mergeOptions(this.__options, options);
+  static async opts(options: LibraryOptions): Promise<void> {
+    this.__options = await mergeOptions(this.__options, options);
   }
 
   /**
@@ -71,9 +71,9 @@ export class Library {
     dir: string,
     options: TOptions = {} as TOptions
   ): Promise<boolean> {
+    await this.opts(options as unknown as LibraryOptions);
     this.dir = dir;
     this.files = this.scan();
-    this.options = options as unknown as LibraryOptions;
     this.library = await this.process(this.files);
     this.__mounted.resolve(true);
 
