@@ -14,6 +14,7 @@ import { Audio } from "./audio";
 import { createLabel } from "./console";
 import { prepareDownloadTargets } from "./downloads";
 import { Format } from "./format";
+import { mergeAndConcat } from "./helpers";
 import { Metadata } from "./metadata";
 import { Progress } from "./progress";
 import { pool, Deferred } from "./promise";
@@ -22,7 +23,7 @@ import { getSpotifyType } from "./spotify";
 import { generateTrackTag } from "./tags";
 import chalk from "chalk";
 import { sync as glob } from "glob";
-import { find, get, isNil, merge, pick, noop } from "lodash-es";
+import { find, get, isNil, noop, uniqBy, set } from "lodash-es";
 import id3, { type Tags } from "node-id3";
 import { spawnSync } from "node:child_process";
 import {
@@ -211,7 +212,9 @@ export class Library {
     tags: Tags = {},
     id?: string,
     duration?: number,
-    preserve: (keyof Tags)[] = ["genre", "bpm", "initialKey"]
+    // @TODO Make configurable
+    // preserve: (keyof Tags)[] = ["genre", "bpm", "initialKey"]
+    preserve: (keyof Tags)[] = ["bpm", "initialKey"]
   ): Promise<{
     tags?: Tags;
     save: () => Promise<void>;
@@ -220,8 +223,8 @@ export class Library {
 
     if (item) {
       const path = item.raw.path;
-      const previous = await ID3.read(readFileSync(path));
-      const next = merge({}, previous, tags, pick(previous, ...preserve));
+      const previous = await ID3.read(readFileSync(path), { noRaw: true });
+      const next = this.mergeTags(previous, tags, preserve);
       this.assignId(next, id);
       this.assignDuration(next, duration);
 
@@ -350,6 +353,38 @@ export class Library {
   }
 
   static readonly ID = "spoti.id" as const;
+
+  /**
+   * Merges tag patches into existing ID3 tags, preserving the value of any identified tags
+   * @param previous - The previous set of tags
+   * @param tags - The patch of tags to apply
+   */
+  static mergeTags(
+    previous: Tags,
+    tags: Tags,
+    // @TODO Make configurable
+    // preserve: (keyof Tags)[] = ["genre", "bpm", "initialKey"]
+    preserve: (keyof Tags)[] = ["bpm", "initialKey"]
+  ): Tags {
+    const next = mergeAndConcat({ ...previous }, tags);
+
+    if ("userDefinedText" in next) {
+      next.userDefinedText = uniqBy(next.userDefinedText, "description");
+    }
+
+    if ("uniqueFileIdentifier" in next) {
+      next.uniqueFileIdentifier = uniqBy(
+        next.uniqueFileIdentifier,
+        "description"
+      );
+    }
+
+    for (const key of preserve) {
+      set(next, key, get(preserve, key));
+    }
+
+    return next;
+  }
 
   /**
    * Add Spotify ID metadata as an ID3 tag

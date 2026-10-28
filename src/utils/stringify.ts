@@ -314,9 +314,9 @@ function stringifyTagsDiff<TOptions extends SpotiOptions>(
   patch: Tags = {},
   options?: TOptions
 ): string {
-  const source = stringifyTags(tags, options);
+  const src = stringifyTags(tags, options);
   const dest = stringifyTags(patch, options);
-  const diff = diffJson(source, dest);
+  const diff = diffJson(src, dest);
 
   return diff
     .map((line) => {
