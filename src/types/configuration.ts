@@ -10,9 +10,15 @@ export interface SpotiOptions {
 export interface SpotiConfiguration extends Partial<SpotiOptions> {
   [key: string]: any;
 
-  /** @defaultValue false */
+  /**
+   * Whether to output debugging information
+   * @defaultValue false
+   */
   debug?: boolean;
-  /** @defaultValue true */
+  /**
+   * Whether to display progress bars during Spoti operations
+   * @defaultValue true
+   */
   progress?: boolean;
 
   tags?: SpotiTagsConfiguration;
@@ -27,11 +33,17 @@ export interface SpotiPluginsConfiguration {
 }
 
 export interface SpotiTagsConfiguration {
-  /** @defaultValue ';' */
+  /**
+   * The delimiter used between multiple genre tags
+   * @defaultValue ';'
+   */
   genreDelimiter?: string;
 }
 
 export interface SpotiSpotifyConfiguration {
+  /**
+   * Credentials for the Spotify API
+   */
   api?: {
     key?: string;
     secret?: string;
@@ -39,6 +51,9 @@ export interface SpotiSpotifyConfiguration {
 }
 
 export interface SpotiYoutubeConfiguration {
+  /**
+   * Credentials for the YouTube API
+   */
   api?: {
     key?: string;
   };
