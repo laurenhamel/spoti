@@ -1,6 +1,6 @@
 import { type Spotify } from "../models";
 import { type SpotiOptions } from "./configuration";
-import { type YoutubeSearchResult } from "./youtube";
+import { type SearchResult } from "./search";
 import { type Primitive } from "type-fest";
 
 export type SpotifyTypeStringifier<TType extends Spotify.Type> = <
@@ -15,7 +15,7 @@ export type YoutubeSearchStringifier<TType extends Spotify.Type> = <
   TOptions extends SpotiOptions,
 >(
   data: Spotify.ModelOf<TType>,
-  results: YoutubeSearchResult[],
+  results: SearchResult[],
   options?: TOptions,
   details?: Record<string, Primitive>
 ) => string;
