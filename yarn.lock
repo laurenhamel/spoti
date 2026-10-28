@@ -2400,6 +2400,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jsonc-simple-parser@npm:3.0.0":
+  version: 3.0.0
+  resolution: "jsonc-simple-parser@npm:3.0.0"
+  dependencies:
+    reghex: "npm:^3.0.2"
+  checksum: 10c0/feaa19019b7c512d90d3331eecab4eb15e38db49f5ac72db81106b7145fd1fa034dd88781daaed88566655ccfb04d010397fb4e1e463b32b0be5383d8a7801d4
+  languageName: node
+  linkType: hard
+
 "katex@npm:^0.16.0":
   version: 0.16.47
   resolution: "katex@npm:0.16.47"
@@ -3368,6 +3377,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"reghex@npm:^3.0.2":
+  version: 3.0.2
+  resolution: "reghex@npm:3.0.2"
+  checksum: 10c0/dabc5999fd2dc3462b8ab04a603dc178c108bd9d1491e1e2a647a96a807cf6cae3b89ae3620000432c1d4e49869fac3fc8a8600f9acfc9f0e70d0971f98beb35
+  languageName: node
+  linkType: hard
+
 "resolve-pkg-maps@npm:^1.0.0":
   version: 1.0.0
   resolution: "resolve-pkg-maps@npm:1.0.0"
@@ -3501,6 +3517,7 @@ __metadata:
     glob: "npm:13.0.6"
     globals: "npm:17.11.0"
     jiti: "npm:2.7.0"
+    jsonc-simple-parser: "npm:3.0.0"
     lodash-es: "npm:4.18.1"
     multi-progress-bars: "npm:5.0.3"
     node-fetch: "npm:3.3.2"

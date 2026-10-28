@@ -15,7 +15,9 @@ tmp/
 
 .env
 .spotirc.*.json
+.spotirc.*.jsonc
 !.spotirc.default.json
+!.spotirc.default.jsonc
 
 .spoti/*
 .youtube/*

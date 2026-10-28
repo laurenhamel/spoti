@@ -5,6 +5,7 @@ import {
 } from "../types/configuration";
 import { convertEnvs } from "./environment";
 import { locateUser, locateRoot, resolveRoot } from "./path";
+import JSONC from "jsonc-simple-parser";
 import { compact, get, merge } from "lodash-es";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -13,17 +14,27 @@ let Configuration: SpotiConfiguration;
 /**
  * Supported project-local default configuration files.
  */
-const CONFIGURATION_DEFAULTS = [".spotirc.default.json", ".spotirc.local.json"];
+const CONFIGURATION_DEFAULTS = [
+  ".spotirc.default.json",
+  ".spotirc.default.jsonc",
+  ".spotirc.local.json",
+  ".spotirc.local.jsonc",
+];
 
 /**
- * Supported project-local user configuration file.
+ * Supported project-local user configuration files.
  */
-const CONFIGURATION_USER = ".spotirc.user.json";
+const CONFIGURATION_USER = [".spotirc.user.json", ".spotirc.user.jsonc"];
 
 /**
  * Supported configuration file names, in order of preference.
  */
-const CONFIGURATION_FILES = [".spotirc", ".spotirc.json", CONFIGURATION_USER];
+const CONFIGURATION_FILES = [
+  ".spotirc",
+  ".spotirc.json",
+  ".spotirc.jsonc",
+  ...CONFIGURATION_USER,
+];
 
 /**
  * Locates default configuration files in the project root
@@ -44,7 +55,7 @@ function locateDefaultConfigurations(): string[] {
  * directory where the CLI is running from, in that order.
  */
 function locateUserConfigurations(): string[] {
-  return CONFIGURATION_FILES.flatMap(locateUser);
+  return compact(CONFIGURATION_FILES.flatMap(locateUser));
 }
 
 /**
@@ -56,19 +67,21 @@ function readConfiguration<TConfiguration extends SpotiConfiguration>(
 ): TConfiguration {
   if (file && existsSync(file)) {
     const json = readFileSync(file, "utf8");
-    return JSON.parse(json) as TConfiguration;
+    return JSONC.parse(json) as TConfiguration;
   }
 
   return fallback;
 }
 
 /**
- * Readds the user configuration to a project-local user configuration file.
+ * Reads the user configuration to a project-local user configuration file.
  */
 export function readUserConfiguration<
   TConfiguration extends SpotiConfiguration,
 >(): TConfiguration {
-  return readConfiguration<TConfiguration>(resolveRoot(CONFIGURATION_USER));
+  const paths = CONFIGURATION_USER.map((file) => resolveRoot(file));
+  const src = paths.find((path) => existsSync(path));
+  return readConfiguration<TConfiguration>(src);
 }
 
 /**
@@ -78,7 +91,9 @@ export function saveUserConfiguration<
   TConfiguration extends SpotiConfiguration,
 >(config: TConfiguration = {} as TConfiguration): void {
   const json = JSON.stringify(config, null, 2);
-  writeFileSync(resolveRoot(CONFIGURATION_USER), json);
+  const paths = CONFIGURATION_USER.map((file) => resolveRoot(file));
+  const dest = paths.find((path) => existsSync(path)) ?? paths[0];
+  writeFileSync(dest, json);
 }
 
 /**
