@@ -1462,6 +1462,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"diff@npm:9.0.0":
+  version: 9.0.0
+  resolution: "diff@npm:9.0.0"
+  checksum: 10c0/a971cc88f66071a33bd3942db2f51b57d484e9856265ae45cf44fb28ab2fde91f132d9c26d8be0fb6082d2be94d29e1295c1adb251b7461935d6a2dd304cd161
+  languageName: node
+  linkType: hard
+
 "dotenv@npm:17.4.2":
   version: 17.4.2
   resolution: "dotenv@npm:17.4.2"
@@ -3481,6 +3488,7 @@ __metadata:
     cli-table3: "npm:0.6.5"
     commander: "npm:15.0.0"
     default-browser: "npm:5.5.1"
+    diff: "npm:9.0.0"
     dotenv: "npm:17.4.2"
     eslint: "npm:10.9.0"
     eslint-config-prettier: "npm:10.1.8"
