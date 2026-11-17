@@ -18,6 +18,7 @@ Spoti is a CLI tool that allows you to download Spotify tracks and playlists and
 - `ffmpeg`
 - `ffprobe`
 - `yt-dlp`
+- `chromium` (for `playwright`)
 
 ## Getting Started
 
