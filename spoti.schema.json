@@ -1,0 +1,169 @@
+{
+  "$ref": "#/definitions/SpotiConfigurationSchema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "GenreMapperConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "mapping": {
+          "$ref": "#/definitions/GenreMapperMapping"
+        },
+        "sources": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "GenreMapperMapping": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          {
+            "type": "string"
+          }
+        ]
+      },
+      "type": "object"
+    },
+    "GenreMapperPluginConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "com.spoti.com.spoti.GenreMapper": {
+          "$ref": "#/definitions/GenreMapperConfiguration"
+        }
+      },
+      "required": ["com.spoti.com.spoti.GenreMapper"],
+      "type": "object"
+    },
+    "SpotiConfigurationSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "$schema": {
+          "description": "A JSON Schema URI that describes the structure of this configuration object",
+          "type": "string"
+        },
+        "debug": {
+          "description": "Whether to output debugging information",
+          "type": "boolean"
+        },
+        "lastfm": {
+          "$ref": "#/definitions/SpotiLastfmConfiguration"
+        },
+        "musicbrainz": {
+          "$ref": "#/definitions/SpotiMusicbrainzConfiguration"
+        },
+        "plugins": {
+          "$ref": "#/definitions/GenreMapperPluginConfiguration"
+        },
+        "progress": {
+          "description": "Whether to display progress bars during Spoti operations",
+          "type": "boolean"
+        },
+        "spotify": {
+          "$ref": "#/definitions/SpotiSpotifyConfiguration"
+        },
+        "tags": {
+          "$ref": "#/definitions/SpotiTagsConfiguration"
+        },
+        "verbose": {
+          "description": "Whether to output more information to the console",
+          "type": "boolean"
+        },
+        "youtube": {
+          "$ref": "#/definitions/SpotiYoutubeConfiguration"
+        }
+      },
+      "type": "object"
+    },
+    "SpotiLastfmConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "api": {
+          "additionalProperties": false,
+          "description": "Credentials for the Last.fm API",
+          "properties": {
+            "key": {
+              "type": "string"
+            },
+            "secret": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "enabled": {
+          "description": "Whether Last.fm should be used as a source for tag data",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "SpotiMusicbrainzConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "description": "Whether MusicBrainz should be used as a source for tag data",
+          "type": "boolean"
+        },
+        "genreThreshold": {
+          "description": "The minimum number of votes a genre must have to be included in tags",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "SpotiSpotifyConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "api": {
+          "additionalProperties": false,
+          "description": "Credentials for the Spotify API",
+          "properties": {
+            "key": {
+              "type": "string"
+            },
+            "secret": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "SpotiTagsConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "genreDelimiter": {
+          "description": "The delimiter used between multiple genre tags",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "SpotiYoutubeConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "api": {
+          "additionalProperties": false,
+          "description": "Credentials for the YouTube API",
+          "properties": {
+            "key": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    }
+  }
+}

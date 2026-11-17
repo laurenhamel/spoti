@@ -15,9 +15,14 @@
   ],
   "scripts": {
     "format": "yarn format:check --write; yarn lint:fix --quiet",
+    "format:file": "yarn format:check:file --write \"$@\"; yarn lint:fix:file --quiet \"$@\"",
     "format:check": "prettier . \"$@\"",
+    "format:check:file": "prettier \"$@\"",
     "lint": "eslint . \"$@\"",
+    "lint:file": "eslint \"$@\"",
     "lint:fix": "yarn lint --fix \"$@\"",
+    "lint:fix:file": "yarn lint:file --fix \"$@\"",
+    "schema": "typescript-json-schema --required --noExtraProps --topRef --out ./spoti.schema.json src/types/schema.ts SpotiConfigurationSchema; yarn format:file ./spoti.schema.json",
     "test": "echo \"Error: no test specified\" && exit 1",
     "typecheck": "tsc \"$@\""
   },
@@ -54,7 +59,8 @@
     "type-fest": "5.8.0",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "typescript-7": "npm:typescript@7.0.2",
-    "typescript-eslint": "8.67.0"
+    "typescript-eslint": "8.67.0",
+    "typescript-json-schema": "0.68.0"
   },
   "dependencies": {
     "chalk": "6.0.0",
