@@ -2,7 +2,7 @@ import { type SpotiConfiguration } from "../types/configuration";
 import { isDebuggingEnabled } from "./console";
 import { locateUser } from "./path";
 import dotenv from "dotenv";
-import { camelCase, set } from "lodash-es";
+import { camelCase, isEmpty, set } from "lodash-es";
 
 const ENV_PREFIX = "SPOTI_";
 
@@ -41,4 +41,16 @@ export function convertEnvs<
   }
 
   return result;
+}
+
+/**
+ * Ensure the given environment variable is set or uses the fallback given
+ * @param variable - The environment variable key to lookup
+ * @param fallback - A fallback value to use for the environment variable
+ */
+export function ensureEnvVar<TValue extends boolean | number | string>(variable: string, fallback: TValue): TValue {
+  let value: TValue | undefined = variable in process.env ? process.env[variable] as TValue : undefined;
+  value = !value || isEmpty(value) ? fallback : value;
+  process.env[variable] = `${value}`;
+  return value;
 }
