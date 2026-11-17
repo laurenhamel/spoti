@@ -1,7 +1,7 @@
 import { type Command } from "commander";
 import { globSync } from "./glob";
 import { dirname, resolve, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -20,7 +20,8 @@ export function listCommands(): string[] {
  * Imports a command by file path
  */
 export async function importCommand(file: string): Promise<Command> {
-  const imported = (await import(file)).default;
+  const url = pathToFileURL(file).href;
+  const imported = (await import(url)).default;
   return imported as Command;
 }
 
