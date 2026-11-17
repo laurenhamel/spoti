@@ -2,7 +2,7 @@ import { type SpotiOptions } from "../types/configuration";
 import { resolveBin } from "./path";
 import { runSync } from "./process";
 import chalk from "chalk";
-import { globSync } from "glob";
+import { globSync } from "./glob";
 import { template, isEmpty, once } from "lodash-es";
 import { platform, homedir } from "node:os";
 import semver from "semver";
