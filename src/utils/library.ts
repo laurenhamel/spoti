@@ -22,7 +22,7 @@ import { searchType } from "./search";
 import { getSpotifyType } from "./spotify";
 import { generateTrackTag } from "./tags";
 import chalk from "chalk";
-import { sync as glob } from "glob";
+import { globSync } from "../utils/glob";
 import { find, get, isNil, noop, uniqBy, set } from "lodash-es";
 import id3, { type Tags } from "node-id3";
 import { spawnSync } from "node:child_process";
@@ -106,7 +106,7 @@ export class Library {
     }
 
     const files = patterns.flatMap((pattern) =>
-      glob(pattern, {
+      globSync(pattern, {
         nodir: true,
         dot: true,
         cwd: this.dir,
