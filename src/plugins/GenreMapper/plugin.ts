@@ -1,18 +1,17 @@
 import { type DownloadTarget } from "../../types/download";
 import { getConfigurationKey } from "../../utils/configuration";
 import { DEFAULT_GENRE_DELIMITER } from "../../utils/tags";
-import {
-  PluginEnforcement,
-  type PluginName,
-  type PluginPrototype,
-} from "../types";
+import { PluginEnforcement, type PluginPrototype } from "../types";
 import { getPluginConfiguration } from "../utils";
-import { type GenreMapperConfiguration } from "./types";
+import {
+  type GenreMapperConfiguration,
+  type GenreMapperPluginName,
+} from "./types";
 import { mapGenres, parseMapping, readGenres, writeGenres } from "./utils";
 import { defaultTo } from "lodash-es";
 import { type Tags } from "node-id3";
 
-const PLUGIN_NAME: PluginName = "com.spoti.GenreMapper";
+const PLUGIN_NAME: GenreMapperPluginName = "com.spoti.GenreMapper";
 
 export class GenreMapper implements PluginPrototype {
   name = PLUGIN_NAME;

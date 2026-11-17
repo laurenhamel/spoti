@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { type CamelCase, type PascalCase } from "type-fest";
+import type { SpotiPluginsRegistry } from "../plugins/registry";
+import type { CamelCase, PascalCase } from "type-fest";
 
 export interface SpotiOptions {
   [key: string]: any;
@@ -29,12 +30,16 @@ export interface SpotiConfiguration extends Partial<SpotiOptions> {
   youtube?: SpotiYoutubeConfiguration;
   lastfm?: SpotiLastfmConfiguration;
   musicbrainz?: SpotiMusicbrainzConfiguration;
-  plugins?: SpotiPluginsConfiguration;
+  plugins?: SpotiPluginsConfiguration<SpotiPluginsRegistry>;
 }
 
-export interface SpotiPluginsConfiguration {
+interface AnySpotiPluginsConfiguration {
   [scope: `com.spoti.${CamelCase<string> | PascalCase<string>}`]: any;
 }
+
+export type SpotiPluginsConfiguration<
+  TPlugins extends AnySpotiPluginsConfiguration = AnySpotiPluginsConfiguration,
+> = TPlugins;
 
 export interface SpotiTagsConfiguration {
   /**

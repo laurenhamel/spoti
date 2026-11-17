@@ -1,10 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { SpotiConfiguration } from "../types/configuration";
 import type { DownloadTarget } from "../types/download";
+import type { SpotiPluginName } from "../types/plugin";
 import type { Tags } from "node-id3";
-import type { CamelCase, Class, PascalCase } from "type-fest";
-
-export type PluginName = `com.spoti.${CamelCase<string> | PascalCase<string>}`;
+import type { Class } from "type-fest";
 
 export interface PluginConstructor<
   TOptions extends AnyPluginOptions | undefined = undefined,
@@ -34,8 +33,10 @@ export enum PluginEnforcement {
   POST = "post",
 }
 
-export interface PluginMetadata {
-  name: PluginName;
+export interface PluginMetadata<
+  TName extends SpotiPluginName = SpotiPluginName,
+> {
+  name: TName;
   enforce?: PluginEnforcement;
 }
 
