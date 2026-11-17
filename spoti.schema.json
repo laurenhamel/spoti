@@ -36,11 +36,11 @@
     "GenreMapperPluginConfiguration": {
       "additionalProperties": false,
       "properties": {
-        "com.spoti.com.spoti.GenreMapper": {
+        "com.spoti.GenreMapper": {
           "$ref": "#/definitions/GenreMapperConfiguration"
         }
       },
-      "required": ["com.spoti.com.spoti.GenreMapper"],
+      "required": ["com.spoti.GenreMapper"],
       "type": "object"
     },
     "SpotiConfigurationSchema": {

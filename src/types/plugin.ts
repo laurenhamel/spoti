@@ -9,4 +9,4 @@ export type SpotiPluginName<
 export type SpotiPluginConfiguration<
   TName extends SpotiPluginName = SpotiPluginName,
   TConfiguration extends Record<string, any> = Record<string, any>,
-> = Record<SpotiPluginName<TName>, TConfiguration>;
+> = Record<TName, TConfiguration>;
