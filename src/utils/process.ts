@@ -46,6 +46,7 @@ export function runSync(command: string, options?: SpawnSyncOptions): string {
       {
         encoding: "utf8",
         env: process.env,
+        shell: true,
       },
       options
     )

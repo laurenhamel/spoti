@@ -1,9 +1,11 @@
 import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/configuration";
 import {
-  type SpotifyDownloadResult,
-  type SpotifyConversionResult,
-} from "../types/spotify";
+  type ConversionResult,
+} from "../types/convert";
+import {
+  type DownloadResult,
+} from "../types/download";
 import { type VideoFormat } from "../types/video";
 import { createLabel } from "../utils/console";
 import { Format } from "../utils/format";
@@ -12,7 +14,7 @@ import { Library } from "./library";
 import { Progress } from "./progress";
 import chalk from "chalk";
 import { trimStart } from "lodash-es";
-import { spawnSync } from "node:child_process";
+import { runSync } from "../utils/process";
 import { renameSync } from "node:fs";
 import { basename } from "node:path";
 import { extname } from "path";
@@ -20,10 +22,10 @@ import { extname } from "path";
 export async function convertAudioFile<
   TOptions extends SpotiOptions & { format?: AudioFormat },
 >(
-  source: SpotifyDownloadResult,
+  source: DownloadResult,
   options?: TOptions,
   progress?: () => void
-): Promise<SpotifyConversionResult> {
+): Promise<ConversionResult> {
   const scope = createLabel("convert");
   const { title } = source.item.download;
 
@@ -36,11 +38,9 @@ export async function convertAudioFile<
 
   const length = 75;
   const input =
-    source.item.download.result?.input?.path ??
     source.item.download.input?.path ??
     source.item.download.path;
   const output =
-    source.item.download.result?.output?.path ??
     source.item.download.output?.path ??
     source.item.download.path;
 
@@ -90,9 +90,9 @@ export async function convertAudioFile<
 }
 
 export async function convertAudioFiles<TOptions extends SpotiOptions>(
-  results: SpotifyDownloadResult[],
+  results: DownloadResult[],
   options?: TOptions
-): Promise<SpotifyConversionResult[]> {
+): Promise<ConversionResult[]> {
   const progress = new Progress({
     label: "Converting…",
     total: results.length,
@@ -158,17 +158,13 @@ export class Audio {
       output,
     ];
 
-    const { status, stderr } = spawnSync("ffmpeg", args, {
+    runSync("ffmpeg" + ' ' + args.join(' '), {
       shell: true,
       encoding: "utf-8",
       cwd: Library.dir,
     });
 
-    if (status === 0) {
-      Library.set(dest, Library.parse(dest));
-      Library.remove(src);
-    }
-
-    if (status === -1) throw new Error(stderr);
+    Library.set(dest, Library.parse(dest));
+    Library.remove(src);
   }
 }

@@ -25,7 +25,7 @@ import chalk from "chalk";
 import { globSync } from "../utils/glob";
 import { find, get, isNil, noop, uniqBy, set } from "lodash-es";
 import id3, { type Tags } from "node-id3";
-import { spawnSync } from "node:child_process";
+import { runSync } from "./process";
 import {
   createWriteStream,
   existsSync,
@@ -630,8 +630,8 @@ export class Library {
     }
 
     if (!duration && this.exists(file)) {
-      const { stdout } = spawnSync(
-        "ffprobe",
+      const stdout = runSync(
+        "ffprobe" + ' ' +
         [
           "-v",
           "error",
@@ -640,10 +640,9 @@ export class Library {
           "-of",
           "default=noprint_wrappers=1:nokey=1",
           `${name}`,
-        ],
+        ].join(' '),
         {
           cwd: this.dir,
-          encoding: "utf-8",
           shell: true,
         }
       );
