@@ -284,6 +284,11 @@ function stringifyTags<TOptions extends SpotiOptions>(
     tags,
     (key, value) => {
       switch (key) {
+        case "image": {
+          const { mime, type, description } = value;
+          const imageBuffer = '<Buffer>';
+          return { mime, type, description, imageBuffer };
+        }
         case "imageBuffer": {
           return "<Buffer>";
         }
