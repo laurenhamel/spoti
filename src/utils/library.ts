@@ -1,5 +1,5 @@
 import { AudioFormat } from "../types/audio";
-import { type SpotiOptions } from "../types/configuration";
+import { type SpotiConfiguration, type SpotiOptions } from "../types/configuration";
 import {
   type LibraryItem,
   type LibraryOptions,
@@ -36,6 +36,7 @@ import {
 } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { type Readable } from "node:stream";
+import { getConfigurationKey } from "./configuration";
 
 const { Promise: ID3 } = id3;
 
@@ -204,7 +205,7 @@ export class Library {
    * @param tags - The tags to save
    * @param id - The Spotify ID if available
    * @param duration - The duration if available
-   * @param preserve - A list of ID3 tags that should be preserved in the initial file when present
+   * @param preserve - A list of ID3 tags to preserve as is if/when set
    * @returns
    */
   static async tag(
@@ -212,19 +213,22 @@ export class Library {
     tags: Tags = {},
     id?: string,
     duration?: number,
-    // @TODO Make configurable
-    // preserve: (keyof Tags)[] = ["genre", "bpm", "initialKey"]
-    preserve: (keyof Tags)[] = ["bpm", "initialKey"]
+    preserve: NonNullable<SpotiConfiguration['tags']>['preserveTags'] = []
   ): Promise<{
     tags?: Tags;
     save: () => Promise<void>;
   }> {
     const item = this.find(file);
 
+    const preserved = [
+      ...((await getConfigurationKey('tags.preserveTags')) ?? []),
+      ...preserve,
+    ];
+
     if (item) {
       const path = item.raw.path;
       const previous = await ID3.read(readFileSync(path), { noRaw: true });
-      const next = this.mergeTags(previous, tags, preserve);
+      const next = this.mergeTags(previous, tags, preserved);
       this.assignId(next, id);
       this.assignDuration(next, duration);
 
@@ -358,13 +362,12 @@ export class Library {
    * Merges tag patches into existing ID3 tags, preserving the value of any identified tags
    * @param previous - The previous set of tags
    * @param tags - The patch of tags to apply
+   * @param preserve - A list of ID3 tags to preserve as is if/when set
    */
   static mergeTags(
     previous: Tags,
     tags: Tags,
-    // @TODO Make configurable
-    // preserve: (keyof Tags)[] = ["genre", "bpm", "initialKey"]
-    preserve: (keyof Tags)[] = ["bpm", "initialKey"]
+    preserve: NonNullable<SpotiConfiguration['tags']>['preserveTags'] = []
   ): Tags {
     const next = mergeAndConcat({ ...previous }, tags);
 

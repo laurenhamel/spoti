@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { Tags } from "node-id3";
 import type { SpotiPluginsRegistry } from "../plugins/registry";
 import type { CamelCase, PascalCase } from "type-fest";
 
@@ -47,6 +48,11 @@ export interface SpotiTagsConfiguration {
    * @defaultValue ';'
    */
   genreDelimiter?: string;
+  /**
+   * A list of tags to be preserved as is if/when already set
+   * @defaultValue ['bpm', 'initialKey']
+   */
+  preserveTags?: Exclude<keyof Tags, 'userDefinedText' | 'uniqueFileIdentifier' | 'generalObject'>[];
 }
 
 export interface SpotiSpotifyConfiguration {

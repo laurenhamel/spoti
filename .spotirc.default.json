@@ -1,3 +1,6 @@
 {
-  "$schema": "./spoti.schema.json"
+  "$schema": "./spoti.schema.json",
+  "tags": {
+    "preserveTags": ["bpm", "initialKey"]
+  }
 }
