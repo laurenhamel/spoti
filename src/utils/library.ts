@@ -33,6 +33,7 @@ import {
   rmSync,
   statSync,
   writeFileSync,
+  utimesSync
 } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { type Readable } from "node:stream";
@@ -236,6 +237,8 @@ export class Library {
         tags: next,
         save: async (): Promise<void> => {
           await ID3.update(next, path);
+          const now = new Date();
+          utimesSync(path, now, now);
           this.set(file, this.parse(file));
         },
       };
