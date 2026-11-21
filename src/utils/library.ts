@@ -191,13 +191,35 @@ export class Library {
     };
   }
 
+  private static __tags = new Map<string, Tags>();
+
   /**
    * Read ID3 tags of the given file
    * @param file - The file to read tags of
    * @returns
    */
   static async meta(file: string): Promise<Tags> {
-    return this.exists(file) ? ID3.read(this.path(file)) : {};
+    const path = this.path(file);
+
+    if (!this.__tags.has(path)) {
+      const tags = this.exists(path) ? ID3.read(path, { noRaw: true }) : {};
+      this.__tags.set(path, tags);
+    }
+
+    return this.__tags.get(path)!;
+  }
+
+  /**
+   * Saves ID3 tags to tag cache
+   * @param file - The file to cache tags for
+   * @param tags - The tags to cache
+   */
+  static cacheMeta(file: string, tags: Tags): void {
+    const path = this.path(file);
+    
+    if (this.exists(path)) {
+      this.__tags.set(path, tags);
+    }
   }
 
   /**
@@ -228,7 +250,7 @@ export class Library {
 
     if (item) {
       const path = item.raw.path;
-      const previous = await ID3.read(readFileSync(path), { noRaw: true });
+      const previous = await this.meta(path);
       const next = this.mergeTags(previous, tags, preserved);
       this.assignId(next, id);
       this.assignDuration(next, duration);
@@ -239,6 +261,7 @@ export class Library {
           await ID3.update(next, path);
           const now = new Date();
           utimesSync(path, now, now);
+          this.cacheMeta(path, next);
           this.set(file, this.parse(file));
         },
       };
