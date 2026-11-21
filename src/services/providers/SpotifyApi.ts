@@ -92,7 +92,12 @@ const SpotifyApiService = new RestApi({
         };
       },
     }),
-    policy: new PolicyAdapter(),
+    policy: new PolicyAdapter({
+      rateLimit: {
+        limit: 1,
+        interval: 1000,
+      },
+    }),
     retry: new RetryAdapter(),
     pagination: new PaginationAdapter(),
   },
