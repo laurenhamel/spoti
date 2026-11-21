@@ -383,7 +383,7 @@ export class Library {
     }
 
     for (const key of preserve) {
-      set(next, key, get(preserve, key));
+      set(next, key, get(previous, key));
     }
 
     return next;
