@@ -1,6 +1,7 @@
 {
   "$schema": "./spoti.schema.json",
   "tags": {
+    "mergeGenres": true,
     "preserveTags": ["bpm", "initialKey"]
   }
 }

@@ -128,17 +128,21 @@ export function stringifyGenres(
   return genres.join(`${delimiter} `);
 }
 
-function generateGenreTag(item: DownloadTarget): string | undefined {
+async function generateGenreTag(item: DownloadTarget): Promise<string | undefined> {
   const delimiter = defaultTo<string>(
     getConfigurationKey("tags.genreDelimiter"),
     DEFAULT_GENRE_DELIMITER
   );
 
+  const merging = (await getConfigurationKey('tags.mergeGenres')) ?? true;
+  const path = item.download.output?.path ?? item.download.path;
+  const previous = merging ? (await Library.meta(path))?.genre : undefined;
   const { item: track, search } = item;
   const { artists } = track;
   const { lastfm, musicbrainz } = search;
 
   const genres = [
+    ...parseGenres(previous, delimiter),
     ...parseGenres(artists[0].genres?.[0], delimiter),
     ...parseLastfmGenres(lastfm, delimiter),
     ...parseMusicbrainzGenres(musicbrainz, delimiter),
@@ -185,7 +189,7 @@ export async function generateTrackTag(item: DownloadTarget): Promise<Tags> {
         title: track.name,
         artist: map(track.artists, "name").join(", "),
         album: track.album.name,
-        genre: generateGenreTag(item),
+        genre: await generateGenreTag(item),
         year: track.album.release_date.split("-")[0],
         fileUrl: track.href,
         trackNumber: track.track_number.toString(),

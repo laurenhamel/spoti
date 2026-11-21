@@ -146,6 +146,10 @@
           "description": "The delimiter used between multiple genre tags",
           "type": "string"
         },
+        "mergeGenres": {
+          "description": "Merges genres with existing ones (`true`) instead of overwriting them (`false`)",
+          "type": "boolean"
+        },
         "preserveTags": {
           "description": "A list of tags to be preserved as is if/when already set",
           "items": {

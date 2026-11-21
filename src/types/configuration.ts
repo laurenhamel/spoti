@@ -49,6 +49,11 @@ export interface SpotiTagsConfiguration {
    */
   genreDelimiter?: string;
   /**
+   * Merges genres with existing ones (`true`) instead of overwriting them (`false`)
+   * @defaultValue true
+   */
+  mergeGenres?: boolean;
+  /**
    * A list of tags to be preserved as is if/when already set
    * @defaultValue ['bpm', 'initialKey']
    */
