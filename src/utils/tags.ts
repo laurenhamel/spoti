@@ -6,6 +6,7 @@ import { type DownloadTarget, type DownloadResult } from "../types/download";
 import { type TaggingResult } from "../types/tag";
 import { createLabel } from "../utils/console";
 import { Library } from "../utils/library";
+import { runSync } from '../utils/process';
 import { pool } from "../utils/promise";
 import { getConfigurationKey } from "./configuration";
 import { mergeAndConcat } from "./helpers";
@@ -26,6 +27,7 @@ import {
 import fetch from "node-fetch";
 import { type Tags, TagConstants } from "node-id3";
 import { extname } from "node:path";
+import { platform } from 'node:os';
 
 export const DEFAULT_GENRE_DELIMITER = ";";
 
@@ -243,6 +245,19 @@ export async function getTrackTag<
   return { id, path, tags };
 }
 
+function refreshTrackTags<
+  TOptions extends SpotiOptions & { dry?: boolean },
+>(_options?: TOptions): void {
+  // Only applicable on macOS to see updates immediately in Finder
+  if (platform() !== 'darwin') return;
+
+  // Ask Spotlight to recursively reimport all files
+  runSync(`mdimport -i ${Library.dir}`);
+
+  // Reset Quick Look's thumbnail cache
+  runSync("qlmanage -r cache");
+}
+
 export async function addTrackTag<
   TSource extends DownloadTarget | DownloadResult,
   TOptions extends SpotiOptions & { dry?: boolean },
@@ -264,6 +279,7 @@ export async function addTrackTag<
   if (tags && !options?.dry) {
     try {
       await save();
+      refreshTrackTags();
       console.log(scope, chalk.green("✓"), title);
       return { source, tags, status: "passed" };
     } catch (e) {
