@@ -35,7 +35,7 @@ export const DEFAULT_MUSICBRAINZ_GENRE_THRESHOLD = 3;
 
 async function generateImageTag(
   url: string,
-  description = ""
+  description = "Front Cover"
 ): Promise<Tags["image"]> {
   try {
     const image = await fetch(url);
