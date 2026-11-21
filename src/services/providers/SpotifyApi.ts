@@ -98,7 +98,12 @@ const SpotifyApiService = new RestApi({
         interval: 1000,
       },
     }),
-    retry: new RetryAdapter(),
+    retry: new RetryAdapter({
+      codes: [429, 503], // including 503 since this also signals request throttling
+      header: "Retry-After",
+      timeout: 30000, // 30s
+      max: 10,
+    }),
     pagination: new PaginationAdapter(),
   },
 });
