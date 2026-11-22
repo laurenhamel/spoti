@@ -6,6 +6,7 @@ import {
 import { type SpotiOptions } from "../types/configuration";
 import { type LibraryFile } from "../types/library";
 import { type SpotiMetadata } from "../types/metadata";
+import { cache } from "./cache";
 import { isDebuggingEnabled } from "./console";
 import {
   checkPlaywrightVersion,
@@ -80,10 +81,10 @@ const noopSpotifyApiRequest: SpotifyApiRequestMethod = async <
 >() => ({}) as TResponse;
 
 export async function getSpotifyPlaylist<
-  TData extends Record<string, unknown>,
   TOptions extends SpotiOptions,
->(data?: TData, options?: TOptions): Promise<Spotify.Playlist> {
+>(id: string, options?: TOptions): Promise<Spotify.Playlist> {
   try {
+    const data: Record<string, unknown> = { id };
     const playlist = await SpotifyApi.getPlaylist(data, options);
     return playlist as Spotify.Playlist;
   } catch (error) {
@@ -91,7 +92,7 @@ export async function getSpotifyPlaylist<
 
     switch ((cause as { status?: number })?.status) {
       case 404:
-        return scrapeSpotifyPlaylist(data, options);
+        return scrapeSpotifyPlaylist(id, options);
       default:
         throw error as Error;
     }
@@ -99,11 +100,8 @@ export async function getSpotifyPlaylist<
 }
 
 async function scrapeSpotifyPlaylist<
-  TData extends Record<string, unknown>,
   TOptions extends SpotiOptions,
->(data: TData = {} as TData, _options?: TOptions): Promise<Spotify.Playlist> {
-  const id = data.id as string;
-
+>(id: string, _options?: TOptions): Promise<Spotify.Playlist> {
   checkPlaywrightVersion();
   ensureChromiumInstalled();
 
@@ -409,11 +407,30 @@ async function scrapeSpotifyPlaylist<
     };
   }
 
+  const data: Record<string, unknown> = { id };
   const url = template(SPOTIFY_PLAYLIST_URL)(data);
   const token = await waitForTokens(url);
   const playlist = await getPlaylist(url, token);
 
   return toPlaylist(playlist);
+}
+
+export function findSpotifyTrack<
+  TOptions extends SpotiOptions & { cache?: boolean },
+>(id: string, options?: TOptions): Spotify.Track | undefined {
+  const enabled = options?.cache ?? true;
+  return enabled ? cache.scope('tracks').get<Spotify.Track>(id) : undefined;
+}
+
+export function cacheSpotifyTracks(
+  ids: string[],
+  tracks: Spotify.Track[],
+): void {
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const track = tracks[i].id === id ? tracks[i] : find(tracks, { id });
+    track && cache.scope('tracks').set(id, track);
+  }
 }
 
 export async function getSpotifyTrackArtists<TOptions extends SpotiOptions>(
@@ -438,13 +455,20 @@ export async function getSpotifyTrackArtists<TOptions extends SpotiOptions>(
 }
 
 export async function getSpotifyTrack<
-  TData extends Record<string, unknown>,
   TOptions extends SpotiOptions,
 >(
-  data?: TData,
+  id: string,
   options?: TOptions,
   progress?: () => void
 ): Promise<Spotify.Track> {
+  const cached = findSpotifyTrack(id, options);
+  
+  if (cached) {
+    progress?.();
+    return cached;
+  }
+
+  const data: Record<string, unknown> = { id };
   const track = await SpotifyApi.getTrack<Spotify.Track>(data, options);
   await getSpotifyTrackArtists(track, options);
   progress?.();
@@ -462,10 +486,12 @@ export async function getSpotifyTracks<TOptions extends SpotiOptions>(
   });
 
   const results = await Promise.all(
-    ids.map((id) =>
-      getSpotifyTrack({ id }, options, () => progress.increment())
+    ids.map(id =>
+      getSpotifyTrack(id, options, () => progress.increment())
     )
   );
+
+  cacheSpotifyTracks(ids, results);
 
   progress.done();
 
@@ -529,5 +555,5 @@ export async function getSpotifyType<
 
   const callee = callees[type];
 
-  return callee<Spotify.ModelOf<TType>>({ id }, options);
+  return callee<Spotify.ModelOf<TType>>(id, options);
 }

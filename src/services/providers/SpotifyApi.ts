@@ -6,14 +6,20 @@ import {
   PolicyAdapter,
   RetryAdapter,
 } from "../adapters";
+import { type SpotiOptions } from "../../types/configuration";
 import {
   RestApi,
   RestApiMethod,
   type RestApiInstance,
-  type RestApiRequestMethod,
 } from "../factories";
 
-export type SpotifyApiRequestMethod = RestApiRequestMethod;
+export type SpotifyApiRequestMethod = <
+  TResponse extends Record<string, unknown> = Record<string, unknown>,
+  TOptions extends SpotiOptions = SpotiOptions,
+>(
+  id: string,
+  options?: TOptions
+) => Promise<TResponse>;;
 
 const SpotifyApiService = new RestApi({
   api: "https://api.spotify.com/v1",
