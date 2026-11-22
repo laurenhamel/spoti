@@ -1,5 +1,5 @@
-import { type Command } from "commander";
 import { globSync } from "./glob";
+import { type Command } from "commander";
 import { dirname, resolve, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 

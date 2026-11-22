@@ -83,7 +83,9 @@ export const tag: ActionHandler<TagArguments, TagOptions> = async <
     tracks.push({ file, track });
   });
 
-  const items = tracks.map(({ file: library, track }) => ({ item: { ...track, library } })) as MaybeLibraryFile<Spotify.Item>[];
+  const items = tracks.map(({ file: library, track }) => ({
+    item: { ...track, library },
+  })) as MaybeLibraryFile<Spotify.Item>[];
 
   const results = await searchSongs(items, options);
   const targets = prepareTracks(map(items, "item"), results, options);

@@ -9,6 +9,6 @@ const { loadEnvs, ensureEnvVar } = await tsImport(
 
 loadEnvs();
 
-ensureEnvVar('PWD', process.cwd());
+ensureEnvVar("PWD", process.cwd());
 
 await import("../src/index");

@@ -1,9 +1,9 @@
 import type { Spotify, Youtube } from "../models";
 import type { SpotiOptions } from "./configuration";
+import type { MaybeLibraryFile } from "./library";
 import type { SearchResult, SearchResultItem } from "./search";
 import type { SpotifyStatus } from "./spotify";
 import type { SetRequiredDeep } from "type-fest";
-import type { MaybeLibraryFile } from './library';
 
 export type DownloadTarget = SearchResultItem & {
   download: Youtube.DownloadPath & {

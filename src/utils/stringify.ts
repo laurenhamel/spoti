@@ -286,7 +286,7 @@ function stringifyTags<TOptions extends SpotiOptions>(
       switch (key) {
         case "image": {
           const { mime, type, description } = value;
-          const imageBuffer = '<Buffer>';
+          const imageBuffer = "<Buffer>";
           return { mime, type, description, imageBuffer };
         }
         case "imageBuffer": {

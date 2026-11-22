@@ -48,8 +48,12 @@ export function convertEnvs<
  * @param variable - The environment variable key to lookup
  * @param fallback - A fallback value to use for the environment variable
  */
-export function ensureEnvVar<TValue extends boolean | number | string>(variable: string, fallback: TValue): TValue {
-  let value: TValue | undefined = variable in process.env ? process.env[variable] as TValue : undefined;
+export function ensureEnvVar<TValue extends boolean | number | string>(
+  variable: string,
+  fallback: TValue
+): TValue {
+  let value: TValue | undefined =
+    variable in process.env ? (process.env[variable] as TValue) : undefined;
   value = !value || isEmpty(value) ? fallback : value;
   process.env[variable] = `${value}`;
   return value;

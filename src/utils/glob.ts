@@ -4,10 +4,10 @@ import { sep } from "node:path";
 /**
  * Normalizes glob patterns to use forward-slash (/) separators
  * @param pattern - The glob pattern to normalize
- * @returns 
+ * @returns
  */
 function globNormalize(pattern: string): string {
-  return pattern.replaceAll('\\', '/');
+  return pattern.replaceAll("\\", "/");
 }
 
 /**
@@ -16,14 +16,14 @@ function globNormalize(pattern: string): string {
  * @returns
  */
 function globSep(path: string): string {
-  return path.replaceAll('/', sep);
+  return path.replaceAll("/", sep);
 }
 
 /**
  * Lists files matching the given glob pattern
  * @param pattern - The glob pattern to lookup
  * @param options - Some options to use when globbing
- * @returns 
+ * @returns
  */
 export function globSync(pattern: string, options: GlobOptions = {}): string[] {
   return (glob(globNormalize(pattern), options) as string[]).map(globSep);

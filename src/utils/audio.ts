@@ -1,20 +1,16 @@
 import { AudioFormat } from "../types/audio";
 import { type SpotiOptions } from "../types/configuration";
-import {
-  type ConversionResult,
-} from "../types/convert";
-import {
-  type DownloadResult,
-} from "../types/download";
+import { type ConversionResult } from "../types/convert";
+import { type DownloadResult } from "../types/download";
 import { type VideoFormat } from "../types/video";
 import { createLabel } from "../utils/console";
 import { Format } from "../utils/format";
+import { runSync } from "../utils/process";
 import { pool } from "../utils/promise";
 import { Library } from "./library";
 import { Progress } from "./progress";
 import chalk from "chalk";
 import { trimStart } from "lodash-es";
-import { runSync } from "../utils/process";
 import { renameSync } from "node:fs";
 import { basename } from "node:path";
 import { extname } from "path";
@@ -37,12 +33,8 @@ export async function convertAudioFile<
   }
 
   const length = 75;
-  const input =
-    source.item.download.input?.path ??
-    source.item.download.path;
-  const output =
-    source.item.download.output?.path ??
-    source.item.download.path;
+  const input = source.item.download.input?.path ?? source.item.download.path;
+  const output = source.item.download.output?.path ?? source.item.download.path;
 
   const diff = (() => {
     const src = basename(input);
@@ -158,7 +150,7 @@ export class Audio {
       output,
     ];
 
-    runSync("ffmpeg" + ' ' + args.join(' '), {
+    runSync("ffmpeg" + " " + args.join(" "), {
       shell: true,
       encoding: "utf-8",
       cwd: Library.dir,

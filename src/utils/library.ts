@@ -1,5 +1,8 @@
 import { AudioFormat } from "../types/audio";
-import { type SpotiConfiguration, type SpotiOptions } from "../types/configuration";
+import {
+  type SpotiConfiguration,
+  type SpotiOptions,
+} from "../types/configuration";
 import {
   type LibraryItem,
   type LibraryOptions,
@@ -9,23 +12,24 @@ import {
 } from "../types/library";
 import { type SpotiMetadata } from "../types/metadata";
 import { VideoFormat } from "../types/video";
+import { globSync } from "../utils/glob";
 import { mergeOptions } from "./action";
 import { Audio } from "./audio";
+import { getConfigurationKey } from "./configuration";
 import { createLabel } from "./console";
 import { prepareDownloadTargets } from "./downloads";
 import { Format } from "./format";
 import { mergeAndConcat } from "./helpers";
 import { Metadata } from "./metadata";
+import { runSync } from "./process";
 import { Progress } from "./progress";
 import { pool, Deferred } from "./promise";
 import { searchType } from "./search";
 import { getSpotifyType } from "./spotify";
 import { generateTrackTag } from "./tags";
 import chalk from "chalk";
-import { globSync } from "../utils/glob";
 import { find, get, isNil, noop, uniqBy, set, isObject } from "lodash-es";
 import id3, { type Tags } from "node-id3";
-import { runSync } from "./process";
 import {
   createWriteStream,
   existsSync,
@@ -33,11 +37,10 @@ import {
   rmSync,
   statSync,
   writeFileSync,
-  utimesSync
+  utimesSync,
 } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { type Readable } from "node:stream";
-import { getConfigurationKey } from "./configuration";
 
 const { Promise: ID3 } = id3;
 
@@ -217,7 +220,7 @@ export class Library {
    */
   static cacheTags(file: string, tags: Tags): void {
     const path = this.path(file);
-    
+
     if (this.exists(path)) {
       this.__tags.set(path, tags);
     }
@@ -232,7 +235,7 @@ export class Library {
   static mergeTags(
     previous: Tags,
     tags: Tags,
-    preserve: NonNullable<SpotiConfiguration['tags']>['preserveTags'] = []
+    preserve: NonNullable<SpotiConfiguration["tags"]>["preserveTags"] = []
   ): Tags {
     const next = mergeAndConcat({ ...previous }, tags);
 
@@ -252,9 +255,11 @@ export class Library {
     }
 
     if ("image" in next) {
-      if (isObject(next.image) && 'imageBuffer' in next.image) {
+      if (isObject(next.image) && "imageBuffer" in next.image) {
         const buffer = next.image.imageBuffer;
-        next.image.imageBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+        next.image.imageBuffer = Buffer.isBuffer(buffer)
+          ? buffer
+          : Buffer.from(buffer);
       }
     }
 
@@ -275,7 +280,7 @@ export class Library {
     tags: Tags = {},
     id?: string,
     duration?: number,
-    preserve: NonNullable<SpotiConfiguration['tags']>['preserveTags'] = []
+    preserve: NonNullable<SpotiConfiguration["tags"]>["preserveTags"] = []
   ): Promise<{
     tags?: Tags;
     save: () => Promise<void>;
@@ -283,7 +288,7 @@ export class Library {
     const item = this.find(file);
 
     const preserved = [
-      ...((await getConfigurationKey('tags.preserveTags')) ?? []),
+      ...((await getConfigurationKey("tags.preserveTags")) ?? []),
       ...preserve,
     ];
 
@@ -668,16 +673,17 @@ export class Library {
 
     if (!duration && this.exists(file)) {
       const stdout = runSync(
-        "ffprobe" + ' ' +
-        [
-          "-v",
-          "error",
-          "-show_entries",
-          "format=duration",
-          "-of",
-          "default=noprint_wrappers=1:nokey=1",
-          `${name}`,
-        ].join(' '),
+        "ffprobe" +
+          " " +
+          [
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            `${name}`,
+          ].join(" "),
         {
           cwd: this.dir,
           shell: true,

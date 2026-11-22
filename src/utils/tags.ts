@@ -6,7 +6,7 @@ import { type DownloadTarget, type DownloadResult } from "../types/download";
 import { type TaggingResult } from "../types/tag";
 import { createLabel } from "../utils/console";
 import { Library } from "../utils/library";
-import { runSync } from '../utils/process';
+import { runSync } from "../utils/process";
 import { pool } from "../utils/promise";
 import { getConfigurationKey } from "./configuration";
 import { mergeAndConcat } from "./helpers";
@@ -26,8 +26,8 @@ import {
 } from "lodash-es";
 import fetch from "node-fetch";
 import { type Tags, TagConstants } from "node-id3";
+import { platform } from "node:os";
 import { extname } from "node:path";
-import { platform } from 'node:os';
 
 export const DEFAULT_GENRE_DELIMITER = ";";
 
@@ -130,13 +130,15 @@ export function stringifyGenres(
   return genres.join(`${delimiter} `);
 }
 
-async function generateGenreTag(item: DownloadTarget): Promise<string | undefined> {
+async function generateGenreTag(
+  item: DownloadTarget
+): Promise<string | undefined> {
   const delimiter = defaultTo<string>(
     getConfigurationKey("tags.genreDelimiter"),
     DEFAULT_GENRE_DELIMITER
   );
 
-  const merging = (await getConfigurationKey('tags.mergeGenres')) ?? true;
+  const merging = (await getConfigurationKey("tags.mergeGenres")) ?? true;
   const path = item.download.output?.path ?? item.download.path;
   const previous = merging ? (await Library.readTags(path))?.genre : undefined;
   const { item: track, search } = item;
@@ -245,11 +247,11 @@ export async function getTrackTag<
   return { id, path, tags };
 }
 
-function refreshTrackTags<
-  TOptions extends SpotiOptions & { dry?: boolean },
->(_options?: TOptions): void {
+function refreshTrackTags<TOptions extends SpotiOptions & { dry?: boolean }>(
+  _options?: TOptions
+): void {
   // Only applicable on macOS to see updates immediately in Finder
-  if (platform() !== 'darwin') return;
+  if (platform() !== "darwin") return;
 
   // Ask Spotlight to recursively reimport all files
   runSync(`mdimport -i ${Library.dir}`);
