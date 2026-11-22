@@ -7,6 +7,7 @@ import {
   type DownloadPreparerOf,
   type DownloadTarget,
 } from "../types/download";
+import { type MaybeLibraryFile } from "../types/library";
 import { type SearchResultItem, type SearchResult } from "../types/search";
 import { VideoFormat } from "../types/video";
 import { type YoutubeDownloadResult } from "../types/youtube";
@@ -181,7 +182,7 @@ export function createDownloadTarget<
   TOptions extends SpotiOptions & { format?: AudioFormat },
 >(item: SearchResultItem, options?: TOptions): DownloadTarget {
   const format = options?.format ?? Audio.DEFAULT_FORMAT;
-  const file = Format.file(item.item, format);
+  const file = item.item.library?.file ?? Format.file(item.item, format);
   const path = Library.path(file);
   const title = Library.title(file);
   const download = { file, path, format, title };
@@ -196,14 +197,14 @@ export const prepareTrack: DownloadPreparerOf<Spotify.Type.TRACK> = (
   options
 ) => {
   const search = results[0];
-  const item = { item: data } as Spotify.Item;
+  const item = { item: data } as MaybeLibraryFile<Spotify.Item>;
   const result: SearchResultItem = { ...item, search };
   const prepared = [createDownloadTarget(result, options)];
   return prepared.sort(sortDownloadResults((item) => item.download.file));
 };
 
 export function prepareTracks<TOptions extends SpotiOptions>(
-  data: Spotify.Track[],
+  data: MaybeLibraryFile<Spotify.Track>[],
   results: SearchResult[],
   options?: TOptions
 ): DownloadTarget[] {

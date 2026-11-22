@@ -3,6 +3,7 @@ import type { SpotiOptions } from "./configuration";
 import type { SearchResult, SearchResultItem } from "./search";
 import type { SpotifyStatus } from "./spotify";
 import type { SetRequiredDeep } from "type-fest";
+import type { MaybeLibraryFile } from './library';
 
 export type DownloadTarget = SearchResultItem & {
   download: Youtube.DownloadPath & {
@@ -16,7 +17,7 @@ export type DownloadTarget = SearchResultItem & {
 export type DownloadPreparerOf<TType extends Spotify.Type> = <
   TOptions extends SpotiOptions,
 >(
-  data: Spotify.ModelOf<TType>,
+  data: MaybeLibraryFile<Spotify.ModelOf<TType>>,
   results: SearchResult[],
   options?: TOptions
 ) => DownloadTarget[];

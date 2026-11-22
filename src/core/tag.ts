@@ -1,7 +1,7 @@
 import { type Spotify } from "../models";
 import { type ActionHandler } from "../types/action";
 import { type SpotiOptions } from "../types/configuration";
-import { type LibraryFile } from "../types/library";
+import { type LibraryFile, type MaybeLibraryFile } from "../types/library";
 import { mergeOptions } from "../utils/action";
 import { reportDry } from "../utils/console";
 import { prepareTracks } from "../utils/downloads";
@@ -83,10 +83,10 @@ export const tag: ActionHandler<TagArguments, TagOptions> = async <
     tracks.push({ file, track });
   });
 
-  // prettier-ignore
-  const items = map(tracks, 'track').map((item) => ({ item })) as Spotify.Item[];
+  const items = tracks.map(({ file: library, track }) => ({ item: { ...track, library } })) as MaybeLibraryFile<Spotify.Item>[];
+
   const results = await searchSongs(items, options);
-  const targets = prepareTracks(map(tracks, "track"), results, options);
+  const targets = prepareTracks(map(items, "item"), results, options);
   const tags = await addTrackTags(targets, options);
 
   for (const file of manifest.files) {

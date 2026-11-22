@@ -51,3 +51,9 @@ export type LibraryFile = LibraryItem &
 export interface LibraryManifest {
   files: LibraryFile[];
 }
+
+export type MaybeLibraryFile<TType extends Spotify.Item | Spotify.Track | Spotify.Album | Spotify.User | Spotify.Artist | Spotify.Playlist> = TType & (TType extends Spotify.Item ? {
+  item: Spotify.Track & { library?: LibraryFile };
+} : {
+  library?: LibraryFile;
+});

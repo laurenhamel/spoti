@@ -1,5 +1,6 @@
 import type { Lastfm, Youtube, Spotify, Musicbrainz } from "../models";
 import type { SpotiOptions } from "./configuration";
+import type { MaybeLibraryFile } from "./library";
 
 export type SearchResult = {
   track: Spotify.Track;
@@ -15,6 +16,6 @@ export type SearchOf<TType extends Spotify.Type> = <
   options?: TOptions
 ) => Promise<SearchResult[]>;
 
-export type SearchResultItem = Spotify.Item & {
+export type SearchResultItem = MaybeLibraryFile<Spotify.Item> & {
   search: SearchResult;
 };
