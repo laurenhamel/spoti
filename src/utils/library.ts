@@ -23,7 +23,7 @@ import { getSpotifyType } from "./spotify";
 import { generateTrackTag } from "./tags";
 import chalk from "chalk";
 import { globSync } from "../utils/glob";
-import { find, get, isNil, noop, uniqBy, set } from "lodash-es";
+import { find, get, isNil, noop, uniqBy, set, isObject } from "lodash-es";
 import id3, { type Tags } from "node-id3";
 import { runSync } from "./process";
 import {
@@ -181,7 +181,7 @@ export class Library {
 
     return async () => {
       if (!cached) {
-        const tags = await this.meta(file);
+        const tags = await this.readTags(file);
         const duration = this.duration(file, tags);
         const id = this.id(tags);
         cached = { tags, duration, id };
@@ -196,12 +196,13 @@ export class Library {
   /**
    * Read ID3 tags of the given file
    * @param file - The file to read tags of
+   * @param force – Forcefully read ID3 tags without using the cache
    * @returns
    */
-  static async meta(file: string): Promise<Tags> {
+  static async readTags(file: string, force: boolean = false): Promise<Tags> {
     const path = this.path(file);
 
-    if (!this.__tags.has(path)) {
+    if (!this.__tags.has(path) || force) {
       const tags = this.exists(path) ? ID3.read(path, { noRaw: true }) : {};
       this.__tags.set(path, tags);
     }
@@ -214,12 +215,50 @@ export class Library {
    * @param file - The file to cache tags for
    * @param tags - The tags to cache
    */
-  static cacheMeta(file: string, tags: Tags): void {
+  static cacheTags(file: string, tags: Tags): void {
     const path = this.path(file);
     
     if (this.exists(path)) {
       this.__tags.set(path, tags);
     }
+  }
+
+  /**
+   * Merges tag patches into existing ID3 tags, preserving the value of any identified tags
+   * @param previous - The previous set of tags
+   * @param tags - The patch of tags to apply
+   * @param preserve - A list of ID3 tags to preserve as is if/when set
+   */
+  static mergeTags(
+    previous: Tags,
+    tags: Tags,
+    preserve: NonNullable<SpotiConfiguration['tags']>['preserveTags'] = []
+  ): Tags {
+    const next = mergeAndConcat({ ...previous }, tags);
+
+    for (const key of preserve) {
+      set(next, key, get(previous, key));
+    }
+
+    if ("userDefinedText" in next) {
+      next.userDefinedText = uniqBy(next.userDefinedText, "description");
+    }
+
+    if ("uniqueFileIdentifier" in next) {
+      next.uniqueFileIdentifier = uniqBy(
+        next.uniqueFileIdentifier,
+        "description"
+      );
+    }
+
+    if ("image" in next) {
+      if (isObject(next.image) && 'imageBuffer' in next.image) {
+        const buffer = next.image.imageBuffer;
+        next.image.imageBuffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+      }
+    }
+
+    return next;
   }
 
   /**
@@ -250,7 +289,7 @@ export class Library {
 
     if (item) {
       const path = item.raw.path;
-      const previous = await this.meta(path);
+      const previous = await this.readTags(path);
       const next = this.mergeTags(previous, tags, preserved);
       this.assignId(next, id);
       this.assignDuration(next, duration);
@@ -261,8 +300,8 @@ export class Library {
           await ID3.update(next, path);
           const now = new Date();
           utimesSync(path, now, now);
-          this.cacheMeta(path, next);
-          this.set(file, this.parse(file));
+          this.cacheTags(path, next);
+          this.set(path, this.parse(path));
         },
       };
     }
@@ -383,37 +422,6 @@ export class Library {
   }
 
   static readonly ID = "spoti.id" as const;
-
-  /**
-   * Merges tag patches into existing ID3 tags, preserving the value of any identified tags
-   * @param previous - The previous set of tags
-   * @param tags - The patch of tags to apply
-   * @param preserve - A list of ID3 tags to preserve as is if/when set
-   */
-  static mergeTags(
-    previous: Tags,
-    tags: Tags,
-    preserve: NonNullable<SpotiConfiguration['tags']>['preserveTags'] = []
-  ): Tags {
-    const next = mergeAndConcat({ ...previous }, tags);
-
-    if ("userDefinedText" in next) {
-      next.userDefinedText = uniqBy(next.userDefinedText, "description");
-    }
-
-    if ("uniqueFileIdentifier" in next) {
-      next.uniqueFileIdentifier = uniqBy(
-        next.uniqueFileIdentifier,
-        "description"
-      );
-    }
-
-    for (const key of preserve) {
-      set(next, key, get(previous, key));
-    }
-
-    return next;
-  }
 
   /**
    * Add Spotify ID metadata as an ID3 tag

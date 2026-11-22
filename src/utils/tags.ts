@@ -138,7 +138,7 @@ async function generateGenreTag(item: DownloadTarget): Promise<string | undefine
 
   const merging = (await getConfigurationKey('tags.mergeGenres')) ?? true;
   const path = item.download.output?.path ?? item.download.path;
-  const previous = merging ? (await Library.meta(path))?.genre : undefined;
+  const previous = merging ? (await Library.readTags(path))?.genre : undefined;
   const { item: track, search } = item;
   const { artists } = track;
   const { lastfm, musicbrainz } = search;
