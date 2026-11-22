@@ -248,16 +248,12 @@ export function findSearchResult<
   return enabled ? cache.scope('search').get<SearchResult>(uri) : undefined;
 }
 
-export function cacheSearchResults(
-  items: Spotify.Item[],
-  results: SearchResult[]
+export function cacheSearchResult(
+  item: Spotify.Item,
+  search: SearchResult
 ): void {
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    const search = results[i];
-    item.search = search;
-    cache.scope('search').set(item.item.uri, item);
-  }
+  item.search = search;
+  cache.scope('search').set(item.item.uri, item);
 }
 
 export async function searchSong<
@@ -285,8 +281,11 @@ export async function searchSong<
     ? await searchMusicbrainz(lastfm, options)
     : undefined;
 
+  const search = { track, youtube, lastfm, musicbrainz };
+
+  cacheSearchResult(item, search)
   progress?.();
-  return { track, youtube, lastfm, musicbrainz };
+  return search;
 }
 
 export async function searchSongs<TOptions extends SpotiOptions>(
@@ -297,8 +296,6 @@ export async function searchSongs<TOptions extends SpotiOptions>(
   const results = await drain(
     items.map((item) => () => searchSong(item, options, progress))
   );
-
-  cacheSearchResults(items, results);
 
   return results;
 }

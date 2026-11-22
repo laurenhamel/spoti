@@ -422,15 +422,11 @@ export function findSpotifyTrack<
   return enabled ? cache.scope('tracks').get<Spotify.Track>(id) : undefined;
 }
 
-export function cacheSpotifyTracks(
-  ids: string[],
-  tracks: Spotify.Track[],
+export function cacheSpotifyTrack(
+  id: string,
+  track: Spotify.Track,
 ): void {
-  for (let i = 0; i < ids.length; i++) {
-    const id = ids[i];
-    const track = tracks[i].id === id ? tracks[i] : find(tracks, { id });
-    track && cache.scope('tracks').set(id, track);
-  }
+  cache.scope('tracks').set(id, track);
 }
 
 export async function getSpotifyTrackArtists<TOptions extends SpotiOptions>(
@@ -471,6 +467,7 @@ export async function getSpotifyTrack<
   const data: Record<string, unknown> = { id };
   const track = await SpotifyApi.getTrack<Spotify.Track>(data, options);
   await getSpotifyTrackArtists(track, options);
+  cacheSpotifyTrack(id, track);
   progress?.();
   return track;
 }
@@ -490,8 +487,6 @@ export async function getSpotifyTracks<TOptions extends SpotiOptions>(
       getSpotifyTrack(id, options, () => progress.increment())
     )
   );
-
-  cacheSpotifyTracks(ids, results);
 
   progress.done();
 
