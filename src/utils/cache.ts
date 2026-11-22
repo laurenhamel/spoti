@@ -7,13 +7,10 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { basename, join, resolve } from "node:path";
+import { resolveRoot } from "./path";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const DEFAULT_CACHE_DIR = resolve(__dirname, "../../.spoti/cache");
+const DEFAULT_CACHE_DIR = resolveRoot(".spoti/cache");
 
 export class Cache {
   readonly dir: string;
@@ -88,6 +85,11 @@ export class Cache {
 
   update(key: string, value: any): void {
     this.save(key, this.merge(this.get(key), value));
+  }
+
+  scope(scope: string): InstanceType<typeof Cache> {
+    const dir = resolve(DEFAULT_CACHE_DIR, scope);
+    return new Cache(dir);
   }
 }
 

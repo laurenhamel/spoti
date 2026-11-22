@@ -245,7 +245,7 @@ export function findSearchResult<
 >(item: Spotify.Item, options?: TOptions): SearchResult | undefined {
   const uri = item.item.uri;
   const enabled = options?.cache ?? true;
-  return enabled ? cache.get<SearchResult>(uri) : undefined;
+  return enabled ? cache.scope('search').get<SearchResult>(uri) : undefined;
 }
 
 export function cacheSearchResults(
@@ -256,7 +256,7 @@ export function cacheSearchResults(
     const item = items[i];
     const search = results[i];
     item.search = search;
-    cache.set(item.item.uri, item);
+    cache.scope('search').set(item.item.uri, item);
   }
 }
 
