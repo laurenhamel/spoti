@@ -230,11 +230,13 @@ async function searchMusicbrainz<
 
   const { mbid: id } = item.track;
 
-  try {
-    return MusicbrainzApi.getRecording<Musicbrainz.Recording>({ id });
-  } catch (_) {
-    // @TODO If we cannot acquire search results, then the recording may not exist on MusicBrainz.org
-    return;
+  if (id) {
+    try {
+      return MusicbrainzApi.getRecording<Musicbrainz.Recording>({ id });
+    } catch (_) {
+      // @TODO If we cannot acquire search results, then the recording may not exist on MusicBrainz.org
+      return;
+    }
   }
 }
 
