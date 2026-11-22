@@ -1,16 +1,11 @@
 import { type SpotiOptions } from "../../types/configuration";
 import { isDebuggingEnabled } from "../../utils/console";
 import { sleep } from "../../utils/promise";
-import { type RetryAdapterInstance } from "./types";
+import { type RetryAdapterInstance, type RetryAdapterConfig } from "./types";
 import { merge } from "lodash-es";
 import { type Headers } from "node-fetch";
 
-export interface RetryAdapterConfig {
-  codes: number[];
-  header: string;
-  timeout: number;
-  max: number;
-}
+
 
 export default class RetryAdapter implements RetryAdapterInstance {
   readonly config: RetryAdapterConfig;

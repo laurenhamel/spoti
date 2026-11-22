@@ -10,7 +10,15 @@ export interface PolicyAdapterInstance {
   pause: (wait: number) => void;
 }
 
+export interface RetryAdapterConfig {
+  codes: number[];
+  header: string;
+  timeout: number;
+  max: number;
+}
+
 export interface RetryAdapterInstance {
+  readonly config: RetryAdapterConfig;
   sleep: (status: number, headers: Headers) => number | undefined;
   retry: <
     TResponse extends Record<string, unknown>,

@@ -275,7 +275,9 @@ export default class RestApi<
       console.log(chalk[color](`${status} ${message}`));
     }
 
-    if (status === 429) this.pause(this.sleep(status, headers));
+    const retryable = this.config.adapters?.retry?.config.codes ?? [429];
+
+    if (retryable.includes(status)) this.pause(this.sleep(status, headers));
 
     if (ok) {
       const body = (await response.json()) as TResponse;
