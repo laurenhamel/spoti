@@ -114,6 +114,25 @@ spoti library [options] [file]
 | `--no-cache`  | Disables using cached search results                 |
 | `--help`/`-h` | Display help for command                             |
 
+### `rename`
+
+Renames files in your music library to reflect its Spotify track metadata (e.g., `{artists} - {title}`)
+
+```sh
+spoti rename [options] [file]
+```
+
+| Argument | Description                                      |
+| -------- | ------------------------------------------------ |
+| `[file]` | An audio file or Spoti metadata file (optional). |
+
+| Option        | Description                              |
+| ------------- | ---------------------------------------- |
+| `--dry`       | Perform a dry run without making changes |
+| `--verbose`   | Output more information to the console   |
+| `--no-cache`  | Disables using cached search results     |
+| `--help`/`-h` | Display help for command                 |
+
 ### `sanitize`
 
 Sanitizes files in your music library.
