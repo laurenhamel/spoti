@@ -66,7 +66,7 @@ export const sanitize: ActionHandler<
     return handler;
   })();
 
-  const renamed = (() => {
+  const formatted = (() => {
     const files: string[] = [];
 
     const handler = function (previous: string, next: string) {
@@ -109,7 +109,7 @@ export const sanitize: ActionHandler<
       cleaned(file);
     }
 
-    // Rename unsanitized files
+    // Format unsanitized files
     else if (exists && src !== dest) {
       if (!options.dry) {
         const temp = dest + ".temp";
@@ -117,7 +117,7 @@ export const sanitize: ActionHandler<
         renameSync(temp, dest);
       }
 
-      renamed(file, next);
+      formatted(file, next);
     }
 
     // Skip sanitized files
@@ -139,7 +139,7 @@ export const sanitize: ActionHandler<
   // prettier-ignore
   options.clean && console.log(chalk.red("𐄂"), `Cleaned ${chalk.red(cleaned.files.length)} file(s).`);
   // prettier-ignore
-  console.log(chalk.blue("→"), `Renamed ${chalk.blue(renamed.files.length)} file(s).`);
+  console.log(chalk.blue("→"), `Formatted ${chalk.blue(formatted.files.length)} file(s).`);
   // prettier-ignore
   console.log(chalk.green("✓"), `Skipped ${chalk.green(skipped.files.length)} file(s).`);
   // prettier-ignore
