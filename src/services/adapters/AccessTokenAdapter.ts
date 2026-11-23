@@ -92,20 +92,35 @@ export default class AccessTokenAdapter<
 
   private token: AccessTokenAdapterData | undefined;
 
+  private refreshing: Promise<AccessTokenAdapterData> | undefined;
+
   private async refresh(): Promise<AccessTokenAdapterData> {
-    if (!this.valid) {
-      const response = await fetch(this.url, {
-        method: "POST",
-        body: this.body,
-        headers: { "Content-Type": this.type },
-      });
+    if (this.valid) return this.token!;
 
-      const data = (await response.json()) as TResponse;
+    if (this.refreshing) return this.refreshing;
 
-      this.token = this.handler(data);
-    }
+    this.refreshing = (async () => {
+      try {
 
-    return this.token as AccessTokenAdapterData;
+        const response = await fetch(this.url, {
+          method: "POST",
+          body: this.body,
+          headers: { "Content-Type": this.type },
+        });
+
+        const data = (await response.json()) as TResponse;
+        const token = this.handler(data);
+        this.token = token;
+        return this.token;
+      } catch (e) {
+        const error = e as Error;
+        throw error;
+      } finally {
+        this.refreshing = undefined;
+      }
+    })();
+
+    return this.refreshing;
   }
 
   async authorize(): Promise<Record<"Authorization", string>> {
