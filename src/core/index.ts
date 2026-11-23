@@ -2,6 +2,7 @@ export * from "./configure";
 export * from "./download";
 export * from "./info";
 export * from "./library";
+export * from "./rename";
 export * from "./sanitize";
 export * from "./search";
 export * from "./sync";
