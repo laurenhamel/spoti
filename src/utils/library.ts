@@ -1,3 +1,4 @@
+import { type Spotify } from "../models";
 import { AudioFormat } from "../types/audio";
 import {
   type SpotiConfiguration,
@@ -9,8 +10,10 @@ import {
   type LibraryMetadata,
   type LibraryManifest,
   type LibraryFile,
+  type LibraryIndex,
 } from "../types/library";
 import { type SpotiMetadata } from "../types/metadata";
+import { type ProgressOptions } from "../types/progress";
 import { VideoFormat } from "../types/video";
 import { globSync } from "../utils/glob";
 import { mergeOptions } from "./action";
@@ -22,13 +25,13 @@ import { Format } from "./format";
 import { mergeAndConcat } from "./helpers";
 import { Metadata } from "./metadata";
 import { runSync } from "./process";
-import { Progress } from "./progress";
+import {  Progress } from "./progress";
 import { pool, Deferred } from "./promise";
 import { searchType } from "./search";
-import { getSpotifyType } from "./spotify";
+import { getSpotifyTracks, getSpotifyType, searchSpotifyTracks } from "./spotify";
 import { generateTrackTag } from "./tags";
 import chalk from "chalk";
-import { find, get, isNil, noop, uniqBy, set, isObject } from "lodash-es";
+import { find, get, isNil, noop, uniqBy, set, isObject, map } from "lodash-es";
 import id3, { type Tags } from "node-id3";
 import {
   createWriteStream,
@@ -813,5 +816,66 @@ export class Library {
     }
 
     return { files };
+  }
+
+  /**
+   * Indexes the user's music library, gathering track information
+   * @param file - An optional MP3 file or Spoti metadata file to use as an entrypoint
+   * @returns
+   */
+  static async index<TOptions extends SpotiOptions>(
+    file?: string,
+    options?: TOptions,
+    progress?: Omit<ProgressOptions, 'value' | 'total'>,
+  ): Promise<{ index: LibraryIndex; manifest: LibraryManifest }> {
+    const manifest = await Library.manifest(file, options);
+
+    const scanning = progress ? new Progress({
+      ...progress,
+      total: manifest.files.length,
+    }) : undefined;
+
+    const index: LibraryIndex = [];
+
+    const ids: {
+      file: LibraryFile;
+      id: string;
+    }[] = [];
+
+    const files: LibraryFile[] = [];
+
+    for (const file of manifest.files) {
+      if (file.item) {
+        const track = file.item.item;
+        const id = track.id;
+        index.push({ file, track, id });
+      } else {
+        const { id } = await file.metadata();
+        id ? ids.push({ file, id }) : files.push(file);
+      }
+
+      scanning?.increment();
+    }
+
+    scanning?.done();
+
+    const known = await getSpotifyTracks(map(ids, "id"), options);
+
+    known.forEach((track, i) => {
+      const { id, file } = ids[i];
+      file.item = { item: track } as Spotify.Item;
+      index.push({ file, track, id });
+    });
+
+    const unknown = await searchSpotifyTracks(files, options);
+
+    unknown.forEach((track, i) => {
+      const id = track.id;
+      const file = files[i];
+      file.item = { item: track } as Spotify.Item;
+      index.push({ file, track, id });
+    });
+
+    return { index, manifest };
   }
 }

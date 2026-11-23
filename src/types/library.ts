@@ -52,6 +52,12 @@ export interface LibraryManifest {
   files: LibraryFile[];
 }
 
+export type LibraryIndex = {
+  id: string;
+  file: LibraryFile;
+  track: Spotify.Track;
+}[];
+
 export type MaybeLibraryFile<
   TType extends
     | Spotify.Item

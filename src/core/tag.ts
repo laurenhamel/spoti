@@ -1,14 +1,12 @@
 import { type Spotify } from "../models";
 import { type ActionHandler } from "../types/action";
 import { type SpotiOptions } from "../types/configuration";
-import { type LibraryFile, type MaybeLibraryFile } from "../types/library";
+import { type MaybeLibraryFile } from "../types/library";
 import { mergeOptions } from "../utils/action";
 import { reportDry } from "../utils/console";
 import { prepareTracks } from "../utils/downloads";
 import { Library } from "../utils/library";
-import { Progress } from "../utils/progress";
 import { searchSongs } from "../utils/search";
-import { getSpotifyTracks, searchSpotifyTracks } from "../utils/spotify";
 import { stringifyManifest } from "../utils/stringify";
 import { addTrackTags } from "../utils/tags";
 import chalk from "chalk";
@@ -34,56 +32,12 @@ export const tag: ActionHandler<TagArguments, TagOptions> = async <
   config?: TOptions
 ) => {
   const options = await mergeOptions(TAG_DEFAULTS, config);
-  const manifest = await Library.manifest(file, options);
-
-  const scanning = new Progress({
+  const { index, manifest } = await Library.index(file, options, {
     label: "Scanning…",
-    total: manifest.files.length,
     color: chalk.blue,
   });
 
-  const tracks: {
-    file: LibraryFile;
-    track: Spotify.Track;
-  }[] = [];
-
-  const ids: {
-    file: LibraryFile;
-    id: string;
-  }[] = [];
-
-  const files: LibraryFile[] = [];
-
-  for (const file of manifest.files) {
-    if (file.item) {
-      tracks.push({ file, track: file.item.item });
-    } else {
-      const { id } = await file.metadata();
-      id ? ids.push({ file, id }) : files.push(file);
-    }
-
-    scanning.increment();
-  }
-
-  scanning.done();
-
-  const known = await getSpotifyTracks(map(ids, "id"), options);
-
-  known.forEach((track, i) => {
-    const { file } = ids[i];
-    file.item = { item: track } as Spotify.Item;
-    tracks.push({ file, track });
-  });
-
-  const unknown = await searchSpotifyTracks(files, options);
-
-  unknown.forEach((track, i) => {
-    const file = files[i];
-    file.item = { item: track } as Spotify.Item;
-    tracks.push({ file, track });
-  });
-
-  const items = tracks.map(({ file: library, track }) => ({
+  const items = index.map(({ file: library, track }) => ({
     item: { ...track, library },
   })) as MaybeLibraryFile<Spotify.Item>[];
 
@@ -91,7 +45,7 @@ export const tag: ActionHandler<TagArguments, TagOptions> = async <
   const targets = prepareTracks(map(items, "item"), results, options);
   const tags = await addTrackTags(targets, options);
 
-  for (const file of manifest.files) {
+  for (const { file } of index) {
     if (file.item) {
       file.tagging = find(tags, ["source.item.id", file.item.item.id]);
     }
