@@ -388,7 +388,7 @@ function stringifyTagsDiff<TOptions extends SpotiOptions>(
 }
 
 export async function stringifyFile<
-  TOptions extends SpotiOptions & { more?: boolean },
+  TOptions extends SpotiOptions & { more?: boolean; diff?: boolean; },
 >(
   file: LibraryFile,
   options: TOptions,
@@ -440,7 +440,7 @@ export async function stringifyFile<
           [Heading.Duration, Format.duration(item.duration)],
           [
             Heading.Tags,
-            options?.dry
+            options?.diff
               ? stringifyTagsDiff(item.tags, item.tagging?.tags, options)
               : stringifyTags(item.tagging?.tags ?? item.tags, options),
           ],

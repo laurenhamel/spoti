@@ -53,6 +53,7 @@ export const tag: ActionHandler<TagArguments, TagOptions> = async <
   await reportManifest(manifest, {
     ...options,
     more: true,
+    diff: true,
   });
 
   reportDry(options);

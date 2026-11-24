@@ -95,7 +95,7 @@ export function reportErrors(results: { error?: Error }[]): void {
 }
 
 export async function reportManifest<
-  TOptions extends SpotiOptions & { more?: boolean },
+  TOptions extends SpotiOptions & { more?: boolean; diff?: boolean; },
 >(
   manifest: LibraryManifest,
   options: TOptions,
