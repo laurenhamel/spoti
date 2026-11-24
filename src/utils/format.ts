@@ -183,9 +183,7 @@ export class Format {
     }
 
     if (isArray(value)) {
-      return value.filter(item => {
-        return isString(item) && regex.test(item) ? value : undefined;
-      });
+      return value.filter(item =>isString(item) && regex.test(item));
     }
 
     return value;
