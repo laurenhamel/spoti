@@ -10,9 +10,9 @@ import { pool } from "../utils/promise";
 import { parseGenres } from "../utils/tags";
 import { getConfigurationKey } from "../utils/configuration";
 import { every, trim, trimStart } from "lodash-es";
-import { renameSync } from 'node:fs';
+import { existsSync, renameSync, mkdirSync } from 'node:fs';
 import { type LibraryFile } from "../types/library";
-import { extname, sep } from "node:path";
+import { dirname, extname, sep } from "node:path";
 
 export type SortArguments = [string, string?];
 
@@ -117,6 +117,8 @@ export const sort: ActionHandler<SortArguments, SortOptions> = async <
       if (!options.dry) {
         const src = actual;
         const dest = expected;
+        const dir = dirname(dest);
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
         renameSync(src, dest);
       }
 
