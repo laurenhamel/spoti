@@ -11,7 +11,7 @@ import chalk from "chalk";
 import { map } from "lodash-es";
 import { renameSync } from 'node:fs';
 
-export type RenameArguments = [string];
+export type RenameArguments = [string?];
 
 export interface RenameOptions extends SpotiOptions {
   cache: boolean;
