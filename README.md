@@ -153,6 +153,55 @@ spoti sanitize [options] [file]
 | `--no-cache`  | Disables using cached search results             |
 | `--help`/`-h` | Display help for command                         |
 
+### `sort`
+
+Sorts files in your music library into folders using the given format (e.g., `{year}/{genre}/{file}`).
+
+```sh
+spoti sort [options] <format> [file]
+```
+
+The format's `{placeholder}` values can support nested path selection (for objects and arrays) and/or regular expression pattern filtering (for strings and arrays of strings) using the following syntax:
+
+```txt
+{<tag>(|<path>)?(|<pattern>)?}
+```
+
+For example, to select the first genre in the parsed list of genres, only including genres with word characters (e.g., where `House` is valid but `House: Latin` is not):
+
+```txt
+{genres|0|^[\w]+$}
+```
+
+The supported list of placeholders includes:
+
+- `{album}`
+- `{album-artist}`
+- `{album-artists}`
+- `{artist}`
+- `{duration}`
+- `{ext}`
+- `{genre}`
+- `{genres}`
+- `{id}`
+- `{isrc}`
+- `{song}`
+- `{track-number}`
+- `{year}`
+- `{file}`
+
+| Argument   | Description                                      |
+| ---------- | ------------------------------------------------ |
+| `<format>` | The desired file/folder format (required).       |
+| `[file]`   | An audio file or Spoti metadata file (optional). |
+
+| Option        | Description                              |
+| ------------- | ---------------------------------------- |
+| `--dry`       | Perform a dry run without making changes |
+| `--verbose`   | Output more information to the console   |
+| `--no-cache`  | Disables using cached search results     |
+| `--help`/`-h` | Display help for command                 |
+
 ### `search`
 
 Searches tracks in a given Spotify URL on YouTube. Currently supports `/track/{id}` and `/playlist/{id}` endpoints.

@@ -1,9 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { type Spotify } from "../models";
-import { type AudioFormat } from "../types/audio";
-import { compact, map, padStart, padEnd, trimStart, isNaN } from "lodash-es";
+import { AudioFormat } from "../types/audio";
+import { compact, map, padStart, padEnd, trimStart, isNaN, isString, isEmpty, isArray, trimEnd, get } from "lodash-es";
 import { dirname, basename, join, extname } from "node:path";
 import size from "pretty-bytes";
 import duration from "pretty-ms";
+import { type MaybeLibraryFile } from "../types/library";
+
+const DEFAULT_PLACEHOLDER_DELIMITER = '|';
 
 export class Format {
   /**
@@ -91,9 +95,172 @@ export class Format {
   static YEAR = "{year}" as const;
 
   /**
+   * The current file name
+   */
+  static FILE = "{file}" as const;
+
+  /**
    * The default format to use for all Spotify track file names
    */
   static format = `${Format.ARTISTS} - ${Format.SONG}.${Format.EXT}`;
+
+  private static extractors: Record<
+    string,
+    (track: Spotify.Track) => string | undefined
+  > = {
+    [Format.ALBUM]: this.getAlbum,
+    [Format.ALBUM_ARTIST]: this.getAlbumArtist,
+    [Format.ALBUM_ARTISTS]: this.getAlbumArtists,
+    [Format.ARTIST]: this.getArtist,
+    [Format.ARTISTS]: this.getArtists,
+    [Format.DURATION]: this.getDuration,
+    [Format.EXT]: this.getExt,
+    [Format.GENRE]: this.getGenre,
+    [Format.GENRES]: this.getGenres,
+    [Format.ID]: this.getId,
+    [Format.ISRC]: this.getIsrc,
+    [Format.SONG]: this.getSong,
+    [Format.TRACK_NUMBER]: this.getTrackNumber,
+    [Format.YEAR]: this.getYear,
+    [Format.FILE]: this.getFile,
+  };
+
+  /**
+   * Extracts data for placeholders in the given format from the given Spotify track information
+   */
+  static extract(format: string, track: Spotify.Track): Record<string, unknown> {
+    const data: Record<string, unknown> = {};
+    const placeholders = Array.from(format.matchAll(/(\{.+?\})/g));
+
+    for (const [placeholder] of placeholders) {
+      const [key] = trimEnd(trimStart(placeholder, '{'), '}').split(':');
+      const normalized = `{${key}}`;
+      const extractor = this.extractors[normalized];
+      data[key] = extractor?.(track);
+    }
+
+    return data;
+  }
+
+  /**
+   * Determines whether a given format is valid
+   * @param format - The format string to check
+   * @param delimiter - The placeholder delimiter
+   * @returns
+   */
+  static valid(format: string, delimiter: string = DEFAULT_PLACEHOLDER_DELIMITER): boolean {
+    const placeholders = Array.from(format.matchAll(/(\{.+?\})/g));
+
+    // Requires that at least one placeholder is present
+    if (!placeholders.length) return false;
+
+    const expected = Object.keys(this.extractors);
+
+    // Requires that only supported placeholders are used
+    for (const [placeholder] of placeholders) {
+      const [key] = trimEnd(trimStart(placeholder, '{'), '}').split(delimiter);
+      const normalized = `{${key}}`;
+      if (!expected.includes(normalized)) return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Applies a placeholder pattern filter against a given data value
+   * @remarks Only applies to string values or arrays with string values
+   * @param value - The data value to try filtering against
+   * @param pattern - Some regular expression pattern use for filtering
+   * @returns
+   */
+  private static filter(value: any, pattern?: string): any {
+    if (!pattern) return value;
+
+    const regex = new RegExp(pattern, 'i');
+
+    if (isString(value)) {
+      return regex.test(value) ? value : undefined;
+    }
+
+    if (isArray(value)) {
+      return value.filter(item => {
+        return isString(item) && regex.test(item) ? value : undefined;
+      });
+    }
+
+    return value;
+  }
+
+  /**
+   * Gets a placeholder value from the given data set
+   * @remarks Supports placeholders in the format of `{<placeholder>(|<path>)?(|<pattern>)?}`.
+   * @param placeholder - The placeholder value to get
+   * @param data - The data set to use to get the placeholder value
+   * @param delimiter - The placeholder delimiter
+   * @returns
+   */
+  private static get(placeholder: string, data: Record<string, unknown>, delimiter: string = DEFAULT_PLACEHOLDER_DELIMITER): [any, string, string?, string?] {
+    const [key, path, pattern] = trimEnd(trimStart(placeholder, '{'), '}').split(delimiter);
+    const source = get(data, key);
+    const filtered = this.filter(source, pattern);
+    const value = !isEmpty(path) ? get(filtered, path) : filtered;
+    return [value, key, path, pattern];
+  }
+
+  /**
+   * Inspects whether format placeholders would be replaced with the given data
+   * @param format - The format to follow
+   * @param data - The data to use to replace placeholders
+   * @param delimiter - The placeholder delimiter
+   * @returns
+   */
+  static inspect(format: string, data: Record<string, unknown>, delimiter: string = DEFAULT_PLACEHOLDER_DELIMITER): Record<string, boolean> {
+    const placeholders = Array.from(format.matchAll(/(\{.+?\})/g));
+    const result: Record<string, boolean> = {};
+
+    for (const [placeholder] of placeholders) {
+      const [value] = this.get(placeholder, data, delimiter);
+      const exists = Boolean(value);
+      result[placeholder] = exists;
+    }
+
+    return result;
+  }
+
+  /**
+   * Replaces format placeholders using the given data
+   * @param format - The format to follow
+   * @param data - The data to use to replace placeholders
+   * @param sanitize - Whether to sanitize the data
+   * @param delimiter - the placeholder delimiter
+   * @returns
+   */
+  static replace(format: string, data: Record<string, unknown>, sanitize: boolean = true, delimiter: string = DEFAULT_PLACEHOLDER_DELIMITER): string {
+    const replaceIn = (initial: string): string => {
+      const placeholders = Array.from(initial.matchAll(/(\{.+?\})/g));
+
+      let result = initial;
+
+      for (const [placeholder] of placeholders) {
+        const [value] = this.get(placeholder, data, delimiter);
+        result = result.replaceAll(placeholder, value);
+      }
+
+      return result;
+    };
+
+    let [title, extension] = format.split(".");
+
+    title = replaceIn(title);
+    extension = extension ? '.' + replaceIn(extension) : '';
+
+    if (sanitize) {
+      title = this.sanitize(title);
+      extension = this.sanitize(extension);
+    }
+
+    return `${title}${extension}`;
+  }
 
   /**
    * Build the file name of a Spotify track using the given format
@@ -103,37 +270,9 @@ export class Format {
     ext: AudioFormat,
     format = this.format
   ): string {
-    const handlers: Record<
-      string,
-      (track: Spotify.Track) => string | undefined
-    > = {
-      [Format.ALBUM]: this.getAlbum,
-      [Format.ALBUM_ARTIST]: this.getAlbumArtist,
-      [Format.ALBUM_ARTISTS]: this.getAlbumArtists,
-      [Format.ARTIST]: this.getArtist,
-      [Format.ARTISTS]: this.getArtists,
-      [Format.DURATION]: this.getDuration,
-      [Format.EXT]: this.getExt(ext),
-      [Format.GENRE]: this.getGenre,
-      [Format.GENRES]: this.getGenres,
-      [Format.ID]: this.getId,
-      [Format.ISRC]: this.getIsrc,
-      [Format.SONG]: this.getSong,
-      [Format.TRACK_NUMBER]: this.getTrackNumber,
-      [Format.YEAR]: this.getYear,
-    };
-
-    const populate = (value: string): string | undefined => {
-      const handler = handlers[value] ?? (() => value);
-      return handler(track);
-    };
-
-    const [base, ...exts] = format.split(".");
-    const parts = base.split(" ");
-    const title = this.sanitize(compact(parts.map(populate)).join(" "));
-    const extension = compact(exts.map(populate)).join(".");
-
-    return `${title}.${extension}`;
+    this.ext = ext;
+    const data = this.extract(format, track);
+    return this.replace(format, data);
   }
 
   /**
@@ -193,11 +332,13 @@ export class Format {
     return this.duration(track.duration_ms);
   }
 
+  private static ext: AudioFormat = AudioFormat.MP3;
+
   /**
    * Get the extension of the audio file.
    */
-  static getExt(ext: AudioFormat): () => string {
-    return () => ext;
+  static getExt(): AudioFormat {
+    return this.ext;
   }
 
   /**
@@ -247,6 +388,13 @@ export class Format {
    */
   static getYear(track: Spotify.Track): string {
     return track.album.release_date.split("-")[0];
+  }
+
+  /**
+   * Gets the current file name if/when library data is available.
+   */
+  static getFile(track: MaybeLibraryFile<Spotify.Track>): string | undefined {
+    return track.library?.file;
   }
 
   static DIRTY_CHARACTERS = {

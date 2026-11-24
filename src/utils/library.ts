@@ -848,6 +848,7 @@ export class Library {
       if (file.item) {
         const track = file.item.item;
         const id = track.id;
+        track.library = file;
         index.push({ file, track, id });
       } else {
         const { id } = await file.metadata();
@@ -864,6 +865,7 @@ export class Library {
     known.forEach((track, i) => {
       const { id, file } = ids[i];
       file.item = { item: track } as Spotify.Item;
+      track.library = file;
       index.push({ file, track, id });
     });
 
@@ -873,6 +875,7 @@ export class Library {
       const id = track.id;
       const file = files[i];
       file.item = { item: track } as Spotify.Item;
+      track.library = file;
       index.push({ file, track, id });
     });
 

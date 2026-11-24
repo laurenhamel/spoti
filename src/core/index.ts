@@ -5,5 +5,6 @@ export * from "./library";
 export * from "./rename";
 export * from "./sanitize";
 export * from "./search";
+export * from "./sort";
 export * from "./sync";
 export * from "./tag";
