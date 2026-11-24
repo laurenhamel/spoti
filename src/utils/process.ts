@@ -5,6 +5,7 @@ import {
 } from "../types/process";
 import { merge, isString } from "lodash-es";
 import { spawnSync, type SpawnSyncOptions } from "node:child_process";
+import { SIGINT, SIGTERM } from "node:constants";
 
 const DEFAULT_PROCESS_EXIT_CONFIG: ProcessExitConfig = {
   SIGINT: () => process.exit(0),
@@ -29,8 +30,8 @@ export function createProcessExitAbort(): AbortController {
   const controller = new AbortController();
 
   registerProcessExitHandlers({
-    SIGINT: () => controller.abort(),
-    SIGTERM: () => controller.abort(),
+    SIGINT: () => controller.abort(SIGINT),
+    SIGTERM: () => controller.abort(SIGTERM),
   });
 
   return controller;

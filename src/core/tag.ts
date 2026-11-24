@@ -3,16 +3,15 @@ import { type ActionHandler } from "../types/action";
 import { type SpotiOptions } from "../types/configuration";
 import { type MaybeLibraryFile } from "../types/library";
 import { mergeOptions } from "../utils/action";
-import { reportDry } from "../utils/console";
+import { reportDry, reportManifest } from "../utils/console";
 import { prepareTracks } from "../utils/downloads";
 import { Library } from "../utils/library";
 import { searchSongs } from "../utils/search";
-import { stringifyManifest } from "../utils/stringify";
 import { addTrackTags } from "../utils/tags";
 import chalk from "chalk";
 import { find, map } from "lodash-es";
 
-export type TagArguments = [string];
+export type TagArguments = [string?];
 
 export interface TagOptions extends SpotiOptions {
   cache: boolean;
@@ -51,12 +50,10 @@ export const tag: ActionHandler<TagArguments, TagOptions> = async <
     }
   }
 
-  const info = await stringifyManifest(manifest, {
+  await reportManifest(manifest, {
     ...options,
     more: true,
   });
 
-  console.log();
-  console.log(info);
   reportDry(options);
 };

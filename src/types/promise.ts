@@ -7,7 +7,7 @@ export interface RetryHandlers {
   }) => boolean | void;
 }
 
-export type PromiseCallback<TReturn = unknown> = () => Promise<TReturn>;
+export type PromiseCallback<TReturn = unknown> = (signal: AbortSignal) => Promise<TReturn>;
 
 export type PromiseCallbackReturnType<TCallback extends PromiseCallback> =
   Awaited<ReturnType<TCallback>>;

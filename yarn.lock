@@ -1564,13 +1564,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"diff@npm:9.0.0":
-  version: 9.0.0
-  resolution: "diff@npm:9.0.0"
-  checksum: 10c0/a971cc88f66071a33bd3942db2f51b57d484e9856265ae45cf44fb28ab2fde91f132d9c26d8be0fb6082d2be94d29e1295c1adb251b7461935d6a2dd304cd161
-  languageName: node
-  linkType: hard
-
 "diff@npm:^4.0.1":
   version: 4.0.4
   resolution: "diff@npm:4.0.4"
@@ -2012,13 +2005,6 @@ __metadata:
   version: 2.0.6
   resolution: "fast-levenshtein@npm:2.0.6"
   checksum: 10c0/111972b37338bcb88f7d9e2c5907862c280ebf4234433b95bc611e518d192ccb2d38119c4ac86e26b668d75f7f3894f4ff5c4982899afced7ca78633b08287c4
-  languageName: node
-  linkType: hard
-
-"fast-safe-stringify@npm:2.1.1":
-  version: 2.1.1
-  resolution: "fast-safe-stringify@npm:2.1.1"
-  checksum: 10c0/d90ec1c963394919828872f21edaa3ad6f1dddd288d2bd4e977027afff09f5db40f94e39536d4646f7e01761d704d72d51dce5af1b93717f3489ef808f5f4e4d
   languageName: node
   linkType: hard
 
@@ -2797,6 +2783,13 @@ __metadata:
   version: 7.3.2
   resolution: "meriyah@npm:7.3.2"
   checksum: 10c0/07d828648d0fa96732b18a3638ee5bfb1b12b1c551958f416f859c2a6b7ef9f030dda245b26e3751a898bcfd964864ad5ce88abd23d81143f952003d3f0a6f2d
+  languageName: node
+  linkType: hard
+
+"microdiff@npm:1.6.0":
+  version: 1.6.0
+  resolution: "microdiff@npm:1.6.0"
+  checksum: 10c0/352831a804fc9d1ea07a0137beda9c030882937860253833e3d79166c3e6833a13decb0ae4be055e2948ee8e54c44098f6fc70a7eacfc2d68daabbc6cdf0855a
   languageName: node
   linkType: hard
 
@@ -3645,7 +3638,6 @@ __metadata:
     cli-table3: "npm:0.6.5"
     commander: "npm:15.0.0"
     default-browser: "npm:5.5.1"
-    diff: "npm:9.0.0"
     dotenv: "npm:17.4.2"
     eslint: "npm:10.9.0"
     eslint-config-prettier: "npm:10.1.8"
@@ -3653,13 +3645,13 @@ __metadata:
     eslint-plugin-import-x: "npm:4.17.1"
     eslint-plugin-lodash-es: "npm:1.2.1"
     execa: "npm:10.0.1"
-    fast-safe-stringify: "npm:2.1.1"
     fuse.js: "npm:7.5.0"
     glob: "npm:13.0.6"
     globals: "npm:17.11.0"
     jiti: "npm:2.7.0"
     jsonc-simple-parser: "npm:3.0.0"
     lodash-es: "npm:4.18.1"
+    microdiff: "npm:1.6.0"
     multi-progress-bars: "npm:5.0.3"
     node-fetch: "npm:3.3.2"
     node-id3: "npm:0.2.9"

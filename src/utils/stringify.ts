@@ -3,7 +3,6 @@ import { type SpotiOptions } from "../types/configuration";
 import {
   type LibraryFile,
   type LibraryMetadata,
-  type LibraryManifest,
 } from "../types/library";
 import { type SearchResult } from "../types/search";
 import {
@@ -13,12 +12,10 @@ import {
 import { Format } from "./format";
 import { sortByKeys } from "./helpers";
 import { Library } from "./library";
-import { pool } from "./promise";
 import chalk from "chalk";
 import Table from "cli-table3";
-import { diffJson } from "diff";
-import stringify from "fast-safe-stringify";
-import { map, padStart, sortBy, zipObject } from "lodash-es";
+import diff, { type Difference } from "microdiff";
+import { map, padStart } from "lodash-es";
 import { type Tags } from "node-id3";
 import { type Primitive } from "type-fest";
 import window from "window-size";
@@ -272,69 +269,128 @@ export function stringifySearch<
   return callee<TOptions>(data, results, options, details);
 }
 
+function normalizeTags(tags: Tags = {}): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(tags)) {
+    switch (key) {
+      case "image": {
+        if (!value) break;
+
+        const { mime, type, description } = value;
+
+        result[key] = {
+          mime,
+          type,
+          description,
+          imageBuffer: "<Buffer>",
+        };
+
+        break;
+      }
+
+      case "imageBuffer": {
+        result[key] = "<Buffer>";
+        break;
+      }
+
+      case "userDefinedText": {
+        const normalized: Record<string, unknown> = {};
+
+        for (const item of value ?? []) {
+          normalized[item.description] = item.value;
+        }
+
+        result[key] = sortByKeys(normalized);
+        break;
+      }
+
+      case "uniqueFileIdentifier": {
+        const normalized: Record<string, unknown> = {};
+
+        for (const item of value ?? []) {
+          normalized[item.ownerIdentifier] =
+            stringifyBuffer(item.identifier);
+        }
+
+        result[key] = sortByKeys(normalized);
+        break;
+      }
+
+      case "raw": {
+        // Intentionally omitted.
+        break;
+      }
+
+      default: {
+        result[key] = value;
+      }
+    }
+  }
+
+  return result;
+}
+
 function stringifyBuffer(buffer: Buffer): string {
-  return buffer.toString("utf8");
+  return buffer.toString("hex");
 }
 
 function stringifyTags<TOptions extends SpotiOptions>(
   tags: Tags = {},
   _options?: TOptions
 ): string {
-  return stringify(
-    tags,
-    (key, value) => {
-      switch (key) {
-        case "image": {
-          const { mime, type, description } = value;
-          const imageBuffer = "<Buffer>";
-          return { mime, type, description, imageBuffer };
-        }
-        case "imageBuffer": {
-          return "<Buffer>";
-        }
-        case "userDefinedText": {
-          const keys = map(value, "description");
-          const values = map(value, "value");
-          return sortByKeys(zipObject(keys, values));
-        }
-        case "uniqueFileIdentifier": {
-          const keys = map(value, "ownerIdentifier");
-          const values = map(value, "identifier").map(stringifyBuffer);
-          return sortByKeys(zipObject(keys, values));
-        }
-        case "raw": {
-          return;
-        }
-        default: {
-          return value;
-        }
-      }
-    },
-    2
-  );
+  return JSON.stringify(normalizeTags(tags), null, 2);
+}
+
+function diffTags<TOptions extends SpotiOptions>(
+  previous: Tags = {},
+  next: Tags = {},
+  _options?: TOptions
+): Difference[] {
+  const src = normalizeTags(previous);
+  const dest = normalizeTags(next);
+  return diff(src, dest);
 }
 
 function stringifyTagsDiff<TOptions extends SpotiOptions>(
-  tags: Tags = {},
-  patch: Tags = {},
-  options?: TOptions
+  previous: Tags = {},
+  next: Tags = {},
+  _options?: TOptions
 ): string {
-  const src = stringifyTags(tags, options);
-  const dest = stringifyTags(patch, options);
-  const diff = diffJson(src, dest);
+  const changes = diffTags(previous, next);
 
-  return diff
-    .map((line) => {
-      const color = line.added ? chalk.green : line.removed ? chalk.red : chalk;
-      return color(line.value);
+  return changes
+    .map((change) => {
+      const path = change.path
+        .map((part) =>
+          typeof part === "number"
+            ? `[${part}]`
+            : `.${part}`
+        )
+        .join("")
+        .replace(/^\./, "");
+
+      switch (change.type) {
+        case "CREATE": {
+          return chalk.green(`+ ${path}: ${JSON.stringify(change.value)}\n`);
+        }
+        case "REMOVE": {
+          return chalk.red(`- ${path}: ${JSON.stringify(change.oldValue)}\n`);
+        }
+        case "CHANGE": {
+          const before = chalk.red(`- ${path}: ${JSON.stringify(change.oldValue)}\n`);
+          const after = chalk.green(`+ ${path}: ${JSON.stringify(change.value)}\n`);
+          return before + after;
+        }
+      }
     })
     .join("");
 }
 
-export async function stringifyManifest<
+export async function stringifyFile<
   TOptions extends SpotiOptions & { more?: boolean },
 >(
-  manifest: LibraryManifest,
+  file: LibraryFile,
   options: TOptions,
   details?: Record<string, Primitive>,
   progress?: () => void
@@ -349,7 +405,7 @@ export async function stringifyManifest<
     Tags: chalk.bold.blue("Tags"),
   };
 
-  async function readMetadata(file: LibraryFile): Promise<LibraryMetadata> {
+  const metadata = await (async (): Promise<LibraryMetadata> => {
     if (options?.more) {
       return file.tags
         ? {
@@ -365,44 +421,35 @@ export async function stringifyManifest<
       duration: file.duration ?? 0,
       id: file.id,
     };
-  }
+  })();
 
-  const tasks = sortBy(manifest.files, "title").map(
-    (file) => async (): Promise<string> => {
-      const metadata = await readMetadata(file);
-      const item = { ...file, ...metadata };
+  const item = { ...file, ...metadata };
 
-      const table = new Table({
-        colWidths: [10, window.width - 10 - 6],
-      });
+  const table = new Table({
+    colWidths: [10, window.width - 10 - 6],
+  });
 
-      table.push(
-        [Heading.Title, item.title],
-        [Heading.File, item.file],
-        [Heading.Format, item.format],
-        [Heading.Size, Format.bytes(item.size)],
-        ...(options?.more
-          ? [
-              [Heading.Id, item.id],
-              [Heading.Duration, Format.duration(item.duration)],
-              [
-                Heading.Tags,
-                options?.dry
-                  ? stringifyTagsDiff(item.tags, item.tagging?.tags, options)
-                  : stringifyTags(item.tagging?.tags ?? item.tags, options),
-              ],
-            ]
-          : []),
-        ...stringifyDetails(details)
-      );
-
-      progress?.();
-
-      return table.toString() + "\n";
-    }
+  table.push(
+    [Heading.Title, item.title],
+    [Heading.File, item.file],
+    [Heading.Format, item.format],
+    [Heading.Size, Format.bytes(item.size)],
+    ...(options?.more
+      ? [
+          [Heading.Id, item.id],
+          [Heading.Duration, Format.duration(item.duration)],
+          [
+            Heading.Tags,
+            options?.dry
+              ? stringifyTagsDiff(item.tags, item.tagging?.tags, options)
+              : stringifyTags(item.tagging?.tags ?? item.tags, options),
+          ],
+        ]
+      : []),
+    ...stringifyDetails(details)
   );
 
-  const dispatch = pool(25);
-  const results = await dispatch(tasks);
-  return results.join("\n");
+  progress?.();
+
+  return table.toString() + "\n";
 }

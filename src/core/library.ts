@@ -1,9 +1,9 @@
 import { type ActionHandler } from "../types/action";
 import { type SpotiOptions } from "../types/configuration";
 import { mergeOptions } from "../utils/action";
+import { reportManifest } from "../utils/console";
 import { Library } from "../utils/library";
 import { Progress } from "../utils/progress";
-import { stringifyManifest } from "../utils/stringify";
 import chalk from "chalk";
 import { type Primitive } from "type-fest";
 
@@ -37,11 +37,9 @@ export const library: ActionHandler<LibraryArguments, LibraryOptions> = async <
 
   const details: Record<string, Primitive> = {};
 
-  const info = await stringifyManifest(manifest, options, details, () =>
+  await reportManifest(manifest, options, details, () =>
     progress.increment()
   );
 
   progress.done();
-  console.log();
-  console.log(info);
 };

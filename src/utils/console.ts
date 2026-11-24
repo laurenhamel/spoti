@@ -1,7 +1,11 @@
+import { type Primitive } from "type-fest";
 import { type SpotiOptions } from "../types/configuration";
+import { type LibraryManifest } from "../types/library";
 import { type SpotifyStatus } from "../types/spotify";
 import chalk from "chalk";
-import { filter, pad } from "lodash-es";
+import { filter, pad, sortBy } from "lodash-es";
+import { stringifyFile } from "./stringify";
+import { pool } from "./promise";
 
 const LABEL_COLORS = [
   "#6344B2",
@@ -88,4 +92,25 @@ export function reportErrors(results: { error?: Error }[]): void {
       console.error(chalk.dim.red(error.stack));
     }
   }
+}
+
+export async function reportManifest<
+  TOptions extends SpotiOptions & { more?: boolean },
+>(
+  manifest: LibraryManifest,
+  options: TOptions,
+  details?: Record<string, Primitive>,
+  progress?: () => void
+): Promise<void> {
+  const tasks = sortBy(manifest.files, 'title').map(file => async (signal: AbortSignal) => {
+    const info = await stringifyFile(file, options, details);
+    signal.throwIfAborted();
+    console.log();
+    console.log(info);
+    progress?.();
+  });
+
+  
+  const dispatch = pool(5);
+  await dispatch(tasks);
 }

@@ -5,6 +5,7 @@ import type {
 } from "../types/promise";
 import { isFunction } from "lodash-es";
 import limit from "p-limit";
+import { createProcessExitAbort } from "./process";
 
 export class Deferred<TResponse = void> {
   promise: Promise<TResponse>;
@@ -39,7 +40,9 @@ export class Deferred<TResponse = void> {
 export async function drain<TCallbacks extends PromiseCallback[]>(
   callbacks: TCallbacks
 ): Promise<PromiseCallbackReturnTypeArray<TCallbacks>> {
-  const promises = callbacks.map((callback) => callback());
+  const controller = createProcessExitAbort();
+  const { signal } = controller;
+  const promises = callbacks.map((callback) => callback(signal));
   const results = await Promise.all(promises);
   return results as PromiseCallbackReturnTypeArray<TCallbacks>;
 }
@@ -49,12 +52,24 @@ export function pool(
 ): <TResponse>(
   callbacks: PromiseCallback<TResponse>[]
 ) => Promise<TResponse[]> {
-  const task = limit(max);
-
+  const concurrency = Math.max(max, 1);
+  const task = limit({ concurrency, rejectOnClear: true });
+  
   return async <TResponse>(
     callbacks: PromiseCallback<TResponse>[]
   ): Promise<TResponse[]> => {
-    const tasks = callbacks.map(task);
+    const controller = createProcessExitAbort();
+    const { signal } = controller;
+
+    signal.addEventListener('abort', () => {
+      task.clearQueue();
+    });
+
+    const tasks = callbacks.map(callback => task(async () => {
+      signal.throwIfAborted();
+      return callback(signal);
+    }));
+
     const results = await Promise.all(tasks);
     return results;
   };
@@ -68,9 +83,11 @@ export async function retry<TResult>(
   attempt = 1
 ): Promise<TResult> {
   try {
+    const controller = createProcessExitAbort();
+    const { signal } = controller;
     const retried = attempt > 1;
     before?.({ attempt, retried });
-    const result = await async();
+    const result = await async(signal);
     after?.({ attempt, retrying: false });
     return result;
   } catch (e) {
