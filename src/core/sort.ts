@@ -10,7 +10,7 @@ import { pool } from "../utils/promise";
 import { parseGenres } from "../utils/tags";
 import { getConfigurationKey } from "../utils/configuration";
 import { every, trim, trimStart } from "lodash-es";
-import { existsSync, renameSync, mkdirSync } from 'node:fs';
+import { existsSync, renameSync, mkdirSync, statSync  } from 'node:fs';
 import { type LibraryFile } from "../types/library";
 import { dirname, extname, sep } from "node:path";
 
@@ -27,6 +27,13 @@ const SORT_DEFAULTS: SortOptions = {
   verbose: false,
 };
 
+const ADDITIONAL_PLACEHOLDERS: `{${string}}`[] = [
+  '{created}',
+  '{created-year}',
+  '{created-month}',
+  '{created-date}',
+];
+
 export const sort: ActionHandler<SortArguments, SortOptions> = async <
   TOptions extends SortOptions,
 >(
@@ -34,7 +41,7 @@ export const sort: ActionHandler<SortArguments, SortOptions> = async <
   file?: string,
   config?: TOptions
 ) => {
-  if (!Format.valid(format)) throw new Error('Invalid format.');
+  if (!Format.valid(format, ADDITIONAL_PLACEHOLDERS)) throw new Error('Invalid format.');
 
   if (!format.includes(sep)) throw new Error('Format must include at least one folder.');
 
@@ -79,11 +86,13 @@ export const sort: ActionHandler<SortArguments, SortOptions> = async <
 
   const parse = async (file: LibraryFile): Promise<Record<string, unknown>> => {
     const { tags, duration, id } = await file.metadata();
+    const { birthtime } = statSync(file.file);
     const artists = tags.artist?.split(',').map(trim) ?? [];
     const artist = artists[0];
     const genres = parseGenres(tags.genre, delimiter);
     const genre = genres[0];
     const ext = trimStart(extname(file.file), '.');
+    const created = birthtime.toLocaleDateString().replaceAll('/', '-');
     
     return {
       ...tags,
@@ -91,6 +100,10 @@ export const sort: ActionHandler<SortArguments, SortOptions> = async <
       'album-artist': artist,
       artists,
       artist,
+      created,
+      'created-year': birthtime.getFullYear(),
+      'created-month': birthtime.getMonth(),
+      'created-date': birthtime.getDate(),
       duration,
       ext,
       genres,

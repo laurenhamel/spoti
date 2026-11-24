@@ -145,16 +145,18 @@ export class Format {
   /**
    * Determines whether a given format is valid
    * @param format - The format string to check
+   * @param allowed - An additional list of allowed placeholders
    * @param delimiter - The placeholder delimiter
    * @returns
    */
-  static valid(format: string, delimiter: string = DEFAULT_PLACEHOLDER_DELIMITER): boolean {
+  static valid(format: string, allowed: `{${string}}`[] = [], delimiter: string = DEFAULT_PLACEHOLDER_DELIMITER): boolean {
     const placeholders = Array.from(format.matchAll(/(\{.+?\})/g));
 
     // Requires that at least one placeholder is present
     if (!placeholders.length) return false;
 
-    const expected = Object.keys(this.extractors);
+    const base = Object.keys(this.extractors);
+    const expected = [...base, ...allowed];
 
     // Requires that only supported placeholders are used
     for (const [placeholder] of placeholders) {
