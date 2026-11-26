@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { resolveRoot } from "./path";
+import { configure } from 'safe-stable-stringify';
 
 const DEFAULT_CACHE_DIR = resolveRoot(".spoti/cache");
 
@@ -28,7 +29,7 @@ export class Cache {
 
   private get stringify(): (value: unknown) => string {
     return this.ext === "json"
-      ? JSON.stringify
+      ? configure({ maximumDepth: 1 }) as ((value: unknown) => string)
       : (value: unknown) => `${value}`;
   }
 

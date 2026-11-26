@@ -3525,6 +3525,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"safe-stable-stringify@npm:3.0.1":
+  version: 3.0.1
+  resolution: "safe-stable-stringify@npm:3.0.1"
+  checksum: 10c0/fcaf44b0c48826a6fa1ac7b7209b0267e06448c66d445a778526bcb339c9c927a2b55f59831a5172145ae4ad3a9d77e67d48497031aa905a9952796f0d919d99
+  languageName: node
+  linkType: hard
+
 "safe-stable-stringify@npm:^2.5.0":
   version: 2.5.0
   resolution: "safe-stable-stringify@npm:2.5.0"
@@ -3662,6 +3669,7 @@ __metadata:
     pretty-bytes: "npm:7.1.1"
     pretty-ms: "npm:9.3.0"
     qs: "npm:6.15.3"
+    safe-stable-stringify: "npm:3.0.1"
     semver: "npm:7.8.5"
     tsx: "npm:4.23.12"
     type-fest: "npm:5.8.0"
