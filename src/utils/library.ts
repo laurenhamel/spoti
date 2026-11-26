@@ -187,10 +187,14 @@ export class Library {
 
     return async () => {
       if (!cached) {
-        const tags = await this.readTags(file);
-        const duration = this.duration(file, tags);
-        const id = this.id(tags);
-        cached = { tags, duration, id };
+        try {
+          const tags = await this.readTags(file);
+          const duration = this.duration(file, tags);
+          const id = this.id(tags);
+          cached = { tags, duration, id };
+        } catch {
+          cached = { tags: {} } as LibraryMetadata;
+        }
       }
 
       return cached;
