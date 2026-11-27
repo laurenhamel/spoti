@@ -70,6 +70,19 @@ export const sort: ActionHandler<SortArguments, SortOptions> = async <
     return handler;
   })();
 
+  const failed = (() => {
+    const files: string[] = [];
+
+    const handler = function (file: string) {
+      files.push(file);
+      return console.log(chalk.red(`𐄂`), file);
+    };
+
+    handler.files = files;
+
+    return handler;
+  })();
+
   const sorted = (() => {
     const files: string[] = [];
 
@@ -143,7 +156,12 @@ export const sort: ActionHandler<SortArguments, SortOptions> = async <
       for (const file of Array.from(files)) {
         const src = join(from, file);
         const dest = join(to, file);
-        if (!options.dry) renameSync(src, dest);
+
+        try {
+          if (!options.dry) renameSync(src, dest);
+        } catch {
+          if (src === actual) failed(src);
+        }
       }
 
       sorted(actual, expected);
@@ -161,6 +179,8 @@ export const sort: ActionHandler<SortArguments, SortOptions> = async <
   console.log(chalk.blue("→"), `Sorted ${chalk.blue(sorted.files.length)} file(s).`);
   // prettier-ignore
   console.log(chalk.green("✓"), `Skipped ${chalk.green(skipped.files.length)} file(s).`);
+  // prettier-ignore
+  console.log(chalk.red("𐄂"), `Failed to sort ${chalk.red(failed.files.length)} file(s).`);
 
   reportDry(options);
 };
