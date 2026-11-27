@@ -135,6 +135,7 @@ export const sort: ActionHandler<SortArguments, SortOptions> = async <
     // Skips files that cannot be properly sorted based on the given format due to missing data
     if (!every(Object.values(inspect))) {
       skipped(actual);
+      progress.increment();
       return;
     }
 
@@ -168,6 +169,8 @@ export const sort: ActionHandler<SortArguments, SortOptions> = async <
     } else {
       skipped(actual);
     }
+
+    progress.increment();
   });
 
   const dispatch = pool(25);
