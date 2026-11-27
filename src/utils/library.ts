@@ -119,7 +119,7 @@ export class Library {
         dot: true,
         cwd: this.dir,
       })
-    );
+    ).filter(file => !file.startsWith('._'));
 
     return files.map((file) => file.normalize());
   }
