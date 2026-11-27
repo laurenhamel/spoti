@@ -12,7 +12,8 @@ import { getConfigurationKey } from "../utils/configuration";
 import { every, trim, trimStart } from "lodash-es";
 import { existsSync, renameSync, mkdirSync, statSync  } from 'node:fs';
 import { type LibraryFile } from "../types/library";
-import { dirname, extname, sep } from "node:path";
+import { basename, dirname, extname, join, sep } from "node:path";
+import { globSync } from 'glob';
 
 export type SortArguments = [string, string?];
 
@@ -127,12 +128,22 @@ export const sort: ActionHandler<SortArguments, SortOptions> = async <
     const expected = Format.replace(format, data, false);
 
     if (actual !== expected) {
-      if (!options.dry) {
-        const src = actual;
-        const dest = expected;
-        const dir = dirname(dest);
-        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-        renameSync(src, dest);
+      const files = new Set<string>([actual]);
+      const base = basename(actual, extname(actual));
+
+      globSync(`*(.|._)${base}.*`, { nodir: true }).forEach(file => {
+        files.add(file);
+      });
+
+      const from = dirname(actual);
+      const to = dirname(expected);
+
+      if (!options.dry && !existsSync(to)) mkdirSync(to, { recursive: true });
+
+      for (const file of Array.from(files)) {
+        const src = join(from, file);
+        const dest = join(to, file);
+        if (!options.dry) renameSync(src, dest);
       }
 
       sorted(actual, expected);
