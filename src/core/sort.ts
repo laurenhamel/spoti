@@ -168,6 +168,8 @@ export const sort: ActionHandler<SortArguments, SortOptions> = async <
     } else {
       skipped(actual);
     }
+
+    progress?.increment();
   });
 
   const dispatch = pool(25);
