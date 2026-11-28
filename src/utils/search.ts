@@ -11,6 +11,7 @@ import { type SpotiOptions } from "../types/configuration";
 import { type SearchOf, type SearchResult } from "../types/search";
 import { cache } from "./cache";
 import { getConfigurationKey } from "./configuration";
+import { isDebuggingEnabled } from "./console";
 import { Progress } from "./progress";
 import { drain } from "./promise";
 import chalk from "chalk";
@@ -209,9 +210,10 @@ async function searchLastfm<
 
   try {
     return LastfmApi.getTrackInfo<Lastfm.Track>({ artist, track });
-  } catch (_) {
-    // @TODO If we cannot acquire search results, then the song may not exist on Last.fm
-    return;
+  } catch (e) {
+    // If we cannot acquire search results, then the song may not exist on Last.fm
+    const error = e as Error;
+    isDebuggingEnabled('lastfm') && console.error(chalk.dim(error));
   }
 }
 
@@ -228,14 +230,15 @@ async function searchMusicbrainz<
 
   if (!enabled) return;
 
-  const { mbid: id } = item.track;
+  const { mbid: id } = item?.track ?? {};
 
   if (id) {
     try {
       return MusicbrainzApi.getRecording<Musicbrainz.Recording>({ id });
-    } catch (_) {
-      // @TODO If we cannot acquire search results, then the recording may not exist on MusicBrainz.org
-      return;
+    } catch (e) {
+      // If we cannot acquire search results, then the recording may not exist on MusicBrainz.org
+      const error = e as Error;
+      isDebuggingEnabled('musicbrainz') && console.error(chalk.dim(error));
     }
   }
 }

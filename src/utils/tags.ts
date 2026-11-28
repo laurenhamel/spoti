@@ -95,7 +95,7 @@ export function parseMusicbrainzGenres(
   );
 
   const recording = musicbrainz?.genres ?? [];
-  const artist = musicbrainz?.["artist-credit"][0]?.artist.genres ?? [];
+  const artist = musicbrainz?.["artist-credit"][0]?.artist?.genres ?? [];
 
   const filterThreshold = (genre: Musicbrainz.Genre): boolean => {
     return genre.count >= threshold;
@@ -118,7 +118,7 @@ export function parseLastfmGenres(
 
   if (!enabled) return [];
 
-  const track = lastfm?.track.toptags.tag ?? [];
+  const track = lastfm?.track?.toptags.tag ?? [];
 
   return [...parseGenres(map(track, "name"), delimiter)];
 }
